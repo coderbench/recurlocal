@@ -70,6 +70,14 @@ Capture efficiency against the residency-scaled ceiling falls from 76% at 0.25 t
 which is the deliberately generous bound showing itself: it assumes every resident byte hits and
 that the set-aside costs its neighbours nothing, and neither is quite true.
 
+`--axis hit-ratio` says the same thing from the other side, and resolves just as cleanly —
+0.25 → +0.76%, 0.50 → +1.13%, 0.75 → +1.41%, **1.00 → +1.53%**, span 0.74% against a 0.063%
+floor, measured at the default `budget_fraction`. Both dials are monotonic to their maximum and
+neither has an interior optimum, which is what a footprint that nearly fits predicts: there is
+no point on this model at which asking for less persistence is better than asking for more.
+That is the opposite of the dense model, where the same axes span 0.02% because no fraction of a
+2.4x-oversubscribed footprint can be held.
+
 **`cliff` cannot be measured on this model, and the guard is right about that.** Sweeping the
 hot-set-policy axis aborted on it: at batch 1 the footprint is oversubscribed, so `cliff`
 declines every window, applies no policy at all, and `real_eval.py` refuses it as a null

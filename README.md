@@ -242,11 +242,16 @@ measured — and the L2 set-aside turns out to be the dial that matters, resolve
 | 0.75 (the shipped default) | 45 MiB | +1.28% |
 | **1.00** | 60 MiB | **+1.53%** |
 
-Span 0.85% against a 0.10% noise floor. It is monotonic because the footprint is 61.4 MiB and
-each extra MiB of set-aside is another MiB that stays resident — the residency model predicting
-its own measurement. The default was leaving a quarter of a point on the floor, and even at 1.00
-there are **2.1 points of headroom** to the ceiling, which is what makes batch-1 decode a surface
-here rather than the dead end it is on the dense model.
+Span 0.85% against a 0.10% noise floor. `--axis hit-ratio` says the same from the other side —
++0.76% / +1.13% / +1.41% / **+1.53%** over 0.25 → 1.00, span 0.74% against a 0.063% floor. Both
+dials are monotonic to their maximum with no interior optimum, which is what a footprint that
+nearly fits predicts: nowhere on this model is asking for less persistence better than asking
+for more. On the dense model the same axes span 0.02%, because no fraction of a 2.4×
+oversubscribed footprint can be held.
+
+The shipped defaults (0.75, 0.70) were leaving a quarter of a point on the floor, and even at
+the far end there are **2.1 points of headroom** to the ceiling — which is what makes batch-1
+decode a surface here rather than the dead end it is on the dense model.
 
 It does **not** rescue concurrency, and on this checkpoint concurrency cannot even be measured:
 above 8 rows the runtime stops batching, packs 127 of 4205 tokens at 32 sequences and decodes
