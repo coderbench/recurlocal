@@ -268,14 +268,19 @@ already known. Reordered by what is still genuinely open:
    throughput on the runtime's own SOTA speed target, against fractions of a percent for a
    cache policy. `results/rtx5090-moe-matrix.json` carries the counters and the account.
 
-   **The dense model's intermittent 32-sequence collapse is a different observation and is
-   still unexplained.** There, `prefetch` ratios came in `[0.932, 0.676, 0.925]` — one run of
-   three collapsing 32% — and it hit `baseline`, which installs no window and issues no
-   pre-touch. Same family (the runtime declining to batch), no established common cause: this
-   one is deterministic and quantisation-shaped, that one is intermittent on an NVFP4
-   checkpoint that takes a different projection path. What is new is that it can no longer
-   pass unnoticed: `real_eval.py` refuses a concurrency arm whose telemetry shows the packed
-   path was not used, and names the counters.
+   **It is an omission, not a design choice.** Four multi-row launchers sit in that file and
+   three of them chunk `M > 8` into groups of 8: `launch_gemv_nvfp4_rows`,
+   `launch_gemv_nvfp4_rows_dp4a`, and `launch_mmvq_rows_f32`. Only the bf16 `launch_mmvq_rows`
+   does not.
+
+   **And that is why the dense model's collapse is a different bug.** Qwen3.8-27B is uniform
+   NVFP4, so its projections take the NVFP4 path — which has the loop — and never reach the
+   refusal. Its 32-sequence collapse is intermittent (`prefetch` ratios `[0.932, 0.676,
+   0.925]`, one run of three collapsing 32%), hit `baseline` which installs no window at all,
+   and remains **unexplained**. Same family, different cause, and the code says so rather than
+   the two being lumped together. What is new is that neither can pass unnoticed:
+   `real_eval.py` refuses a concurrency arm whose telemetry shows the packed path was not
+   used, and names the counters.
 
 4. **Delivering a persisting window under graph decode.** A locality library cannot attach one
    without the runtime's cooperation; the shortcut that avoids that (`capture_node`) is

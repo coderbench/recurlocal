@@ -127,9 +127,16 @@ It also makes the MoE's concurrency arms measurable, so the scored matrix for th
 complete rather than partial — with the cap set on **both** arms, because it is a property of
 the workload rather than of the candidate.
 
-The dense model's *intermittent* 32-sequence collapse is a separate observation and remains
-unexplained: same family, no established common cause. What is new is that neither can pass
-unnoticed again — see the guard below.
+**An omission, not a design choice.** Four multi-row launchers sit in that file and three of
+them chunk `M > 8` into groups of 8 — `launch_gemv_nvfp4_rows`, `launch_gemv_nvfp4_rows_dp4a`
+and `launch_mmvq_rows_f32`. Only the bf16 `launch_mmvq_rows` does not.
+
+That also settles that the dense model's collapse is a **different** bug: Qwen3.8-27B is
+uniform NVFP4, so its projections take the NVFP4 path, which has the loop, and never reach the
+refusal. Its intermittent 32-sequence collapse — `prefetch` ratios `[0.932, 0.676, 0.925]`, and
+it hit `baseline`, which installs no window at all — remains unexplained. Same family,
+different cause, and the code says so rather than the two being lumped together. What is new is
+that neither can pass unnoticed again — see the guard below.
 
 ### Closed — reuse the cache can actually serve, bounded rather than built
 
