@@ -613,6 +613,54 @@ class WithinLayerCeiling(unittest.TestCase):
                 self.assertLessEqual(a["within_layer_family"]["ceiling_pct"], a["ceiling_pct"])
 
 
+class PackedPathGuard(unittest.TestCase):
+    """The 32-sequence cliff, turned from an invisible number into a named refusal.
+
+    Something occasionally drops the runtime onto its per-row decode path at 32 sequences and
+    costs about a third of aggregate throughput. It is not a locality policy -- it has hit
+    `baseline`, which installs no window and issues no pre-touch. The cause is still
+    unidentified, but the adapter has always counted enough to tell that it happened, and
+    nothing read those counters. Now they gate the arm.
+    """
+
+    def _stats(self, tokens, packed, rows):
+        return {"stats": {"tokens": tokens, "tokens_packed": packed, "max_rows_seen": rows,
+                          "layers_packed": packed * 30}}
+
+    def test_a_healthy_batched_run_passes_and_is_recorded(self):
+        rec = real_eval.require_packed_path(self._stats(142, 133, 9), 8, "candidate c=8")
+        self.assertTrue(rec["used_packed_path"])
+        self.assertAlmostEqual(rec["packed_share"], 133 / 142)
+        self.assertEqual(rec["max_rows_seen"], 9)
+
+    def test_a_run_that_fell_to_the_per_row_path_is_refused_by_name(self):
+        with self.assertRaises(SystemExit) as e:
+            real_eval.require_packed_path(self._stats(4096, 0, 1), 32, "candidate c=32")
+        self.assertIn("FELL OFF THE BATCHED DECODE PATH", str(e.exception))
+        self.assertIn("max_rows_seen=1", str(e.exception))
+
+    def test_the_tail_chunk_that_always_falls_through_is_not_a_collapse(self):
+        # One row of an odd batch is never packed, by design. Refusing that would refuse
+        # every honest run.
+        rec = real_eval.require_packed_path(self._stats(1000, 969, 32), 32, "c=32")
+        self.assertTrue(rec["used_packed_path"])
+
+    def test_batch_one_is_not_subject_to_it(self):
+        # The single-sequence path is the correct path at concurrency 1; there is nothing to
+        # fall off.
+        self.assertIsNone(real_eval.require_packed_path(self._stats(128, 0, 0), 1, "b1"))
+
+    def test_an_unhooked_control_arm_cannot_be_checked_and_is_not_failed(self):
+        # The control is unhooked by construction, so it emits no telemetry. The guard must
+        # pass it through rather than refuse every control run -- and the docstring says this
+        # is the hole that remains.
+        self.assertIsNone(real_eval.require_packed_path(None, 32, "control c=32"))
+
+    def test_a_zero_token_run_does_not_divide_by_zero(self):
+        with self.assertRaises(SystemExit):
+            real_eval.require_packed_path(self._stats(0, 0, 0), 32, "c=32")
+
+
 class SecondModelGeometry(unittest.TestCase):
     """A second model measured on the same runtime must not inherit the first one's shape.
 

@@ -192,6 +192,58 @@ def require_hook_engaged(text, env_extra, label):
     return stats
 
 
+# Below this share of a concurrency arm's tokens going through the runtime's packed decode
+# path, the run did not measure concurrent decode at all -- it measured the single-sequence
+# path executed once per row. A tail chunk of one row always falls through, so the normal
+# figure is high but not 1.0 (the pinned integration measures 133 of 142 at concurrency 8);
+# a collapse is near zero, not a few percent short.
+PACKED_SHARE_MIN = 0.50
+
+
+def packed_path_used(stats, concurrency):
+    """Did the runtime actually batch, or did it fall back to decoding one row at a time?
+
+    This is the 32-sequence cliff, made visible. SparkInfer declines a packed forward for
+    reasons that have nothing to do with locality -- a row set that moved, a tail chunk of one
+    row, an unsupported shape -- and when it does, aggregate throughput drops by about a third
+    while every other number in the run looks normal. A median over repeats then turns one
+    collapsed run into a plausible-looking 'result' for whatever configuration happened to be
+    running.
+
+    The adapter already counts what settles it: `tokens_packed` of `tokens`, and
+    `max_rows_seen`. Returns a record for the artifact, and whether the arm is usable.
+
+    Limitation, stated rather than hidden: the control arm is unhooked by construction, so it
+    emits no telemetry and a collapse THERE is still invisible. What this catches is a
+    collapse in the candidate, which is where both observed ones were.
+    """
+    if not stats or concurrency < 2:
+        return None
+    st = stats.get("stats", {})
+    tokens = st.get("tokens", 0) or 0
+    packed = st.get("tokens_packed", 0) or 0
+    share = (packed / tokens) if tokens else 0.0
+    return {"tokens": tokens, "tokens_packed": packed, "packed_share": share,
+            "max_rows_seen": st.get("max_rows_seen", 0),
+            "layers_packed": st.get("layers_packed", 0),
+            "concurrency_asked": concurrency,
+            "used_packed_path": share >= PACKED_SHARE_MIN}
+
+
+def require_packed_path(stats, concurrency, label):
+    """A concurrency measurement that ran the per-row path is not a concurrency measurement."""
+    rec = packed_path_used(stats, concurrency)
+    if rec is None or rec["used_packed_path"]:
+        return rec
+    raise SystemExit(
+        f"{label}: RUNTIME FELL OFF THE BATCHED DECODE PATH. Asked for {concurrency} "
+        f"concurrent sequences; the runtime packed {rec['tokens_packed']} of {rec['tokens']} "
+        f"tokens ({rec['packed_share'] * 100:.1f}%), max_rows_seen={rec['max_rows_seen']}. "
+        "Aggregate throughput from a run that decoded one row at a time is not this "
+        "workload's number, and averaging it with runs that did batch produces a gain for a "
+        "measurement that never happened. Re-run the arm.")
+
+
 def parse_output_ids(text):
     m = re.search(r"OUTPUT_IDS:((?: -?\d+)+)", text)
     return [int(x) for x in m.group(1).split()] if m else None
@@ -298,10 +350,13 @@ def measure_concurrent(binary, model, concurrency, prompt_len, max_new, long_pre
     if not m:
         raise SystemExit(f"{label}: no agg_tok_s in output\n{out[-4000:]}")
     tps = float(m.group(1))
+    stats = require_hook_engaged(out, env_extra, label)
+    packing = require_packed_path(stats, concurrency, label)
     if verbose:
-        print(f"    {label}: agg={tps:.1f} tok/s  itl={itl.group(1) if itl else '?'} ms   ({secs:.0f}s)",
+        pk = f"  packed={packing['packed_share'] * 100:.0f}% rows={packing['max_rows_seen']}" if packing else ""
+        print(f"    {label}: agg={tps:.1f} tok/s  itl={itl.group(1) if itl else '?'} ms{pk}   ({secs:.0f}s)",
               flush=True)
-    return tps, require_hook_engaged(out, env_extra, label), out
+    return tps, stats, out
 
 
 def greedy_replay(generate, model, prompt_ids, max_new, env_extra, label):

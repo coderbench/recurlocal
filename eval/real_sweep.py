@@ -37,6 +37,13 @@ AXES = {
     # mutates a graph mid-capture and can invalidate it, so this axis measures a risk as much
     # as a gain. Check `capture_invalidations` in the telemetry alongside the number.
     "window-attach":      ("RECURLOCAL_WINDOW_ATTACH", ["stream", "capture_node"]),
+    # How much of the device's persisting-L2 capacity to reserve. It decides nothing on a model
+    # whose recurrent footprint is several times the cache -- the window is hopeless at any
+    # fraction. It decides everything on one whose footprint is close to it, where the
+    # difference between reserving 45 MiB and 60 MiB is the difference between three quarters
+    # of the state resident and all of it.
+    "budget-fraction":    ("RECURLOCAL_BUDGET_FRACTION", ["0.25", "0.50", "0.75", "1.00"]),
+    "hit-ratio":          ("RECURLOCAL_HIT_RATIO", ["0.25", "0.50", "0.75", "1.00"]),
 }
 
 

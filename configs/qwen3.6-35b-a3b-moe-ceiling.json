@@ -1,0 +1,26 @@
+{
+  "_comment": "The MoE thesis, as a ceiling computation. docs/MINING.md's first open surface is 'a model with less weight traffic per token', because the persist ceiling is 2*min(capacity,footprint)/step_traffic and the numerator is pinned at 60 MiB by the cache. Qwen3.8-27B is a DENSE hybrid moving 18.5 GB per batch-1 step, which is why that ceiling is 0.68%. Qwen3.6-35B-A3B is the same architecture family - Gated DeltaNet + full attention, the same runtime, the same hook - with a sparse MoE FFN: 256 experts, 8 used per token. eval/traffic_budget.py --matrix reads this. Arms are control-arm measurements on ONE box; the geometry is read from the checkpoint, not assumed.",
+  "device": "RTX 5090",
+  "bandwidth_gbs": 1792,
+  "persisting_l2_bytes": 62914560,
+  "_persisting_l2_bytes_note": "persisting_l2_max_bytes as queried by tools/info.cpp: 60 MiB of a 96 MiB L2. Unchanged by the model - this is the numerator the whole thesis is about, and it is fixed by the device.",
+  "model": {
+    "label": "Qwen3.6-35B-A3B, unsloth UD-Q4_K_M GGUF, 22.1 GB",
+    "architecture": "sparse-MoE hybrid Gated-DeltaNet / full attention",
+    "repository": "unsloth/Qwen3.6-35B-A3B-GGUF",
+    "file": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "_geometry_source": "read from the GGUF's own metadata and tensor shapes, not from the runtime's defaults: block_count 40, full_attention_interval 4 (so 30 recurrent layers, confirmed by which blocks carry ssm_* tensors), ssm.state_size 128, ssm.group_count 16 (linear_q_heads), blk.0.attn_qkv.weight [2048, 8192] so linear_qkvdim 8192 and linear_v_heads (8192 - 2*16*128)/128 = 32, ssm.conv_kernel 4.",
+    "num_hidden_layers": 40,
+    "full_attention_interval": 4,
+    "recurrent_layers": 30,
+    "linear_num_value_heads": 32,
+    "linear_key_head_dim": 128,
+    "linear_conv_kernel_dim": 4,
+    "lin_state_bytes_per_layer": 2097152,
+    "lin_conv_state_bytes_per_layer": 49152,
+    "_state_formulas": "lin_state = linear_v_heads * linear_head_dim^2 * sizeof(float) (qwen35.cpp:560); lin_conv = (linear_conv_kernel-1) * linear_qkvdim * sizeof(bf16) (qwen35.cpp:559). Both formulas reproduce the pinned Qwen3.8-27B numbers exactly.",
+    "n_experts": 256,
+    "experts_used_per_token": 8
+  },
+  "arms": {}
+}
