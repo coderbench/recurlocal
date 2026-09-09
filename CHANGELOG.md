@@ -170,10 +170,15 @@ the cache rather than 2.4x.
 **Measured, and the axis does not resolve.** At `budget_fraction=1.00, hit_ratio=1.00`: `quota`
 +1.631%, `fixed` +1.631%, `proportional` +1.583%, `sqrt` +1.557% — span 0.075% inside a 0.190%
 floor. `quota` ties the best and beats the shipped heuristic by 0.048 points, which is inside
-the noise and therefore not a result. OPEN, not solved, and the reading that fits is that at
-1.02x oversubscription there is nothing to ration. The regime where admitting whole layers
-should differ from shaving every hit ratio is concurrency, where the footprint is 8 to 16x the
-set-aside; that is the most concrete open item this work leaves. What the sweep does show is
+the noise and therefore not a result. OPEN, not solved — but the telemetry says the mechanism
+is working rather than inert: at `budget_fraction=1.00` the driver grants exactly 60.0 MiB
+against a 61.41 MiB footprint, every layer is reported oversubscribed, and `quota` attaches
+**58 of 60** windows with `hit_ratio_reduced: 2`, admitting 29 of 30 layers whole and declining
+one — `60 MiB / 2.047 MiB`, as designed, where `proportional` asks all 30 for 0.977x the ratio.
+The two differ over 3.3% of the state and 0.048 points is what that is worth. The regime where
+the difference should be material is concurrency, where the footprint is 8 to 16x the set-aside
+and quota would admit an eighth of the layers rather than 29 of 30; that is the most concrete
+open item this work leaves. What the sweep does show is
 that the two dials **compound**: +1.63% together against +1.53% and +1.50% alone, the best
 measured configuration on either model.
 

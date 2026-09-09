@@ -412,12 +412,21 @@ as the set-aside grows.
 | `sqrt` | +1.557% | 0.084% |
 
 Span **0.075% inside a 0.190% floor — OPEN, not solved.** `quota` ties the best figure and beats
-the shipped heuristic by 0.048 points, which is inside the noise and therefore not a result. The
-reading that fits: with both dials at maximum the footprint is 1.02x the set-aside, so there is
-almost nothing for a policy to ration and all four converge. The regime where admitting whole
-layers should differ from shaving every hit ratio is **concurrency**, where the footprint is 8 to
-16x the set-aside — and that has not been measured. It is the most concrete open item this model
-leaves.
+the shipped heuristic by 0.048 points, which is inside the noise and therefore not a result.
+
+The telemetry says why, and it is not "the policies are the same". At `budget_fraction=1.00` the
+driver grants exactly **60.0 MiB** against a **61.41 MiB** footprint, so the planner does report
+every layer oversubscribed and the policy branch is entered. `quota` then attaches **58 of 60**
+windows with `hit_ratio_reduced: 2` — it admits 29 of the 30 recurrent layers whole and declines
+one, which is `60 MiB / 2.047 MiB` exactly as designed. `proportional` instead asks all 30 layers
+for 0.977x the hit ratio. **The two policies genuinely differ, over 3.3% of the state, and
+0.048 points is what that difference is worth.**
+
+So the axis is open because the lever is small here, not because the mechanism is inert. The
+regime where admitting whole layers should differ materially from shaving every hit ratio is
+**concurrency**, where the footprint is 8 to 16x the set-aside and `quota` would admit an eighth
+of the layers rather than 29 of 30 — and that has not been measured. It is the most concrete
+open item this model leaves.
 
 Worth noting what this table does show: **the two dials compound.** +1.63% together against
 +1.53% and +1.50% for each alone, and this is the best measured configuration on either model.
