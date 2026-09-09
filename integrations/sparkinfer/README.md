@@ -151,6 +151,14 @@ tail chunk of one row, an unsupported shape — and a "concurrency" measurement 
 ran the single-sequence path is not a concurrency measurement. At concurrency 8 this
 integration measures `tokens_packed: 133` of 142 and `max_rows_seen: 9`.
 
+**Two callers of the concurrent path are deliberately not bracketed.**
+`dflash_verify_short_run` is reached from `decode_packed` (bracketed) and from
+`dflash_warm_verify` and `batched_forward` (not). Those two leave `packed_rows` null and do
+not route through `forward_token` either, so with a DSpark draft model configured some
+recurrent-layer work runs with no locality control at all — and, because the hook never fires
+there, the telemetry cannot tell you it happened. Treat a DSpark-enabled measurement as
+covering fewer layers than the layer counters suggest.
+
 The pre-touch at concurrency is where `pre_touch_rows_async` earns its place: one launch per
 state per layer whatever the batch size, reading each sequence's base pointer device-side. A
 launch per sequence would put 3,072 extra kernel nodes into the captured decode graph at 32

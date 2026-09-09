@@ -79,37 +79,36 @@ way. There are exactly two, and this axis separates them:
 window is never delivered and `persist` measures nothing, because there is nothing to measure:
 the policy does not exist in the replayed graph.
 
-And `capture_node` is not a free lunch. Setting an attribute on a node of a graph that is
-still being captured is not an operation CUDA documents as supported. On batch-1 decode it
-works — 48 of 48 nodes, no failure in any run taken. At 32 concurrent sequences, during the
-scored evaluation, something else happened:
+And `capture_node` is not documented as safe: setting an attribute on a node of a graph that
+is still being captured is not an operation CUDA sanctions. On SparkInfer's batch-1 decode
+capture it works — 48 of 48 nodes, no failure in any run taken — and the 12-run probe below
+found no failure at 32 sequences either. The risk is a documentation gap, not an observed
+defect, which is why `Stream` is the default and `CaptureNode` is opt-in, counted
+(`stats().capture_invalidations`) and self-disabling after a first detected invalidation.
 
-```
-[prefill] graph capture failed -> fallback
-tokens 270, tokens_packed 128       # half the decode steps fell back to per-row
-agg_tok_s 1260.5 -> 901.8           # -28%, with no cache policy anywhere in it
-```
+The 32-sequence collapse is real, is a runtime fallback, and its cause is UNKNOWN.
 
-Two of three repeats of that arm collapsed that way, and an immediate targeted rerun of the
-same configuration reproduced it. **A later 12-run probe did not.** Four unhooked control
-runs, four `stream` runs and four `capture_node` runs, each in isolation at 32 sequences, all
-landed between 1242 and 1272 tok/s with zero capture failures.
+An earlier version of this document blamed it on `capture_node` mutating the graph. **That
+attribution was wrong, and the code proves it.** The two arms that collapsed were `baseline`
+(-14.82%) and `prefetch` (-20.09%). `src/planner.cpp:206` sets `use_persist` only for
+`Persist`/`Combined`, and `src/cuda/cache_control.cu:260` gates the node-attach arming on
+`plan.use_persisting_window` — so in `baseline` and `prefetch` the mechanism is **inert**. It
+cannot have caused a collapse in arms that never invoke it. The dedicated 12-run probe agrees:
+`capture_failed: 0` in all twelve runs, including four `capture_node` runs.
 
-So what is established is narrower than it first looked:
+What is actually known:
 
-- the collapse is real, is a *runtime fallback* and not a cache effect, and costs 28%;
-- it was seen only in the eval's run sequence — after the c=4 and c=16 arms — and never in
-  isolation, so accumulated device state is a co-factor and node mutation alone is **not**
-  a demonstrated cause;
-- it has never been seen with `stream` or with the unhooked control, but 8 clean runs are
-  not enough to establish a rate for something this rare.
+- the collapse is the runtime falling off its batched decode path, not a cache effect;
+- it costs about 28% of aggregate throughput when it happens;
+- it appeared in a 2-repeat screen and in one targeted rerun, and in **zero** of twelve
+  isolated runs;
+- `baseline` installs no window and issues no pre-touch, so whatever causes it is not a
+  locality policy at all.
 
-That is why `Stream` is the default rather than why `CaptureNode` was deleted. The controller
-checks `cudaStreamIsCapturing` for `Invalidated` after every attach, counts it in
-`stats().capture_invalidations`, and latches itself off after the first — best-effort, since
-an invalidation that only surfaces at the runtime's `cudaStreamEndCapture` will not be seen by
-it. The runtime's own message remains the ground truth, and a bimodal concurrency arm should
-be read as a fallback until proven otherwise.
+The honest conclusion is that something about the eval's run *sequence* — accumulated device
+state across arms is the obvious candidate — occasionally drops SparkInfer onto its
+per-row path at 32 sequences, and this project has not identified it. It is an open problem,
+not a settled attribution.
 
 **The part that *is* settled is about the boundary, not the policy.** A locality library can
 compute a persisting window; under graph decode it cannot deliver one without the runtime
@@ -208,9 +207,10 @@ turns those into "-14.8%" and "-20.1%", which read like results. They are not: `
 installs no window and issues no pre-touch, so it *cannot* cost 14.8%. A number that a
 configuration doing nothing can produce is a number that means nothing.
 
-The collapses are the runtime falling back off its batched decode path (see above), not a
-cache effect. A dedicated 12-run probe — 4 unhooked control, 4 `stream`, 4 `capture_node`,
-each run in isolation — has no collapses in it at all and gives a usable figure:
+Those collapses are the runtime falling off its batched decode path; the section above says
+what is and is not known about why. A dedicated 12-run probe — 4 unhooked control, 4
+`stream`, 4 `capture_node`, each run in isolation — has no collapses in it at all and gives a
+usable figure:
 
 | c=32, isolated runs | aggregate tok/s | vs control |
 |---|--:|--:|
@@ -223,12 +223,6 @@ consistent with 4 and 16 and inconsistent with the screen's -14.8%. `real_sweep.
 to name a winner on the screen, and `real_eval.py` now reports a `resolution` block beside
 every workload's gain rather than letting a median hide the repeats behind it. That is why
 concurrency 32 is reported here and left out of the scored matrix.
-
-That is the open problem this release hands over, and it is a much better-posed one than the
-project started with: the accounting is now correct, the concurrency path is instrumented,
-the ceiling at each batch size is computable, and the mechanism that is supposed to capture it
-demonstrably does not. A policy that does capture it has 6.7% to aim at, at 16 sequences, on
-this model.
 
 ## Axes that do not resolve
 

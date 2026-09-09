@@ -146,7 +146,7 @@ index 8646140..bd47f4d 100644
                                                   nullptr, 0, nullptr, out_sampled);
      return consumed == n;
 diff --git a/runtime/src/models/qwen35_prefill.cpp b/runtime/src/models/qwen35_prefill.cpp
-index 4a2e74c..c4a99a2 100644
+index 4a2e74c..5921a75 100644
 --- a/runtime/src/models/qwen35_prefill.cpp
 +++ b/runtime/src/models/qwen35_prefill.cpp
 @@ -38,6 +38,8 @@
@@ -158,18 +158,25 @@ index 4a2e74c..c4a99a2 100644
  
  namespace sparkinfer {
  
-@@ -3443,6 +3445,10 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
+@@ -3443,6 +3445,17 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
          if (L == 0) vdbg_snapshot2(x, 4);   // raw pre-norm residual stream (h = x + ao)
          const Qwen35LayerWeights& w = s.w.layers[L];
          if (w.linear_attn) {
-+            // RecurLocal: packed rows only. This function also serves DSpark verify, which
-+            // decodes one sequence against the single-sequence state and is bracketed by the
-+            // other half of the hook, in qwen35.cpp.
++            // RecurLocal: packed rows only, and deliberately so.
++            //
++            // dflash_verify_short_run has three callers: decode_packed (packed, bracketed by
++            // begin_token_packed in qwen35.cpp) and dflash_warm_verify / batched_forward,
++            // which leave ctx.packed_rows null. Those two are NOT bracketed anywhere - they
++            // do not route through forward_token either - so with a DSpark draft configured
++            // some recurrent-layer work runs with no locality control and the adapter's
++            // telemetry cannot see it. That is a coverage gap, documented in
++            // integrations/sparkinfer/README.md, not a correctness problem: the guard below
++            // simply does nothing on those paths.
 +            if (packed) recurlocal::sparkinfer::before_layer(L);
              bf16* rq = rec_qkv + (size_t)L * N * lqkv;
              bf16* rk = rec_k + (size_t)L * N * s.linear_qdim;
              bf16* rv = rec_v + (size_t)L * N * lvdim;
-@@ -3521,6 +3527,7 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
+@@ -3521,6 +3534,7 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
                      rq, w.ssm_conv, s.packed_lin_conv, conv_off, gq, rk, rv,
                      N, c.linear_q_heads, vh, c.linear_head_dim, c.linear_conv_kernel,
                      c.rms_eps, st);
@@ -177,7 +184,7 @@ index 4a2e74c..c4a99a2 100644
                  if (split_ok) pf_cu(cudaStreamWaitEvent(st, ev_join_ab, 0), "packed gdn ab wait");
                  if (!kernels::launch_qwen36_gdn_ar_batched(
                          gq, rk, rv, ra, rb, w.ssm_dt, w.ssm_a,
-@@ -3531,6 +3538,7 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
+@@ -3531,6 +3545,7 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
                      vfail_L = L;
                      break;
                  }
@@ -185,7 +192,7 @@ index 4a2e74c..c4a99a2 100644
              } else {
              const bf16* conv_live = static_cast<const bf16*>(s.lin_conv_state) + conv_off;
              kernels::launch_dflash_gdn_conv_compact(rq, w.ssm_conv, conv_live, gq, rk, rv,
-@@ -3568,6 +3576,7 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
+@@ -3568,6 +3583,7 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
                                  ao, Ng, H, lvdim, fp4_ws, st, w.gdn_out_fp4_alpha);
              else
                  supported = proj(lnrm, w.ssm_out, w.ssm_out_type, ao, H, lvdim);
@@ -193,7 +200,7 @@ index 4a2e74c..c4a99a2 100644
          } else {
              // Same shape of win as the GDN block: wq is 2*qdim rows and saturates, while wk and wv
              // are kvdim rows apiece and run at well under one CTA per SM.
-@@ -4002,6 +4011,9 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
+@@ -4002,6 +4018,9 @@ int dflash_verify_short_run(const Qwen35PrefillCtx& s, const int* token_ids, int
          q81_src = xn; q81_k = H;
          capture(L);
      }

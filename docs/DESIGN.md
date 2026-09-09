@@ -37,43 +37,25 @@ as a graph node and reports the nodes just appended as the current capture depen
 the attribute can be set on the node the runtime has already launched, with the hook site
 staying one line after the kernel.
 
-**It is not documented as safe, and that is not a theoretical objection.** Setting an
-attribute on a node of a graph that is still being captured is not an operation CUDA
-sanctions. On SparkInfer's batch-1 decode capture it works, 48 nodes out of 48, and the
-persisting policy is genuinely present in every replay. At 32 concurrent sequences, during the
-scored evaluation, that arm twice collapsed into a runtime fallback: `cudaStreamEndCapture`
-failed, SparkInfer printed `[prefill] graph capture failed -> fallback`, and it decoded row by
-row from then on — 1261 → 902 aggregate tok/s, a 28% loss with no cache policy anywhere in it.
+**It is not documented as safe.** Setting an attribute on a node of a graph that is still
+being captured is not an operation CUDA sanctions. That is a documentation gap rather than an
+observed defect: on SparkInfer's batch-1 decode capture it works, 48 nodes out of 48, and a
+dedicated 12-run probe at 32 concurrent sequences recorded zero capture failures across four
+unhooked, four `Stream` and four `CaptureNode` runs.
 
-A later 12-run probe did not reproduce it: four unhooked runs, four `Stream` runs and four
-`CaptureNode` runs, each in isolation at 32 sequences, all clean. So the collapse needs
-something the isolated runs did not have — accumulated device state from the preceding arms
-is the obvious candidate — and node mutation alone is not a demonstrated cause. It has not
-been seen on the safe path or the control either, and eight clean runs do not establish a rate
-for something that rare.
+An earlier version of this document attributed a 32-sequence throughput collapse to this
+mutation. **That attribution was wrong and the code refutes it**: the arms that collapsed were
+`baseline` and `prefetch`, and `plan.use_persisting_window` — the gate on arming the node
+attach — is only ever true for `Persist`/`Combined`. The mechanism is inert in the arms that
+failed. The collapse is a runtime fallback whose cause this project has not identified.
 
 That is enough to decide the default and not enough to condemn the mechanism. `WindowAttach`
-is an enumerator, `Stream` is the default, and `CaptureNode` stays available because knowing
-what it costs is worth more than pretending it does not exist. The controller checks
-`cudaStreamIsCapturing` for `Invalidated` immediately after each attach, counts it in
-`stats().capture_invalidations`, and latches itself off after the first. That check is
-best-effort — an invalidation that only surfaces at the runtime's own `cudaStreamEndCapture`
-will not be caught by it — so a bimodal concurrency arm should be read as a fallback until
-proven otherwise, whatever its median says.
-
-The honest conclusion under the safe path: **a locality library cannot deliver a persisting
-window into a captured decode graph on its own.** It can compute the window; attaching it is
-the runtime's to do, at its own launch site. Pre-touch has no such problem — kernels and
-events are recorded into the graph like any other work — which is why the two mechanisms have
-very different integration costs even though they look symmetrical in the API.
-
-Graph nodes are also the dominant cost of the pre-touch, which is not obvious until it is
-measured. Every fork/join pair is two nodes, and a hybrid model wants one per recurrent
-layer — 48 of them for Qwen3.8-27B. On the real model that ordering is worth **1.2% of a
-decode step**, more than an order of magnitude larger than the locality it buys at batch 1.
-`PrefetchJoin::TokenEnd` trades the per-layer ordering for one join per token; the trade is an
-enumerator because which side of it wins depends on how much compute separates the recurrent
-layers.
+is an enumerator, `Stream` is the default because a locality library should not mutate its
+host's graph behind its back, and `CaptureNode` stays available and instrumented. The
+controller checks `cudaStreamIsCapturing` for `Invalidated` after every attach, counts it in
+`stats().capture_invalidations`, and latches itself off after the first — best-effort, since
+an invalidation that only surfaces at the runtime's own `cudaStreamEndCapture` will not be
+caught by it.
 
 ## What a hybrid model's recurrent state actually is
 

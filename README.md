@@ -87,18 +87,41 @@ state a graph never records:
 
 Under the safe path the policy never reaches the replayed graph, so there is nothing to
 measure. `capture_node` reaches it by mutating a graph mid-capture, which CUDA does not
-document as supported. During the scored run at 32 concurrent sequences that arm twice
-collapsed to a runtime fallback — `[prefill] graph capture failed`, half the steps decoding
-row by row, **-28% aggregate throughput** with no cache policy involved. A later 12-run probe
-did not reproduce it in isolation, so accumulated device state is a co-factor and the
-mutation alone is not a demonstrated cause; it has never been seen on the safe path or the
-unhooked control. `capture_node` is therefore opt-in, counted, and self-disabling after the
-first detected invalidation.
+document as supported — a documentation gap rather than an observed defect: it has not failed
+in any run taken, including twelve isolated runs at 32 sequences. It is opt-in, counted, and
+self-disabling after a first detected invalidation.
+
+(An earlier version of this README blamed a 32-sequence throughput collapse on that mutation.
+**That was wrong**: the arms that collapsed were `baseline` and `prefetch`, which never arm the
+mechanism at all. The collapse is a runtime fallback of unknown cause — see
+[`docs/OPTIMIZATION-SURFACES.md`](docs/OPTIMIZATION-SURFACES.md).)
 
 The settled part is the boundary: **a locality library can compute a persisting window, but
 under graph decode it cannot deliver one without the runtime attaching it at its own launch
 site.** Pre-touch has no such problem — its kernels and events are recorded into the graph
 like any other work.
+
+### The scored result
+
+The candidate is `prefetch` with `token_end` joins and the `ptx_l2` walk — the best
+configuration that applies a real policy without mutating a graph mid-capture. 3 interleaved
+pairs, batch 1 at three contexts plus concurrency 4 and 16, token-exact output. The pre-touch
+really ran (188 launches at batch 1) and the concurrency arms really went through
+`decode_packed` (129/138 tokens packed at c=4):
+
+```
+$ python3 eval/decide.py --real results/rtx5090-real.json
+verdict: reject   weighted gain -0.488%   impact none   significant false
+  batch1         +0.016%  (w=0.40)
+  concurrency16  -1.311%  (w=0.20)
+  concurrency4   -0.667%  (w=0.20)
+  unresolved: ['batch1/ctx16384']
+```
+
+It costs more than it saves, and the cost grows with concurrency exactly as the axis sweeps
+predicted. An earlier scored run reported +0.053% for `persist` with safe window delivery;
+that was a **null candidate** which applied no policy at all — 192 windows computed, none
+attached — and `eval/real_eval.py` now refuses such a run by name.
 
 **That is a rejection under the project's own gate**, and the reason is arithmetic rather
 than implementation:
@@ -207,47 +230,17 @@ benchmarks, the flag that isolates each, and where the two disagree.
 | 7–10% | strong candidate |
 | >10% | expand immediately |
 
-**The gate has been run and the result is in the first band.** The scored candidate is
-`prefetch` with `token_end` joins and the `ptx_l2` walk — the best configuration that applies
-a real policy without mutating a graph mid-capture. 3 interleaved pairs, batch 1 at three
-contexts plus concurrency 4 and 16, token-exact output:
+**The gate has been run and the result is in the first band.** The scored measurement lives
+in `results/rtx5090-real.json` and the verdict is derived from it by `eval/decide.py --real`,
+not asserted — the numbers are quoted once, above, from that command's actual output.
 
-```
-$ eval/decide.py --real results/rtx5090-real.json
-verdict: reject   weighted gain -0.488%   significant False
-  batch1         +0.016%  (w=0.40)
-  concurrency16  -1.311%  (w=0.20)
-  concurrency4   -0.667%  (w=0.20)
-unresolved: ['batch1/ctx16384']
-```
-
-The pre-touch really ran — 188 launches at batch 1, and the concurrency arms went through
-`decode_packed` (129/138 tokens packed at c=4, 127/135 at c=16). It costs more than it saves,
-and the cost grows with concurrency exactly as the axis sweeps predicted.
-
-An earlier scored run reported +0.053% for `persist` with safe window delivery. That was a
-**null candidate**: under graph decode it computed 192 windows, handed every one back, and
-none was ever attached — it measured hook overhead, not locality. `eval/real_eval.py` now
-refuses such a run by name. `eval/decide.py`
-returns `reject`, and the verdict is derived from `results/rtx5090-real.json`, not asserted:
-
-```
-$ eval/decide.py --real results/rtx5090-real.json
-verdict: reject   weighted gain 0.053%   impact none   significant false
-  batch1         +0.068%  (w=0.40)
-  concurrency4   +0.091%  (w=0.20)
-  concurrency16  -0.013%  (w=0.20)
-```
-
-Every arm is inside its own run-to-run spread, which the result file records per workload
-rather than hiding behind a median. Section 21 says the project should be willing to fail this
-test. On Qwen3.8-27B, on this hardware, with these policies, it fails.
+Section 21 says the project should be willing to fail this test. On Qwen3.8-27B, on this
+hardware, with these policies, it fails.
 
 What that does and does not mean:
 
-- It does **not** mean the mechanism is broken. The pre-touch demonstrably works — a full
-  extra read of recurrent state costs 0.09% of a step, far less than its bytes imply — and the
-  persisting window is verifiably present in the replayed graph.
+- It does **not** mean the mechanism is broken. The pre-touch demonstrably runs, and the
+  persisting window is verifiably present in a replayed graph when it is attached.
 - It does mean the mechanism is aimed at 1.65% of the problem at batch 1 on a dense hybrid,
   and that the policies do not convert the 6.7% that concurrency puts on the table.
 - The next honest experiment is not more tuning of these policies. It is a model whose weight

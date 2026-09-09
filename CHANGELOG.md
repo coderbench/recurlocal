@@ -35,17 +35,19 @@ No performance claim appears here without a measurement behind it. See `docs/FRO
   kernel node the capture just recorded (`cudaStreamGetCaptureInfo`), needing no change to how
   SparkInfer launches its kernels, and it works: `windows_attached_to_node` 48/48.
 
-  It is also **not documented as safe**, and a measurement says why that matters. On batch-1
-  decode it is fine. At 32 concurrent sequences, during the scored run, that arm twice
-  collapsed to a runtime fallback — `[prefill] graph capture failed -> fallback`, half the
-  steps decoding row by row, 1260 → 902 aggregate tok/s — and an immediate targeted rerun
-  reproduced it. A later 12-run probe (4 control, 4 `stream`, 4 `capture_node`, each in
-  isolation) reproduced it **zero** times, so accumulated device state is a co-factor and the
-  mutation alone is not a demonstrated cause. It has not been seen on the safe path or the
-  unhooked control, but 8 clean runs do not establish a rate. So `Stream` is the default,
-  `CaptureNode` is opt-in, and the controller checks `cudaStreamIsCapturing` for `Invalidated`
-  after each attach, counts it in `stats().capture_invalidations`, and latches itself off
-  after the first.
+  It is also **not documented as safe** — a gap in what CUDA sanctions, not an observed
+  defect: no run taken has failed because of it, including twelve isolated runs at 32
+  sequences. `Stream` is the default anyway, because a locality library should not mutate its
+  host's graph behind its back; `CaptureNode` is opt-in, and the controller checks
+  `cudaStreamIsCapturing` for `Invalidated` after each attach, counts it in
+  `stats().capture_invalidations`, and latches itself off after the first.
+
+  **Correction.** Earlier revisions of this entry, the README, `docs/DESIGN.md` and
+  `docs/OPTIMIZATION-SURFACES.md` blamed a 32-sequence throughput collapse on this mutation.
+  That was wrong and the code refutes it: the arms that collapsed were `baseline` (-14.8%) and
+  `prefetch` (-20.1%), and node attachment is gated on `plan.use_persisting_window`, which is
+  only true for `Persist`/`Combined`. The mechanism is inert in the arms that failed. The
+  collapse is a runtime fallback whose cause is unidentified and remains an open problem.
 
   The axis separates the two cleanly at batch 1: `stream` **-0.019%**, `capture_node`
   **+0.129%**. Every point of the persist result is the delivery mechanism, not the policy —
