@@ -50,6 +50,13 @@ per sequence. So the recurrent share grows with concurrency, and a model with a 
 footprint per token — a sparse MoE rather than a dense hybrid — starts from a larger share at
 every batch size.
 
+**That has now been tested rather than argued.** `--persisting-l2-bytes` prints the threshold a
+candidate model has to clear (`break_even_step_traffic_bytes`: at most 6.42 GB per decode step
+on this device), and Qwen3.6-35B-A3B clears it at 3.56 GB where Qwen3.8-27B does not at 18.5 GB.
+Measured, the persist-family ceiling goes 0.68% → 3.67% and `persist` goes +0.10% → +1.53%.
+Screen a model with `--matrix` before integrating it; the geometry can live in the matrix spec
+so a second model's rates cannot be scored against the first one's state shape.
+
 ## What the real integration has already overturned
 
 The synthetic benchmark has now disagreed with the pinned real model on four axes. It is kept
