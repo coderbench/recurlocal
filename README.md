@@ -135,12 +135,12 @@ than implementation:
 
 ```
 recurrent state per token   48 x (3 MiB fp32 + 60 KiB bf16) x 2  =  294 MiB
-decode step                 10.41 ms x 1792 GB/s                 =   18.6 GB
-recurrent share                                                      1.65%
+decode step                 10.34 ms x 1792 GB/s                 =   18.5 GB
+recurrent share                                                      1.66%
 ```
 
 Qwen3.8-27B is a **dense** hybrid: every weight is read every token, so at batch 1 the
-recurrent state is 1.65% of the memory traffic. Making it *free* would be worth 1.68% in
+recurrent state is 1.66% of the memory traffic. Making it *free* would be worth 1.69% in
 throughput — a step carrying *f* less traffic runs in *(1−f)* of the time, so tok/s rise by
 *f/(1−f)* — still below the 2% floor the go/no-go table rejects at, before any policy is
 chosen.
@@ -159,24 +159,37 @@ replayed per token, so every fork and join the pre-touch needs is a permanent gr
 this, because it does not capture a graph — and that is one of four axes on which it has now
 disagreed with the real model.
 
-### Concurrency is where the room is, and it is still not captured
+### Concurrency is where the room is, and a persisting cache cannot reach it
 
 Weights are read once per decode step whatever the batch; recurrent state once per sequence.
-So the share of traffic RecurLocal can address grows with concurrency — and every policy
-tracks the wrong way:
+So the share of traffic RecurLocal can address grows with concurrency. Measured on one RTX
+5090, three interleaved pairs per arm ([`results/rtx5090-baseline-matrix.json`](results/rtx5090-baseline-matrix.json)):
 
-| | ceiling | control | `persist` | `prefetch` |
-|---|--:|--:|--:|--:|
-| batch 1 | 1.65% | 96.1 tok/s | **+0.13%** | -1.29% |
-| concurrency 4 | 2.88% | 329 tok/s | +0.06% | -2.19% |
-| concurrency 16 | 6.73% | 769 tok/s | -0.21% | **-5.88%** |
-| concurrency 32 | — | 1262 tok/s | -1.13% | *unresolved* |
+| | control | floor | traffic ceiling | `persist` | `prefetch` | persist ceiling |
+|---|--:|--:|--:|--:|--:|--:|
+| batch 1 | 96.67 tok/s | 0.04% | 1.69% | **+0.10%** | -1.27% | 0.68% |
+| concurrency 4 | 334.17 tok/s | 0.09% | 3.01% | +0.15% | -2.07% | 0.59% |
+| concurrency 16 | 790.60 tok/s | 0.13% | 7.44% | +0.06% | -5.68% | 0.35% |
+| concurrency 32 | 1287.57 tok/s | 0.34% | **12.71%** | -0.59% | -7.51% | 0.28% |
 
-By 16 sequences there is 6.7% genuinely on the table and the library captures none of it. That
-is the open problem this work hands over, and it is much better posed than the one it started
-from: the hot-set accounting is now correct, the concurrent decode path is instrumented and
-proven to be the one measured, the ceiling at any batch size is computable, and the mechanism
-meant to capture it demonstrably does not.
+The traffic ceiling rises with concurrency. The last column *falls*, and it is the one that
+binds. A persisting window cannot save traffic it cannot hold, and state written at layer *i*
+is read again at layer *i* of the **next token** — so the footprint that has to stay resident
+is every recurrent layer for every sequence at once. Against this device's 60 MiB persisting-L2
+capacity that is 2.4x oversubscribed at batch 1 and **39.9x at 32 sequences**. The room grows;
+the fraction a cache can address shrinks faster.
+
+Weighted across the section 44 matrix: the most any submission could score is **5.22%**, and
+the persist family specifically tops out at **0.52%** — below the 2% floor, at every
+concurrency. Both are computed, not asserted:
+
+```bash
+eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json --bandwidth-gbs 1792
+```
+
+So the open problem this work hands over is not "why does persist not capture the concurrency
+room". That is answered. It is whether a *different* reuse distance, or a model with less
+weight traffic per token, moves the terms that this bound is made of.
 [`docs/OPTIMIZATION-SURFACES.md`](docs/OPTIMIZATION-SURFACES.md) has the full matrix.
 
 ## First measured result (synthetic)
@@ -251,10 +264,14 @@ What that does and does not mean:
 - It does **not** mean the mechanism is broken. The pre-touch demonstrably runs, and the
   persisting window is verifiably present in a replayed graph when it is attached.
 - It does mean the mechanism is aimed at 1.65% of the problem at batch 1 on a dense hybrid,
-  and that the policies do not convert the 6.7% that concurrency puts on the table.
-- The next honest experiment is not more tuning of these policies. It is a model whose weight
-  traffic per token is smaller — a sparse MoE, where the same recurrent state is a much larger
-  share — or a policy that survives the concurrency scaling this one does not.
+  and that the policies do not convert the 7.4% that 16 sequences puts on the table.
+- It is now clear *why* they do not, and it is not tuning: the reuse distance is a full model
+  pass, so the resident footprint a persisting window would need is up to 40x the device's
+  persisting-L2 capacity. That bound tightens as concurrency grows.
+- The next honest experiment is therefore not more tuning of these policies. It is a model
+  whose weight traffic per token is smaller — a sparse MoE, where the same recurrent state is a
+  much larger share and the residency requirement is unchanged — or a policy aimed at reuse
+  *within* a layer, which is a distance the cache can actually serve.
 
 No synthetic result should be marketed as a model speedup.
 
@@ -349,11 +366,13 @@ its cost with none of its effect.
 
 ## Competing on this repository
 
-[`docs/MINING.md`](docs/MINING.md) is the competition brief. The short version: **batch-1
-decode is a dead surface** — 1.65% of ceiling, below the floor the gate rejects at — and
-**concurrent decode is where the room is**. At 32 sequences the ceiling is 11.03% and the
-shipped implementation captures none of it. That gap, not batch 1, is what a contribution
-should aim at.
+[`docs/MINING.md`](docs/MINING.md) is the competition brief, and it is written to talk people
+out of the two obvious mistakes. **Batch-1 decode is a dead surface** — a 1.69% ceiling, below
+the floor the gate rejects at. **Concurrent decode has the room** — 12.71% at 32 sequences —
+but **a persisting L2 window is not the instrument that reaches it**: the resident footprint
+required is 40x the cache, so that policy family tops out at 0.52% weighted however well it is
+delivered. The brief states the highest score physically available on this model and device
+(**5.22%**, impact `S`) so that nobody spends a week chasing a band that does not exist here.
 
 ## Contribution model
 

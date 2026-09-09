@@ -30,18 +30,38 @@ Qwen3.8-27B on a pinned SparkInfer commit; it is the one the go/no-go gate reads
 control 96.08 tok/s at ctx 128 · every number is a control/candidate pair measured minutes
 apart on the same box.
 
-## Read this first: the ceiling is 1.65%
+## Read this first: two ceilings, and the tighter one binds
 
 ```
 recurrent state per token   48 layers x (3 MiB fp32 + 60 KiB bf16) x 2 (read+write) = 294 MiB
-decode step                 10.41 ms at 1792 GB/s                                   =  18.6 GB
-recurrent share                                                                       1.65%
+decode step                 10.34 ms at 1792 GB/s                                   =  18.5 GB
+recurrent share                                                                       1.66%
+throughput ceiling          f/(1-f), the currency the scorer measures                 1.69%
 ```
 
 `eval/traffic_budget.py` computes it. Qwen3.8-27B is a **dense** hybrid: every weight is read
-every token, and at batch 1 that is 98.35% of the traffic. Making recurrent state *free* would
-be worth 1.65%, which is below the 2% floor section 21 rejects at — **before** any policy is
+every token, and at batch 1 that is 98.34% of the traffic. Making recurrent state *free* would
+be worth 1.69%, which is below the 2% floor section 21 rejects at — **before** any policy is
 chosen, and no implementation can move it.
+
+That is the ceiling on removing the traffic. There is a second, much tighter one on the
+*persist family specifically*, because a persisting window cannot save traffic it cannot hold.
+State written at layer *i* is read again at layer *i* of the **next token**, so the footprint
+that must be resident is every recurrent layer for every sequence at once — 146.8 MiB at batch
+1 against this device's 60 MiB persisting-L2 capacity, and 2394 MiB (39.9x) at 32 sequences:
+
+| | traffic ceiling | resident footprint | vs capacity | persist ceiling |
+|---|--:|--:|--:|--:|
+| batch 1 | 1.69% | 146.8 MiB | 2.4x | 0.68% |
+| concurrency 4 | 3.01% | 299.2 MiB | 5.0x | 0.59% |
+| concurrency 16 | 7.44% | 1197 MiB | 19.9x | 0.35% |
+| concurrency 32 | 12.71% | 2394 MiB | 39.9x | 0.28% |
+
+**The persist ceiling falls as the traffic ceiling rises.** Weighted across the section 44
+matrix the traffic ceiling is 5.22% and the persist family's is **0.52%** — below the floor at
+every concurrency. `eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json
+--bandwidth-gbs 1792` computes both, and the bound is generous: it assumes every resident byte
+hits and the set-aside costs its neighbours nothing.
 
 The traffic model is checkable rather than assumed, and checking it produces a second result.
 A pre-touch adds exactly one extra read of the recurrent state per token — +0.83% of the
@@ -180,18 +200,33 @@ Aggregate continuous-batching throughput (`qwen3_gguf_cb_bench`, a different cod
 `decode_packed` — bracketed by the same adapter; `tokens_packed` in the telemetry proves it
 was used). 2 interleaved pairs each.
 
-| | ceiling | control | `baseline` | `persist` | `prefetch` | `combined` |
-|---|--:|--:|--:|--:|--:|--:|
-| batch 1 | 1.65% | 96.1 tok/s | -0.01% | **+0.13%** | -1.29% | -1.17% |
-| concurrency 4 | 2.88% | 329 tok/s | -0.09% | +0.06% | -2.19% | -2.34% |
-| concurrency 16 | 6.73% | 769 tok/s | +0.36% | -0.21% | **-5.88%** | -5.40% |
-| concurrency 32 | — | 1262 tok/s | -1.13% | -1.13% | *unresolved* | *unresolved* |
+Superseded by a cleaner run: 3 interleaved pairs on one box, with
+`window_attach=capture_node` fixed so the persist family actually delivers a window instead of
+deferring every one of them. Raw data in
+[`results/rtx5090-baseline-matrix.json`](../results/rtx5090-baseline-matrix.json).
+
+| | control | floor | ceiling | `baseline` | `persist` | `prefetch` | `combined` |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| batch 1 | 96.67 tok/s | 0.04% | 1.69% | -0.04% | **+0.10%** | -1.27% | -1.18% |
+| concurrency 4 | 334.17 tok/s | 0.09% | 3.01% | +0.00% | +0.15% | -2.07% | -2.28% |
+| concurrency 16 | 790.60 tok/s | 0.13% | 7.44% | +0.06% | +0.06% | **-5.68%** | -5.81% |
+| concurrency 32 | 1287.57 tok/s | 0.34% | 12.71% | -0.76% | -0.59% | -7.51% | -7.44% |
 
 "Ceiling" is `eval/traffic_budget.py` at that step time and sequence count, with the state
 bf16-compacted as the runtime does for batched decode. Weights are read once per step
 whatever the batch; recurrent state once per sequence — so the share of decode traffic that
-recurrent state accounts for **quadruples** from batch 1 to concurrency 16, and by 16 there is
-genuinely 6.7% on the table.
+recurrent state accounts for **quadruples** from batch 1 to concurrency 16, and by 32 there is
+genuinely 12.7% on the table.
+
+`persist` is now positive and *resolved* at batch 1 (+0.10% against a 0.04% floor) — its first
+real gain anywhere — and decays to negative by 32 sequences. That is the residency bound above
+playing out: 0.68% available at batch 1 falling to 0.28% at 32, against a hook overhead
+(`baseline`) that grows to -0.76% over the same range. The policy stops paying for itself
+before the room runs out.
+
+`prefetch` at 32 sequences carries the runtime fallback: ratios `[0.932, 0.676, 0.925]`, one
+run of three collapsing 32%. It is not the locality policy — see the open problems in
+[`MINING.md`](MINING.md).
 
 **None of it is captured.** `persist` goes from +0.13% to -0.21% as the room to win grows, and
 `prefetch` gets worse in near-exact proportion to the bytes it moves — -1.29%, -2.19%, -5.88%

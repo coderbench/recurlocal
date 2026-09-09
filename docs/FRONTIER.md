@@ -27,7 +27,7 @@ device or a new concurrency:
 eval/traffic_budget.py --ms-per-token 10.41 --bandwidth-gbs 1792 --sequences 1
 ```
 
-On Qwen3.8-27B at batch 1 the answer is **1.68%**, below the 2% floor section 21 rejects at,
+On Qwen3.8-27B at batch 1 the answer is **1.69%**, below the 2% floor section 21 rejects at,
 before any implementation question is asked. A ceiling below the floor is not a reason to tune
 harder; it is the answer.
 

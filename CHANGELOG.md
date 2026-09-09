@@ -152,6 +152,28 @@ while nothing in the repo ran it.
   rather than guessed. Inputs live in `configs/rtx5090-section44-ceiling.json`, every one of
   them a baseline measurement from `results/rtx5090-real.json`.
 
+### Added — a reference baseline, all four arms, one box
+
+- **`results/rtx5090-baseline-matrix.json`** is the number a submission has to beat: control
+  decode rate and run-to-run noise floor at every point of the section 44 matrix, plus what
+  each shipped mode does against it, plus both ceilings. Three interleaved pairs per arm, one
+  box for all four (the two RTX 5090s this project has used disagreed by 2.6% at concurrency
+  16, and the ceiling is computed from a measured step time, so mixing them would put that
+  disagreement inside the answer). `window_attach=capture_node` is fixed throughout, because
+  with the default the persist family defers every window and `real_sweep.py` correctly refuses
+  the arm — which is how the first attempt at this measurement died before writing anything.
+
+  | | control | floor | traffic ceiling | `persist` | `prefetch` | persist ceiling |
+  |---|--:|--:|--:|--:|--:|--:|
+  | batch 1 | 96.67 tok/s | 0.04% | 1.69% | **+0.10%** | -1.27% | 0.68% |
+  | concurrency 4 | 334.17 tok/s | 0.09% | 3.01% | +0.15% | -2.07% | 0.59% |
+  | concurrency 16 | 790.60 tok/s | 0.13% | 7.44% | +0.06% | -5.68% | 0.35% |
+  | concurrency 32 | 1287.57 tok/s | 0.34% | 12.71% | -0.59% | -7.51% | 0.28% |
+
+  `persist` is positive and *resolved* at batch 1 for the first time (+0.10% against a 0.04%
+  floor), and decays to negative by 32 sequences — the residency bound playing out against a
+  hook overhead that grows with concurrency.
+
 ### Added — why the persist family captures nothing, as arithmetic
 
 - **`eval/traffic_budget.py --persisting-l2-bytes`** computes a second ceiling, far tighter

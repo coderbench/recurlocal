@@ -1,27 +1,38 @@
 {
-  "_comment": "Measured decode rates for the section 44 workload matrix, on the pinned model and runtime. eval/traffic_budget.py --matrix turns these into the highest weighted gain any submission could physically earn. Every rate here is a BASELINE (control-arm) measurement from results/rtx5090-real.json; none is estimated. An arm with no measured rate is left out rather than guessed, and the tool reports which.",
+  "_comment": "Measured decode rates for the section 44 workload matrix, on the pinned model and runtime. eval/traffic_budget.py --matrix turns these into the highest weighted gain any submission could physically earn, and - given the device's persisting-L2 capacity - the much tighter ceiling the persist family is held to. Every rate is a control-arm measurement from ONE box: the ceiling is computed from a measured step time, clocks cannot be pinned in this container, and two RTX 5090s this project used disagreed by 2.6% at concurrency 16. Mixing boxes would put that disagreement inside the number.",
   "device": "RTX 5090",
   "bandwidth_gbs": 1792,
   "persisting_l2_bytes": 62914560,
-  "_persisting_l2_bytes_note": "persisting_l2_max_bytes as queried from the device by tools/info.cpp (recur_local_info) on this box: 60 MiB of a 96 MiB L2. Adds the persist-family ceiling, which is far tighter than the traffic ceiling.",
+  "_persisting_l2_bytes_note": "persisting_l2_max_bytes as queried from the device by tools/info.cpp (recur_local_info): 60 MiB of a 96 MiB L2.",
   "arms": {
     "batch1": {
       "sequences": 1,
-      "ms_per_token": 10.41,
+      "ms_per_token": 10.344706303443338,
       "state_bytes_scale": 1.0,
-      "source": "results/rtx5090-real.json batch1 control; single-sequence decode keeps the fp32 matrix state"
+      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; single-sequence decode keeps the fp32 matrix state",
+      "measured_decode_tps": 96.6678,
+      "control_noise_floor_pct": 0.038685039646984526
     },
     "concurrency4": {
       "sequences": 4,
-      "aggregate_tps": 329.43,
+      "aggregate_tps": 334.1666666666667,
       "state_bytes_scale": 0.5,
-      "source": "results/rtx5090-real.json per_concurrency.concurrency4.baseline_runs, mean of 3; packed decode compacts the state to bf16"
+      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
+      "control_noise_floor_pct": 0.08976660682226553
     },
     "concurrency16": {
       "sequences": 16,
-      "aggregate_tps": 770.1,
+      "aggregate_tps": 790.6,
       "state_bytes_scale": 0.5,
-      "source": "results/rtx5090-real.json per_concurrency.concurrency16.baseline_runs, mean of 3; packed decode compacts the state to bf16"
+      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
+      "control_noise_floor_pct": 0.12648621300278268
+    },
+    "concurrency32": {
+      "sequences": 32,
+      "aggregate_tps": 1287.5666666666666,
+      "state_bytes_scale": 0.5,
+      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
+      "control_noise_floor_pct": 0.3415883859948832
     }
   }
 }

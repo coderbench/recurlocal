@@ -2,43 +2,68 @@
 
 What is scored, why it is scored there, and what does not count.
 
-This document exists because the obvious answer is the wrong one. RecurLocal's headline
+This document exists because the obvious answers are the wrong ones. RecurLocal's headline
 workload has always been batch-1 decode, and **batch-1 decode is a dead surface** — there is
-not enough of it to win. Pointing a competition at it would pay for noise.
+not enough of it to win. Concurrent decode has four to seven times the room, which is where
+this document used to point. But the policy family the library ships cannot reach that room
+either, for a reason that is arithmetic rather than implementation, and the section below
+states it before asking anyone to spend time here.
 
 ---
 
-## What is scored: concurrent decode
+## What is scored, and what the most it can pay is
 
 A recurrent-state locality policy can only ever recover the share of decode traffic that
 recurrent state accounts for. Model weights are read once per decode step however many
 sequences are in flight; recurrent state is read once *per sequence*. So the share — and the
 whole opportunity — grows with concurrency:
 
-| regime | state share of traffic | ceiling | best measured to date | unclaimed |
-|---|--:|--:|--:|--:|
-| batch 1 | 1.65% | **1.68%** | +0.13% | — below the 2% floor; nothing to win |
-| concurrency 4 | 2.88% | 2.97% | +0.06% | ~2.9 points |
-| concurrency 16 | 6.74% | 7.23% | +0.36% | ~6.9 points |
-| concurrency 32 | 11.03% | **12.40%** | ~0% (unresolved) | **~12 points** |
+| regime | control | noise floor | traffic ceiling | best measured | persist-family ceiling |
+|---|--:|--:|--:|--:|--:|
+| batch 1 | 96.67 tok/s | 0.04% | 1.69% | +0.10% | 0.68% |
+| concurrency 4 | 334.17 tok/s | 0.09% | 3.01% | +0.15% | 0.59% |
+| concurrency 16 | 790.60 tok/s | 0.13% | 7.44% | +0.06% | 0.35% |
+| concurrency 32 | 1287.57 tok/s | 0.34% | **12.71%** | −0.59% | 0.28% |
 
-Ceilings from `eval/traffic_budget.py` on Qwen3.8-27B NVFP4 / RTX 5090, with the state
-bf16-compacted as the runtime does for batched decode. "Best measured" is the strongest arm in
-`results/rtx5090-real.json`.
+Every number measured on one RTX 5090, three interleaved pairs per arm, in
+`results/rtx5090-baseline-matrix.json`. Ceilings from
+`eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json`.
 
-The two left-hand columns differ on purpose, and the gap grows with concurrency. Traffic share
-is what fraction of the step's bytes the state accounts for; the ceiling is what removing them
-is worth in the throughput the scorer actually measures. A step carrying *f* less traffic runs
-in *(1−f)* of the time, so tok/s rise by *f/(1−f)*. Quoting the share as the ceiling understates
-it by 1.4 points at 32 sequences — enough that a submission could beat a number this repository
-had called a ceiling.
+**Weighted across the section 44 matrix, the highest score physically available is 5.22%** — a
+submission that removed *all* recurrent-state traffic on every arm. That is impact `S`,
+go/no-go "promising". The bands above it — `M`, `L`, `XL` — are unreachable on this model and
+this device however good the policy, and no amount of contributor effort changes that. Know it
+before you spend a week here.
 
-Read that table as the competition brief. **At 32 concurrent sequences there are roughly
-eleven points on the table and the shipped implementation captures none of them** — its best
-scored configuration measures *negative* there. That gap is the surface.
+### The ceiling that actually binds
 
-Run `eval/traffic_budget.py` before optimizing for any new model, device or concurrency. A
-ceiling below the 2% floor is an answer, not an invitation to tune harder.
+The traffic ceiling assumes all the recurrent traffic can be removed. A **persisting window
+cannot remove traffic it cannot hold**, and that is a far tighter limit.
+
+State written at layer *i* is read again at layer *i* of the **next token**. To save a single
+byte, the cache has to keep it across a full pass over the model — so the footprint that must
+be resident is *every recurrent layer for every sequence at once*, not one layer's worth.
+Against this device's 60 MiB persisting-L2 capacity (of a 96 MiB L2):
+
+| regime | resident footprint needed | vs capacity | persist ceiling |
+|---|--:|--:|--:|
+| batch 1 | 146.8 MiB | 2.4× | 0.68% |
+| concurrency 4 | 299.2 MiB | 5.0× | 0.59% |
+| concurrency 16 | 1197 MiB | 19.9× | 0.35% |
+| concurrency 32 | 2394 MiB | **39.9×** | 0.28% |
+
+**The persist family's ceiling falls as concurrency rises, while the traffic ceiling rises.**
+The room grows and the fraction a persisting cache can address shrinks faster. Weighted across
+the matrix the persist family tops out at **0.52%** — below the 2% floor, so it cannot produce
+a scorable result at any concurrency, on this model, on this device.
+
+That bound is deliberately generous: it assumes a perfect replacement policy in which every
+resident byte hits and the set-aside costs its neighbours nothing. Measurement agrees with it —
+`persist` is +0.10% at batch 1 (resolved, against a 0.68% ceiling) and decays from there,
+exactly as the arithmetic says it must.
+
+Do not send a persist-family submission expecting it to clear the floor. The room at
+concurrency is real, but a persisting L2 window is not the instrument that reaches it.
 
 ## What batch 1 is for
 
@@ -47,13 +72,13 @@ arithmetic:
 
 ```
 recurrent state per token   48 x (3 MiB fp32 + 60 KiB bf16) x 2  =  294 MiB
-decode step                 10.41 ms x 1792 GB/s                 =   18.6 GB
-recurrent share                                                      1.65%
-throughput ceiling          f/(1-f)                                  1.68%
+decode step                 10.34 ms x 1792 GB/s                 =   18.5 GB
+recurrent share                                                      1.66%
+throughput ceiling          f/(1-f)                                  1.69%
 ```
 
 Qwen3.8-27B is a *dense* hybrid: every weight is read every token. Making recurrent state free
-would be worth 1.68%, below the floor `eval/decide.py` rejects at, before any policy is chosen.
+would be worth 1.69%, below the floor `eval/decide.py` rejects at, before any policy is chosen.
 
 ## Reproducing the measurement
 
@@ -106,22 +131,39 @@ candidate differ only by environment. Never compare two separately linked binari
 ## Where the open problems are
 
 `docs/OPTIMIZATION-SURFACES.md` maps every surface with the flag that isolates it and what is
-already known. The ones with the most room, in order:
+already known. Reordered by what is still genuinely open:
 
-1. **Concurrent decode.** The recurrent share quadruples from batch 1 to 16 sequences and the
-   current policies capture none of it — `persist` moves the *wrong way* (+0.13% → -0.21%) as
-   the room grows, and `prefetch` gets worse in proportion to the bytes it moves. Nobody has
-   explained why. That explanation, with hardware counters behind it, is the contribution.
-2. **The 32-sequence runtime fallback.** Something in the eval's run sequence occasionally
-   drops SparkInfer onto its per-row decode path at 32 sequences, costing 28%. It is not the
-   locality policy — it happens in arms that install no window and issue no pre-touch. Cause
-   unidentified.
-3. **Delivering a persisting window under graph decode.** A locality library cannot attach one
+1. **A model with less weight traffic per token.** The only direction that moves both terms the
+   right way. A sparse MoE reads a fraction of its weights per token, so the same recurrent
+   state is a much larger share of traffic at every batch size — *and* the footprint that has
+   to stay resident is unchanged, so the residency bound above does not tighten with it. Run
+   `traffic_budget.py --matrix` on a candidate model before integrating it; that is a
+   contribution on its own, whichever way it comes out.
+
+2. **Reuse the cache can actually serve.** Every shipped policy targets reuse across a token,
+   which is a full model pass away and 2.4–40x too large to hold. Reuse *within* a layer — the
+   conv state feeding the matrix state, or state a kernel touches more than once — is a
+   distance the cache can serve. Nobody has measured whether there is anything there. Note the
+   conv state is only 1.9–3.8% of the recurrent bytes, so bound it before building it.
+
+3. **The 32-sequence runtime fallback.** Something occasionally drops SparkInfer onto its
+   per-row decode path at 32 sequences. Reproduced on a second box: `prefetch` ratios
+   `[0.932, 0.676, 0.925]` — one run of three collapsed 32%. It is not the locality policy; it
+   has now hit `baseline` (which installs no window and issues no pre-touch) and `prefetch`, on
+   different boxes, while `combined` — which pre-touches identically — stayed clean. Cause
+   unidentified. This is worth more than it looks: it is a 32% cliff in the runtime, not a
+   fraction of a percent in a cache policy.
+
+4. **Delivering a persisting window under graph decode.** A locality library cannot attach one
    without the runtime's cooperation; the shortcut that avoids that (`capture_node`) is
-   undocumented in CUDA. A safe mechanism here unlocks the whole `persist` family.
-4. **A model with less weight traffic per token.** A sparse MoE reads a fraction of its weights
-   per token, so the same recurrent state is a far larger share at every batch size. Run
-   `traffic_budget.py` on a candidate before integrating it.
+   undocumented in CUDA. Worth solving for correctness — every persist measurement here depends
+   on it — but note it no longer "unlocks the `persist` family". The residency bound above says
+   the family tops out at 0.52% weighted even with perfect delivery.
+
+**Closed, and stated here so nobody re-opens it:** "the current policies capture none of the
+concurrency room and nobody has explained why." They cannot. The reuse distance is a full model
+pass and the footprint is up to 40x the persisting cache; the ceiling falls as the room grows.
+The explanation was the contribution, and it is above.
 
 ## Prerequisites the operator must provide
 

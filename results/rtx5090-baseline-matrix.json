@@ -1,0 +1,272 @@
+{
+  "what_this_is": "The reference baseline a submission is scored against: control decode rates and the run-to-run noise floor at each point of the section 44 workload matrix, plus what every shipped locality mode does against them. One box, one binary, one model load path, three interleaved pairs per arm. This is not a result about a contribution; it is the number a contribution has to beat.",
+  "arms": {
+    "batch1": {
+      "workload": "batch 1, ctx 128, 128 tokens",
+      "concurrency": null,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "control_tps": [
+        96.6782,
+        96.6439,
+        96.6813
+      ],
+      "control_mean_tps": 96.6678,
+      "control_noise_floor_pct": 0.038685039646984526,
+      "modes": {
+        "baseline": {
+          "gain_pct": -0.039719398995852195,
+          "spread_pct": 0.04956286953543577,
+          "paired_ratios": [
+            0.9996028060100415,
+            0.999973097112182,
+            0.9994776652775667
+          ],
+          "resolved": false
+        },
+        "persist": {
+          "gain_pct": 0.09960561142641211,
+          "spread_pct": 0.0329012286348299,
+          "paired_ratios": [
+            1.0008367967132197,
+            1.0011661367142675,
+            1.0009960561142641
+          ],
+          "resolved": true
+        },
+        "prefetch": {
+          "gain_pct": -1.2709800137151617,
+          "spread_pct": 0.009708553542299365,
+          "paired_ratios": [
+            0.9872732425717483,
+            0.9873690941694199,
+            0.9872901998628484
+          ],
+          "resolved": true
+        },
+        "combined": {
+          "gain_pct": -1.1811349404519444,
+          "spread_pct": 0.0636100227567581,
+          "paired_ratios": [
+            0.9881886505954806,
+            0.9885724810360509,
+            0.9879438940105274
+          ],
+          "resolved": true
+        }
+      },
+      "best": "persist",
+      "resolved": true,
+      "traffic_ceiling_pct": 1.6889252552384963,
+      "persist_family_ceiling_pct": 0.6834124963263548,
+      "state_footprint_over_persisting_l2": 2.446875
+    },
+    "concurrency4": {
+      "workload": "concurrency 4 (aggregate)",
+      "concurrency": 4,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "control_tps": [
+        334.3,
+        334.0,
+        334.2
+      ],
+      "control_mean_tps": 334.1666666666667,
+      "control_noise_floor_pct": 0.08976660682226553,
+      "modes": {
+        "baseline": {
+          "gain_pct": 0.0,
+          "spread_pct": 0.1196709076890623,
+          "paired_ratios": [
+            1.000598265031409,
+            1.0,
+            0.9994015559545183
+          ],
+          "resolved": false
+        },
+        "persist": {
+          "gain_pct": 0.14956625785222943,
+          "spread_pct": 0.26905865687979036,
+          "paired_ratios": [
+            1.0014956625785223,
+            1.0026946107784431,
+            1.0
+          ],
+          "resolved": false
+        },
+        "prefetch": {
+          "gain_pct": -2.0658682634730474,
+          "spread_pct": 0.42702551075312667,
+          "paired_ratios": [
+            0.9763685312593477,
+            0.9793413173652695,
+            0.9805505685218432
+          ],
+          "resolved": true
+        },
+        "combined": {
+          "gain_pct": -2.275449101796412,
+          "spread_pct": 0.3666943134596743,
+          "paired_ratios": [
+            0.9760693987436434,
+            0.9772455089820359,
+            0.9796529024536206
+          ],
+          "resolved": true
+        }
+      },
+      "best": "persist",
+      "resolved": true,
+      "traffic_ceiling_pct": 3.013872754627218,
+      "persist_family_ceiling_pct": 0.5900670815039353,
+      "state_footprint_over_persisting_l2": 4.9875
+    },
+    "concurrency16": {
+      "workload": "concurrency 16 (aggregate)",
+      "concurrency": 16,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "control_tps": [
+        791.1,
+        790.1,
+        790.6
+      ],
+      "control_mean_tps": 790.6,
+      "control_noise_floor_pct": 0.12648621300278268,
+      "modes": {
+        "baseline": {
+          "gain_pct": 0.0632431065013872,
+          "spread_pct": 0.17693687111991704,
+          "paired_ratios": [
+            1.0011376564277588,
+            0.9993671687128212,
+            1.0006324310650139
+          ],
+          "resolved": false
+        },
+        "persist": {
+          "gain_pct": 0.0632431065013872,
+          "spread_pct": 0.9485350563530146,
+          "paired_ratios": [
+            0.9991151561117431,
+            1.0086065055056321,
+            1.0006324310650139
+          ],
+          "resolved": false
+        },
+        "prefetch": {
+          "gain_pct": -5.679230963824944,
+          "spread_pct": 0.3276481038891575,
+          "paired_ratios": [
+            0.9417267096447983,
+            0.9448171117580053,
+            0.9432076903617506
+          ],
+          "resolved": true
+        },
+        "combined": {
+          "gain_pct": -5.809391216301729,
+          "spread_pct": 0.25124204862693306,
+          "paired_ratios": [
+            0.9418531159145493,
+            0.9419060878369827,
+            0.9442195800657728
+          ],
+          "resolved": true
+        }
+      },
+      "best": "baseline",
+      "resolved": true,
+      "traffic_ceiling_pct": 7.436613154592547,
+      "persist_family_ceiling_pct": 0.3481684640373083,
+      "state_footprint_over_persisting_l2": 19.95
+    },
+    "concurrency32": {
+      "workload": "concurrency 32 (aggregate)",
+      "concurrency": 32,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "control_tps": [
+        1285.1,
+        1288.1,
+        1289.5
+      ],
+      "control_mean_tps": 1287.5666666666666,
+      "control_noise_floor_pct": 0.3415883859948832,
+      "modes": {
+        "baseline": {
+          "gain_pct": -0.759984490112442,
+          "spread_pct": 0.4172576946383933,
+          "paired_ratios": [
+            0.9887168313749902,
+            0.9928576973837436,
+            0.9924001550988756
+          ],
+          "resolved": true
+        },
+        "persist": {
+          "gain_pct": -0.5893757270259758,
+          "spread_pct": 0.2569080224641998,
+          "paired_ratios": [
+            0.99657614193448,
+            0.9940222032450898,
+            0.9941062427297402
+          ],
+          "resolved": true
+        },
+        "prefetch": {
+          "gain_pct": -7.506785575804575,
+          "spread_pct": 27.71481649077105,
+          "paired_ratios": [
+            0.9319119134697689,
+            0.6755686670289575,
+            0.9249321442419542
+          ],
+          "resolved": false
+        },
+        "combined": {
+          "gain_pct": -7.437310767797534,
+          "spread_pct": 0.37195560098977254,
+          "paired_ratios": [
+            0.9228075636137267,
+            0.9256268923220247,
+            0.9262504846839861
+          ],
+          "resolved": true
+        }
+      },
+      "best": "persist",
+      "resolved": true,
+      "traffic_ceiling_pct": 12.705142112780909,
+      "persist_family_ceiling_pct": 0.2833294017683827,
+      "state_footprint_over_persisting_l2": 39.9
+    }
+  },
+  "how_to_reproduce": {
+    "build": "integrations/sparkinfer/build.sh $WORK",
+    "sweep": "eval/real_sweep.py --binary <cb_bench> --model $MODEL --axis mode --concurrency <N> --repeats 3 --fixed RECURLOCAL_STATS=1 RECURLOCAL_WINDOW_ATTACH=capture_node",
+    "why_capture_node": "Production decode is a captured CUDA graph and a stream access-policy window is host-side state capture does not record. With the default attach the persist family computes windows, defers all of them, and reaches no kernel - real_sweep.py refuses that arm by name, and the sweep dies before writing anything."
+  },
+  "ceilings": {
+    "weighted_traffic_ceiling_pct": 5.2223056386462074,
+    "weighted_persist_family_ceiling_pct": 0.5175348453112294,
+    "best_possible_impact": "S",
+    "reachable_bands": [
+      "S",
+      "XS",
+      "none"
+    ],
+    "computed_by": "eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json --bandwidth-gbs 1792"
+  },
+  "provenance": {
+    "gpu": "RTX 5090",
+    "cuda": "13.3",
+    "runtime": "SparkInfer @ 5347b27cbc43af7281d2ac7b30f41d610514d8f3 + recurlocal-hook.patch",
+    "model": "Qwen3.8-27B-NVFP4-RTX5090, both shards crc32-verified against the model's crc32.txt",
+    "note": "one box for every arm; clocks cannot be pinned in this container, so only same-box interleaved deltas are trustworthy and every gain here is one."
+  }
+}
