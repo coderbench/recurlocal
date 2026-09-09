@@ -42,6 +42,23 @@ state accounts for. On Qwen3.8-27B at batch 1 that is **1.65%** — below the 2%
 go/no-go table rejects at, before any policy is chosen. It is worth computing this for a new
 model or concurrency *before* optimizing for it.
 
+Three bounds come out, not one, and the tighter ones decide more:
+
+```bash
+eval/traffic_budget.py --matrix configs/qwen3.6-35b-a3b-moe-ceiling.json                        --bandwidth-gbs 1792 --persisting-l2-bytes 62914560
+```
+
+- `ceiling_pct` — removing *all* recurrent traffic, in throughput terms.
+- `persist_family.ceiling_pct` — what a persisting window can reach, given that it cannot hold
+  traffic larger than the cache. `break_even_step_traffic_bytes` inverts it at the significance
+  floor: the step traffic a candidate model must come in under to be worth a window at all.
+- `within_layer_family.ceiling_pct` — reuse inside one layer, the only distance L2 serves for
+  free. Almost nothing sits there on this runtime; the number says how little.
+
+`bandwidth_bound_check` says whether a ceiling is tight or merely true, by comparing the bytes
+the checkpoint says a step reads against measured-time × peak bandwidth. A dense model sits
+near 1.0; a sparse MoE near 0.77, where the arithmetic overstates what a policy can return.
+
 ## One axis at a time
 
 ```bash

@@ -110,6 +110,37 @@ property of the implementation and no amount of tuning moves it — but it grows
 concurrency, because model weights are read once per step however many sequences are in
 flight while recurrent state is read once per sequence.
 
+Two tighter bounds sit under it, and both matter more than the first.
+
+A **persisting window cannot save traffic it cannot hold**. Because the reuse distance is a
+whole token, the footprint that must stay resident is every recurrent layer for every sequence
+at once — 146.8 MiB on Qwen3.8-27B at batch 1 against a 60 MiB persisting capacity. So the
+persist family's bound is `2 x min(capacity, footprint) / step_traffic`, and since the capacity
+is the device's, the only lever is the step. `--persisting-l2-bytes` prints the inversion:
+`break_even_step_traffic_bytes`, the step traffic a model has to come in under before a
+persisting window is worth anything at all. 6.42 GB on this device.
+
+A policy aimed at reuse **within** a layer is bounded far tighter still, and this is why no such
+policy is shipped. The runtime's Gated-DeltaNet kernel already holds each state column in
+registers across both of its passes, so 98% of the recurrent bytes are read once and written
+once and there is no second touch at any distance. All that is left is the convolution window's
+shift re-read — `conv x (K-2)/(K-1)` per layer, 1.97 MB per token — reported as
+`within_layer_family`, a 0.011% ceiling.
+
+## What a policy does when the footprint does not fit
+
+Every v0.1 policy answers oversubscription by moving one dial: the requested hit ratio, for
+every layer alike. That models the cache as something that can keep 97% of a byte, and it
+cannot — a line is resident or it is not. `HotSetPolicy::Quota` is the alternative: admit whole
+layers at the full hit ratio until the set-aside is spent, decline the window for the rest,
+spread evenly, and decide from the layer ordinal alone so the choice cannot move between tokens
+(a window that moved would evict exactly the state it kept last time). It needs no layer count
+or sequence count from the caller, because the declared hot set is already in bytes.
+
+Which of the two is right depends on how far over budget the footprint is, and that is a
+property of the model rather than of the library — which is why both exist as enumerators
+rather than one replacing the other.
+
 ## Window lifetime
 
 An access-policy window is a stream attribute, not a per-kernel argument: it applies to everything launched on that stream until it is changed. `before_layer` installs the window and `after_layer` removes it, so the policy covers the recurrent kernel and nothing else. Leaving it installed would apply persisting/streaming policy to the following attention, GEMM and MoE kernels against a pointer they never touch, which is the interference risk the project is supposed to avoid.
