@@ -87,13 +87,22 @@ integrations/sparkinfer/build.sh $WORK        # pinned commit, patched, one bina
 eval/real_eval.py --binary  $WORK/sparkinfer/build/runtime/qwen3_gguf_bench \
                   --generate $WORK/sparkinfer/build/runtime/qwen3_gguf_generate \
                   --cb-binary $WORK/sparkinfer/build/runtime/qwen3_gguf_cb_bench \
-                  --model $MODEL --concurrency 4,16,32 --repeats 3 \
-                  --candidate RECURLOCAL=<your mode> ... --output real-result.json
+                  --model $MODEL --contexts 128,4096,16384 --concurrency 4,16,32 --repeats 3 \
+                  --candidate RECURLOCAL=<your mode> RECURLOCAL_WINDOW_ATTACH=capture_node \
+                  --output real-result.json
 eval/decide.py --real real-result.json
 ```
 
 One binary runs both arms: the hook is inert unless `RECURLOCAL` names a mode, so control and
 candidate differ only by environment. Never compare two separately linked binaries.
+
+Two flags there are not decoration. **`--concurrency 4,16,32` and the three contexts fill the
+whole section 44 matrix**, and `decide.py` will not call a partial one significant — a missing
+arm is renormalised away, not averaged in, so leaving one out changes the score. **The
+`capture_node` attach is what makes the persist family apply a policy at all** under graph
+decode; with the default the windows are all deferred to a runtime that never attaches them,
+and `real_eval.py` correctly refuses the arm as a null candidate. The first attempt at this
+repository's own baseline died exactly there.
 
 ## What does not count
 
