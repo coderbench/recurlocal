@@ -209,6 +209,16 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
     // Without a reserved L2 set-aside the hardware has nothing to hold a persisting
     // window in, so the plan must not ask an integrating runtime to install one.
     const auto budget = effective_l2_budget();
+    // Report the accounting whatever the mode. It used to be written only inside the persist
+    // guard, so a prefetch-only run emitted hot_set_bytes=0, hot_set_budget_bytes=0 next to
+    // hot_set_model="token_footprint" - a reader would conclude nothing was competing for L2
+    // when 147 MiB was. The numbers describe the workload, not the policy that happens to be
+    // enabled.
+    p.hot_set_budget_bytes = budget;
+    p.hot_set_bytes = additive ? saturating_add(hot_bytes, current_state_bytes)
+                               : std::max(hot_bytes, current_state_bytes);
+    p.hot_set_oversubscribed = budget > 0 && p.hot_set_bytes > budget;
+
     if (use_persist && current_state_bytes && caps_.access_policy_max_window_bytes && budget) {
         std::size_t window = std::min(current_state_bytes, caps_.access_policy_max_window_bytes);
         if (config_.max_hot_window_bytes) window = std::min(window, config_.max_hot_window_bytes);
@@ -220,10 +230,9 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
         // never be the smaller of the two without the accounting being wrong.
         const std::size_t hot = additive ? saturating_add(hot_bytes, window)
                                          : std::max(hot_bytes, window);
-        p.hot_set_bytes = hot;
-        p.hot_set_budget_bytes = budget;
+        p.hot_set_bytes = hot;               // refine: the window is what we actually ask for
+        p.hot_set_oversubscribed = hot > budget;
         if (hot > budget) {
-            p.hot_set_oversubscribed = true;
             const double share = static_cast<double>(budget) / static_cast<double>(hot);
             const double floor_ratio = std::min(config_.min_hit_ratio, config_.hit_ratio);
             switch (config_.hot_set_policy) {

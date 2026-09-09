@@ -55,6 +55,7 @@ struct Adapter {
     // printed at exit - i.e. AFTER the model destructor has shut us down - so reporting only
     // the live flag told a reader the hook had never run when it had bracketed every layer.
     bool ever_initialised = false;
+    cudaStream_t bound_stream = nullptr;   // the one model this process's adapter serves
     std::size_t l2_set_aside_at_init = 0;
     bool broken = false;           // initialisation failed; stay out of the way
     std::string mode = "off";
@@ -93,6 +94,19 @@ struct Adapter {
     int max_rows_seen = 0;
 };
 
+// One adapter per process, deliberately: the hook has to be reachable from SparkInfer's
+// static call sites without threading a handle through them. That is fine for one model on
+// one stream - which is what every path in this integration is - and WRONG for two.
+//
+// The singleton holds cross-call mutable state (the layer ordinal, the pending window and its
+// target kernel, the layout, the packed flag). Two Qwen35Model instances in one process would
+// interleave their layer walks through it, and SparkInfer's mutex does not help because it is
+// per-model. The result would not be a crash, it would be quietly wrong numbers - the worst
+// failure mode for a measurement harness.
+//
+// So rather than a mutex, which would prevent the data race and preserve the wrong logic,
+// this detects the second instance and refuses. A loud refusal is a bug report; a silent
+// interleave is a bad result someone publishes.
 Adapter& adapter() noexcept { static Adapter a; return a; }
 
 // This layer's two state slices, as segments. Both, always: the accounting has to see the
@@ -259,6 +273,20 @@ bool begin_token(const GdnStateLayout& layout) noexcept {
     }
 
     a.packed = false;
+    // A second model instance would share this singleton's per-layer state with the first.
+    if (a.bound_stream && a.bound_stream != layout.compute) {
+        if (!a.broken) {
+            std::fprintf(stderr,
+                "[recurlocal] DISABLED - a second compute stream (%p, was %p) reached the hook. "
+                "The adapter holds one model's walk state per process; sharing it would "
+                "interleave two models' layers and produce quietly wrong numbers.\n",
+                (void*)layout.compute, (void*)a.bound_stream);
+        }
+        a.broken = true;
+        return false;
+    }
+    a.bound_stream = layout.compute;
+
     a.layout = layout;
     begin_common(a, layout.n_layers, layout.full_attn_interval,
                  layout.lin_state_stride + layout.lin_conv_stride, /*sequences=*/1);

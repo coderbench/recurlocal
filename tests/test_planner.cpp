@@ -690,6 +690,25 @@ static void test_budget_follows_the_granted_set_aside_not_the_request() {
     CHECK(p.plan_for_layer(8 * MiB, true, 16 * MiB).hot_set_oversubscribed);
 }
 
+// Telemetry that reads zero when the truth is 147 MiB is worse than no telemetry: a reader
+// concludes nothing was competing for L2. The accounting describes the workload, so it must
+// be reported whatever policy happens to be enabled.
+static void test_hot_set_accounting_is_reported_in_every_mode() {
+    RecurrentGeometry geo;
+    geo.recurrent_layers = 48;
+    geo.bytes_per_layer = 3 * MiB;
+    for (auto mode : {LocalityMode::Baseline, LocalityMode::Persist,
+                      LocalityMode::Prefetch, LocalityMode::Combined}) {
+        PlannerConfig cfg = base_config();
+        cfg.mode = mode;
+        cfg.hot_set_model = HotSetModel::TokenFootprint;
+        const auto p = LocalityPlanner(blackwell_like(), cfg).plan_for_layer(3 * MiB, true, geo);
+        CHECK(p.hot_set_bytes == 144 * MiB);        // the workload, not the policy
+        CHECK(p.hot_set_budget_bytes == 32 * MiB);
+        CHECK(p.hot_set_oversubscribed);
+    }
+}
+
 int main() {
     test_set_aside_and_modes();
     test_window_limits();
@@ -723,6 +742,7 @@ int main() {
     test_pre_touch_coverage_selects_states();
     test_recurrent_layer_walk();
     test_budget_follows_the_granted_set_aside_not_the_request();
+    test_hot_set_accounting_is_reported_in_every_mode();
 
     if (g_failures) { std::cout << g_failures << " planner check(s) failed\n"; return 1; }
     std::cout << "planner tests passed\n";

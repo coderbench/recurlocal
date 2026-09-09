@@ -214,10 +214,11 @@ contexts plus concurrency 4 and 16, token-exact output:
 
 ```
 $ eval/decide.py --real results/rtx5090-real.json
-verdict: reject   weighted gain -0.488%   significant false
-  batch1         +0.016%  (w=0.40)   [ctx16384 did not resolve]
-  concurrency4   -0.667%  (w=0.20)
+verdict: reject   weighted gain -0.488%   significant False
+  batch1         +0.016%  (w=0.40)
   concurrency16  -1.311%  (w=0.20)
+  concurrency4   -0.667%  (w=0.20)
+unresolved: ['batch1/ctx16384']
 ```
 
 The pre-touch really ran — 188 launches at batch 1, and the concurrency arms went through

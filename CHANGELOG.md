@@ -163,6 +163,29 @@ fail to:
   VRAM race turned into a plausible-looking result. `real_eval.py` now takes an advisory
   `flock` and waits.
 
+### Fixed — found by an adversarial audit of the finished work
+
+Three findings survived two independent refute-by-default verifiers reading the current tree:
+
+- **`decide.py` could not score the repository's own published result.** `results/` ships the
+  matrix nested under `scored_result` alongside the axis sweeps; `score_real` only looked at
+  the top level, so the exact command the README gives — `decide.py --real
+  results/rtx5090-real.json` — printed "real result has no 'workloads'" and scored nothing.
+  The README had illustrative output where it claimed real output. Both fixed, and a test now
+  scores the committed artifact so the docs cannot drift from it again.
+- **Hot-set telemetry read zero in every mode except persist.** The accounting was written
+  only inside the persisting-window guard, so a prefetch-only run reported
+  `hot_set_bytes: 0, hot_set_budget_bytes: 0` beside `hot_set_model: token_footprint` — a
+  reader would conclude nothing was competing for L2 while 147 MiB was. The numbers describe
+  the workload, not the policy that happens to be enabled, and are now reported for all four
+  modes.
+- **A second model instance would silently share the adapter's walk state.** The hook is a
+  process-global singleton holding one model's layer ordinal, pending window and layout;
+  SparkInfer's mutex is per-model, so two instances would interleave. The failure mode is not
+  a crash, it is quietly wrong numbers. Rather than a mutex — which would fix the data race
+  and keep the wrong logic — the adapter now detects a second compute stream and refuses,
+  loudly.
+
 ### Added — the CUDA code is now tested
 
 - `tests/test_cuda_controller.cu`: 115 device-side checks over the controller, the

@@ -273,5 +273,31 @@ class HarnessIntegrity(unittest.TestCase):
             os.environ.pop("RECURLOCAL_PREFETCH_DISTANCE", None)
 
 
+
+class ShippedArtifactIsScorable(unittest.TestCase):
+    """The repository publishes results/rtx5090-real.json and the README tells you to score
+    it. That command used to fail: the matrix is nested under "scored_result" and score_real
+    only looked at the top level."""
+
+    def test_the_committed_result_scores(self):
+        path = Path(__file__).resolve().parent.parent / "results" / "rtx5090-real.json"
+        if not path.exists():
+            self.skipTest("no committed result in this checkout")
+        out = label.score_real(json.loads(path.read_text()))
+        self.assertIn(out["verdict"], {"reject", "weak", "promising", "strong", "expand",
+                                       "REGRESSION", "REJECT"})
+        self.assertIn("workloads", out)
+
+    def test_both_shapes_score_identically(self):
+        bare = real_doc({"batch1": {"weight": 1.0, "baseline_tps": 100.0, "candidate_tps": 105.0}})
+        wrapped = {"what_this_is": "bundle", "batch1_axes": {}, "scored_result": bare}
+        self.assertEqual(label.score_real(bare)["weighted_gain_pct"],
+                         label.score_real(wrapped)["weighted_gain_pct"])
+
+    def test_a_bare_doc_missing_workloads_still_errors(self):
+        with self.assertRaises(SystemExit):
+            label.score_real({"correctness": {"output_identical": True}})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

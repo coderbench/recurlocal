@@ -61,7 +61,22 @@ def band(value, table):
     return next(entry for entry in table if value >= entry[0])
 
 
+def unwrap_real(doc):
+    """Accept either a bare result or the results/ bundle that embeds one.
+
+    `results/rtx5090-real.json` carries the scored matrix under "scored_result", alongside the
+    axis sweeps and probes that give it context. Until this existed, the command the README
+    told you to run - `decide.py --real results/rtx5090-real.json` - printed
+    "real result has no 'workloads'" and scored nothing. A scorer that cannot read the
+    repository's own published result is not a scorer.
+    """
+    if "workloads" not in doc and isinstance(doc.get("scored_result"), dict):
+        return doc["scored_result"]
+    return doc
+
+
 def score_real(doc, allow_regression=False):
+    doc = unwrap_real(doc)
     correctness = doc.get("correctness") or {}
     workloads = doc.get("workloads") or {}
     if not workloads:
