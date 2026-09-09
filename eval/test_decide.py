@@ -568,5 +568,136 @@ class MatrixCeiling(unittest.TestCase):
             self._run({"arms": {"batch1": {"sequences": 1}}})
 
 
+class WithinLayerCeiling(unittest.TestCase):
+    """Surface 2 in docs/MINING.md: reuse at a distance the cache can actually serve.
+
+    Every shipped policy targets reuse across a token, which is a whole model pass and far
+    larger than any cache. Reuse inside one layer is microseconds away and L2 serves it for
+    free -- so the question is not whether the cache could serve it but whether there are any
+    bytes at that distance. These pin the answer so nobody re-derives it by building it.
+    """
+
+    PIN = MatrixCeiling.PIN
+
+    def _arm(self, m=None, sequences=1, ms=10.344706303443338):
+        return traffic_budget.arm_ceiling(m or self.PIN, sequences, ms, 1.0, 1792.0)
+
+    def test_the_matrix_state_contributes_nothing(self):
+        # The pinned runtime's GDN kernel keeps each state column in registers across both
+        # passes: one global read, one global write. 98% of the recurrent bytes therefore
+        # have no within-layer reuse at all, and a policy aimed at them has nothing to catch.
+        self.assertEqual(self._arm()["within_layer_family"]["matrix_state_reuse_bytes"], 0)
+
+    def test_only_the_conv_windows_shift_reread_is_reusable(self):
+        m = self.PIN
+        k = m["linear_conv_kernel_dim"]
+        expected = m["lin_conv_state_bytes_per_layer"] * (k - 2) / (k - 1) * m["recurrent_layers"]
+        self.assertAlmostEqual(self._arm()["within_layer_family"]["reusable_bytes_per_token"],
+                               expected)
+
+    def test_a_two_tap_conv_has_no_window_to_shift(self):
+        m = dict(self.PIN, linear_conv_kernel_dim=2)
+        self.assertEqual(self._arm(m)["within_layer_family"]["reusable_bytes_per_token"], 0)
+        self.assertEqual(self._arm(m)["within_layer_family"]["ceiling_pct"], 0.0)
+
+    def test_it_is_orders_below_the_significance_floor_on_the_pinned_model(self):
+        # The finding: this surface is closed by arithmetic, not by effort. If a future
+        # geometry ever pushes it near the floor this test is where that shows up.
+        c = self._arm()["within_layer_family"]["ceiling_pct"]
+        self.assertLess(c, label.SIGNIFICANCE_PCT / 100.0)
+
+    def test_it_never_exceeds_the_traffic_ceiling_it_is_a_subset_of(self):
+        for seqs in (1, 4, 16, 32):
+            with self.subTest(sequences=seqs):
+                a = self._arm(sequences=seqs)
+                self.assertLessEqual(a["within_layer_family"]["ceiling_pct"], a["ceiling_pct"])
+
+
+class SecondModelGeometry(unittest.TestCase):
+    """A second model measured on the same runtime must not inherit the first one's shape.
+
+    The matrix spec carries decode rates. If the geometry silently came from the pinned
+    integration while the rates came from another model, the tool would report a confident
+    ceiling for a state shape that model does not have, and nothing in the output would say
+    so. This is the same failure the coverage guard exists for: a wrong number that looks
+    exactly like a right one.
+    """
+
+    PIN = MatrixCeiling.PIN
+    OTHER = {"label": "test hybrid", "recurrent_layers": 30,
+             "lin_state_bytes_per_layer": 2097152, "lin_conv_state_bytes_per_layer": 49152,
+             "linear_conv_kernel_dim": 4}
+
+    def _run(self, spec):
+        import contextlib, io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            traffic_budget.matrix_ceiling(self.PIN, spec, 1792.0, None, 62914560)
+        return json.loads(buf.getvalue())
+
+    def _spec(self, model=None):
+        spec = {"arms": {"batch1": {"sequences": 1, "ms_per_token": 2.0,
+                                    "state_bytes_scale": 1.0}}}
+        if model:
+            spec["model"] = model
+        return spec
+
+    def test_the_spec_model_is_used_and_recorded(self):
+        out = self._run(self._spec(self.OTHER))
+        self.assertEqual(out["model_geometry_source"], "matrix spec")
+        self.assertEqual(out["model"], "test hybrid")
+        self.assertEqual(out["arms"]["batch1"]["recurrent_layers"], 30)
+
+    def test_the_pin_is_used_and_recorded_when_the_spec_carries_none(self):
+        out = self._run(self._spec())
+        self.assertEqual(out["model_geometry_source"], "pin")
+        self.assertEqual(out["arms"]["batch1"]["recurrent_layers"],
+                         self.PIN["recurrent_layers"])
+
+    def test_the_two_geometries_do_not_produce_the_same_ceiling(self):
+        # If they did, the override would be untested by everything above.
+        self.assertNotAlmostEqual(
+            self._run(self._spec(self.OTHER))["arms"]["batch1"]["ceiling_pct"],
+            self._run(self._spec())["arms"]["batch1"]["ceiling_pct"], places=3)
+
+
+class BandwidthBoundCheck(unittest.TestCase):
+    """Is the ceiling tight, or merely true?
+
+    `implied_total_bytes_per_token` is measured time times peak bandwidth: what the step could
+    have moved, not what it did. On a dense model streaming every weight those are nearly the
+    same and the ceiling is close to achievable. On a sparse MoE the step reads a tenth of its
+    weights and spends much of its time on launch latency and small-GEMV occupancy, so the
+    same arithmetic produces a ceiling no policy could approach. Publishing the second kind
+    without saying which it is would be the ceiling-in-the-wrong-currency mistake again.
+    """
+
+    def _check(self, active, total):
+        return traffic_budget.bandwidth_bound_check(active, total)["bandwidth_bound_check"]
+
+    def test_a_saturated_step_is_tight(self):
+        c = self._check(18.0e9, 18.5e9)
+        self.assertEqual(c["bound"], "tight")
+        self.assertAlmostEqual(c["bandwidth_utilisation"], 18.0 / 18.5)
+
+    def test_a_half_idle_memory_system_is_loose(self):
+        c = self._check(1.7e9, 3.5e9)
+        self.assertEqual(c["bound"], "loose")
+        self.assertIn("upper bound", c["note"])
+
+    def test_the_threshold_is_the_named_constant_and_is_inclusive(self):
+        total = 10.0e9
+        self.assertEqual(self._check(traffic_budget.BANDWIDTH_BOUND_MIN * total, total)["bound"],
+                         "tight")
+        self.assertEqual(self._check(traffic_budget.BANDWIDTH_BOUND_MIN * total * 0.999,
+                                     total)["bound"], "loose")
+
+    def test_it_is_absent_unless_the_arm_declares_active_bytes(self):
+        # It is an optional diagnostic, so an arm that cannot supply the number must still
+        # produce a ceiling rather than a crash or a fabricated utilisation.
+        arm = traffic_budget.arm_ceiling(MatrixCeiling.PIN, 1, 10.34, 1.0, 1792.0)
+        self.assertNotIn("bandwidth_bound_check", arm)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

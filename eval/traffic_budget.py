@@ -38,8 +38,18 @@ from pathlib import Path
 MiB = 1024 * 1024
 
 
+# Above this fraction of peak bandwidth, a decode step is close enough to memory-saturated
+# that "removing f of the traffic shortens the step by f" is a fair description of it, and the
+# ceiling below is tight. Under it the step is spending time on something other than moving
+# bytes -- launch latency, low occupancy, small-GEMV inefficiency -- and freeing traffic buys
+# proportionally less than the arithmetic suggests. The ceiling stays a valid UPPER bound
+# either way, because it is computed from measured time rather than from assumed bytes; what
+# changes is how close a real policy could ever come to it.
+BANDWIDTH_BOUND_MIN = 0.80
+
+
 def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs,
-                persisting_l2_bytes=None):
+                persisting_l2_bytes=None, active_bytes_per_token=None):
     """The share of one decode step's traffic that recurrent state accounts for."""
     layers = m["recurrent_layers"]
     per_layer = (m["lin_state_bytes_per_layer"] * state_bytes_scale
@@ -75,9 +85,100 @@ def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs,
                 "runs in (1-f) of the time, so tok/s rise by f/(1-f). A locality policy "
                 "recovers a fraction of it, never more.",
     }
+    if active_bytes_per_token:
+        out.update(bandwidth_bound_check(active_bytes_per_token, total_traffic))
+    out.update(within_layer_ceiling(m, layers, sequences, total_traffic))
     if persisting_l2_bytes:
         out.update(persist_family_ceiling(state_read, total_traffic, persisting_l2_bytes))
     return out
+
+
+def bandwidth_bound_check(active_bytes_per_token, total_traffic):
+    """Is this step actually bandwidth-bound? The ceiling's tightness depends on it.
+
+    `implied_total_bytes_per_token` is measured step time times peak bandwidth, so it is what
+    the step COULD have moved, not what it did. Comparing it against the bytes the checkpoint
+    says the step has to touch -- non-expert weights, the routed experts a token actually
+    selects, the output head, the recurrent state -- says how much of the step was really
+    spent moving bytes.
+
+    A dense model streaming every weight sits near 1.0 and the ceiling is nearly achievable.
+    A sparse MoE reads a small fraction of its weights and can sit near 0.5: the step is
+    half latency and occupancy, and freeing recurrent traffic cannot return the whole
+    arithmetic share. Reporting the ratio is the difference between a ceiling a reader can
+    calibrate and one that merely looks large.
+    """
+    util = active_bytes_per_token / total_traffic
+    bound = "tight" if util >= BANDWIDTH_BOUND_MIN else "loose"
+    return {
+        "bandwidth_bound_check": {
+            "active_bytes_per_token": active_bytes_per_token,
+            "bandwidth_utilisation": util,
+            "bound": bound,
+            "note": ("the step moves %.2f GB of the %.2f GB peak bandwidth would allow in the "
+                     "measured time, i.e. %.0f%% utilisation. " % (
+                         active_bytes_per_token / 1e9, total_traffic / 1e9, util * 100.0)) +
+                    ("the step is memory-saturated, so the ceiling above is tight: freeing a "
+                     "fraction of the traffic really does shorten the step by about that "
+                     "fraction." if bound == "tight" else
+                     "the step is NOT memory-saturated, so the ceiling above is a loose upper "
+                     "bound: part of the step is latency and occupancy rather than bytes, and "
+                     "freeing recurrent traffic returns less than its arithmetic share. Treat "
+                     "it as an upper bound to be measured against, not as a target."),
+        }
+    }
+
+
+def within_layer_ceiling(m, layers, sequences, total_traffic):
+    """A third ceiling: reuse the cache can actually serve, because it is inside one layer.
+
+    The persist family targets reuse across a token -- a full model pass, far larger than any
+    cache. The obvious next question is whether a recurrent layer touches its own state more
+    than once while it runs, because that distance is microseconds and L2 serves it for free.
+    This bounds the answer from the state geometry and the pinned runtime's kernels.
+
+    Two recurrent kernels, and they are not alike:
+
+      matrix state   `gdn_ar_fast_kernel` holds each state column in registers across both of
+                     its passes, so every byte is read exactly once and written exactly once.
+                     There is no second touch for any cache policy to serve. (The naive
+                     kernel it replaced read the state twice and wrote it twice -- so this is
+                     a property of the pinned runtime, not of Gated DeltaNet. A runtime that
+                     had not made that change WOULD have reuse here, and this bound would be
+                     larger for it.)
+
+      conv state     `conv_split_kernel` reads the K-1 window entries to convolve, then reads
+                     K-2 of them AGAIN to shift the window forward one step. Those re-reads
+                     are the whole of the within-layer reuse on this model.
+
+    So the bound is the conv window's shift re-read and nothing else. That is a fraction of a
+    state that is already only 1.9-3.8% of the recurrent bytes, which is why this is worth
+    computing before it is worth building.
+    """
+    conv = m.get("lin_conv_state_bytes_per_layer", 0)
+    k = m.get("linear_conv_kernel_dim", 0)
+    if not conv or k < 3:
+        # K < 3 leaves no window to shift, so there is no second touch at all.
+        reread = 0
+    else:
+        # The window is K-1 entries wide; the shift re-reads all but the last of them.
+        reread = conv * (k - 2) / (k - 1)
+    saveable = reread * layers * sequences
+    f = saveable / total_traffic
+    return {
+        "within_layer_family": {
+            "reusable_bytes_per_token": saveable,
+            "share_of_traffic_pct": f * 100.0,
+            "ceiling_pct": f / (1.0 - f) * 100.0 if f < 1.0 else float("inf"),
+            "matrix_state_reuse_bytes": 0,
+            "note": "the most a policy targeting reuse WITHIN a recurrent layer could ever "
+                    "save, on the pinned runtime's kernels: the conv window's shift re-read. "
+                    "The matrix state contributes zero because the GDN kernel already holds "
+                    "each column in registers across both passes -- one global read, one "
+                    "global write. A reuse distance the cache can serve is not worth much if "
+                    "there are almost no bytes at that distance.",
+        }
+    }
 
 
 def persist_family_ceiling(state_read, total_traffic, persisting_l2_bytes):
@@ -123,9 +224,21 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None
 
     Bands and weights come from decide.py rather than being restated here: a ceiling
     expressed in bands that had drifted from the scorer's would be worse than no ceiling.
+
+    The geometry comes from the matrix spec when it carries one, and from the pinned
+    integration otherwise. A second model measured on the same runtime is a different state
+    shape against different decode rates, and pairing one model's rates with another's
+    geometry produces a confident, wrong ceiling with nothing in the output to show it -- so
+    the spec that supplies the rates may also supply the shape, and the result records which
+    was used.
     """
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import decide
+
+    geometry_source = "pin"
+    if spec.get("model"):
+        m = spec["model"]
+        geometry_source = "matrix spec"
 
     arms, ratios, persist_ratios = {}, {}, {}
     for name, weight in sorted(decide.DEFAULT_WEIGHTS.items()):
@@ -145,7 +258,8 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None
                 raise SystemExit(f"arm {name!r}: give ms_per_token or aggregate_tps")
             ms = seqs / float(tps) * 1000.0
         c = arm_ceiling(m, seqs, ms, float(arm.get("state_bytes_scale", 1.0)), bandwidth_gbs,
-                        persisting_l2_bytes or spec.get("persisting_l2_bytes"))
+                        persisting_l2_bytes or spec.get("persisting_l2_bytes"),
+                        arm.get("active_bytes_per_token"))
         c["measured"] = True
         c["weight"] = weight
         c["source"] = arm.get("source", "unspecified")
@@ -169,6 +283,7 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None
                         "return on this model and device, if a submission removed ALL "
                         "recurrent-state traffic on every arm",
         "model": m.get("label"),
+        "model_geometry_source": geometry_source,
         "device_bandwidth_gbs": bandwidth_gbs,
         "arms": arms,
         "arms_without_a_measured_rate": missing,
