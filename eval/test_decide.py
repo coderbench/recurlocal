@@ -371,6 +371,40 @@ class WorkloadCoverage(unittest.TestCase):
             self.assertEqual(waived.returncode, 0)
 
 
+class Summary(unittest.TestCase):
+    """The human summary is what anyone actually reads. It must not be able to read cleaner
+    than the JSON it summarizes, and it must survive every verdict shape."""
+
+    def _text(self, verdict):
+        import io
+        buf = io.StringIO()
+        label.summarize(verdict, stream=buf)
+        return buf.getvalue()
+
+    def test_every_qualifier_on_the_verdict_reaches_the_summary(self):
+        doc = real_doc({name: {"weight": w, "baseline_tps": 100.0, "candidate_tps": 110.0}
+                        for name, w in label.DEFAULT_WEIGHTS.items() if name != "concurrency32"})
+        doc["measurement"] = {"unresolved_workloads": ["batch1/ctx128"]}
+        text = self._text(label.score_real(doc))
+        self.assertIn("NOT MEASURED", text)
+        self.assertIn("concurrency32", text)
+        self.assertIn("unresolved", text)
+        self.assertIn("significant false", text)
+
+    def test_it_survives_the_verdicts_that_carry_no_workloads(self):
+        # A rejected-correctness verdict has no workloads and no gain; a synthetic one has
+        # neither and a different track. Both must print rather than raise.
+        for v in (label.score_real(real_doc(flat(1.10), identical=False)),
+                  label.score_synthetic({"correctness": "pass"})):
+            self.assertIn("verdict:", self._text(v))
+
+    def test_a_regression_is_named(self):
+        w = dict(flat(1.10))
+        w["concurrency32"] = {"weight": 0.20, "baseline_tps": 100.0, "candidate_tps": 90.0}
+        text = self._text(label.score_real(real_doc(w)))
+        self.assertIn("regressed: concurrency32", text)
+
+
 class MatrixCeiling(unittest.TestCase):
     """What is the most this repository can ever pay?
 

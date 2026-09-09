@@ -210,6 +210,38 @@ def score_synthetic(doc):
     return out
 
 
+def summarize(v, stream=sys.stderr):
+    """A one-screen version of the verdict, on stderr so stdout stays machine-readable.
+
+    The JSON is what a release script reads; nobody reads it to find out what happened. This
+    prints the same fields in the order that decides them, and every qualifier the verdict
+    carries - unresolved arms, a missing workload - so a summary can never look cleaner than
+    the result it summarizes.
+    """
+    if v.get("track") == "synthetic":
+        print(f"\nverdict: {v['verdict']}   {v.get('reason', '')}", file=stream)
+        return
+    gain = v.get("weighted_gain_pct")
+    head = f"\nverdict: {v['verdict']}"
+    if gain is not None:
+        head += (f"   weighted gain {gain:+.3f}%   impact {v.get('impact') or 'none'}"
+                 f"   significant {str(bool(v.get('significant'))).lower()}")
+    print(head, file=stream)
+    for name, w in sorted((v.get("workloads") or {}).items()):
+        print(f"  {name:<15s} {w['gain_pct']:+.3f}%  (w={w['weight']:.2f})", file=stream)
+    if v.get("unresolved_workloads"):
+        print(f"  unresolved: {v['unresolved_workloads']}", file=stream)
+    cov = v.get("workload_coverage")
+    if cov:
+        print(f"  NOT MEASURED: {', '.join(cov['missing'])} "
+              f"({cov['missing_weight_share']:.0%} of the weight)"
+              f"{' -- waived' if v.get('partial_waived') else ''}", file=stream)
+    if v.get("regressed_workloads"):
+        print(f"  regressed: {', '.join(v['regressed_workloads'])}", file=stream)
+    if v.get("reason"):
+        print(f"  {v['reason']}", file=stream)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -234,6 +266,7 @@ def main():
     if a.output:
         a.output.write_text(text + "\n")
     print(text)
+    summarize(verdict)
     # A verdict is not a process failure: the caller reads the JSON. Only a scored,
     # significant improvement exits 0, so a release script can gate on it directly.
     return 0 if verdict.get("scored") and verdict.get("significant") else 1

@@ -110,13 +110,20 @@ really ran (188 launches at batch 1) and the concurrency arms really went throug
 `decode_packed` (129/138 tokens packed at c=4):
 
 ```
-$ python3 eval/decide.py --real results/rtx5090-real.json
+$ python3 eval/decide.py --real results/rtx5090-real.json   # JSON on stdout, this on stderr
+
 verdict: reject   weighted gain -0.488%   impact none   significant false
-  batch1         +0.016%  (w=0.40)
-  concurrency16  -1.311%  (w=0.20)
-  concurrency4   -0.667%  (w=0.20)
+  batch1          +0.016%  (w=0.40)
+  concurrency16   -1.311%  (w=0.20)
+  concurrency4    -0.667%  (w=0.20)
   unresolved: ['batch1/ctx16384']
+  NOT MEASURED: concurrency32 (20% of the weight)
 ```
+
+That last line matters more than the verdict above it. A workload left out of the matrix is
+not averaged in as a zero — the weights that remain are renormalised, so omitting an arm
+removes it from the mean. This result has no concurrency-32 arm, and concurrency 32 is where
+the room is, so the scorer says so and refuses to call the run significant on its own.
 
 It costs more than it saves, and the cost grows with concurrency exactly as the axis sweeps
 predicted. An earlier scored run reported +0.053% for `persist` with safe window delivery;
@@ -133,8 +140,10 @@ recurrent share                                                      1.65%
 ```
 
 Qwen3.8-27B is a **dense** hybrid: every weight is read every token, so at batch 1 the
-recurrent state is 1.65% of the memory traffic. Making it *free* would be worth 1.65% — below
-the 2% floor the go/no-go table rejects at, before any policy is chosen.
+recurrent state is 1.65% of the memory traffic. Making it *free* would be worth 1.68% in
+throughput — a step carrying *f* less traffic runs in *(1−f)* of the time, so tok/s rise by
+*f/(1−f)* — still below the 2% floor the go/no-go table rejects at, before any policy is
+chosen.
 `eval/traffic_budget.py` computes this from the pinned geometry, and it is worth running
 before optimizing for any new model or concurrency.
 
