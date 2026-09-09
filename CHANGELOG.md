@@ -6,6 +6,147 @@ No performance claim appears here without a measurement behind it. See `docs/FRO
 
 ## [Unreleased]
 
+### Measured — the MoE thesis, tested on hardware, and the batch-1 bound moves
+
+The open problem this repository handed over was whether *a model with less weight traffic per
+token* moves the terms the persist bound is made of. It does, by more than the residency ratios
+alone suggest.
+
+The bound is `2 x min(capacity, footprint) / step_traffic`. The capacity is the device's 60 MiB
+and cannot be raised, so the only lever is the denominator — and `eval/traffic_budget.py` now
+inverts the bound at the significance floor and prints the threshold outright: **a decode step
+must move at most 6.42 GB** before a persisting window over this footprint reaches 2% at all.
+Qwen3.8-27B moves 18.5 GB.
+
+**Qwen3.6-35B-A3B** is the same architecture family — Gated DeltaNet plus full attention, the
+same pinned SparkInfer commit, the same hook, the same box — with a sparse MoE FFN reading 8 of
+256 experts per token. Nothing about the integration changed: the adapter reads the state
+geometry from the runtime's config, so it brackets a 30-layer 2 MiB state as readily as a
+48-layer 3 MiB one (`recurrent_layers: 30, bytes_per_layer: 2146304` in its own telemetry, which
+is `32 x 128 x 128 x 4 + 3 x 8192 x 2` exactly). The geometry was read from the checkpoint's
+metadata and tensor shapes, not from the runtime's defaults, and both formulas reproduce the
+pinned model's numbers.
+
+Two terms move at once, which is the part the residency ratios do not show:
+
+| batch 1 | Qwen3.8-27B (dense) | Qwen3.6-35B-A3B (sparse MoE) |
+|---|--:|--:|
+| recurrent footprint | 146.8 MiB | **61.4 MiB** |
+| vs 60 MiB persisting capacity | 2.4x | **1.02x** |
+| resident fraction of the state | 41% | **98%** |
+| decode step traffic | 18.5 GB | **3.56 GB** |
+| traffic ceiling | 1.69% | **3.76%** |
+| persist-family ceiling | 0.68% | **3.67%** |
+| measured `persist` | +0.10% | **+1.26%** |
+
+Three interleaved pairs, control 503.18 tok/s, noise floor 0.078%, paired ratios
+1.0137 / 1.0120 / 1.0126 — resolved, and the largest real-model gain this repository has
+measured. It is a third of the ceiling and leaves 2.4 points of headroom, which is what makes
+batch-1 decode a surface here rather than the dead end it is on the dense model.
+`results/rtx5090-moe-matrix.json` carries the data.
+
+It does **not** rescue concurrency, and on this checkpoint concurrency cannot be measured at
+all — see the runtime defect below.
+
+### Found — why the runtime falls off its batched decode path, worth 5.4x
+
+`docs/MINING.md` said this surface was worth two orders of magnitude more than anything the
+library does. It is, and one instance of it is now identified rather than observed.
+
+On the MoE checkpoint the fallback is deterministic. Measured with the adapter's own packing
+counters, one isolated run per width: concurrency 8 packs 133 of 151 tokens and reaches
+**2456 tok/s**; concurrency 16 packs **127 of 2173** and reaches 452; concurrency 32 packs
+**127 of 4205** and reaches 456 — *below* the 503 tok/s single-sequence rate, because above 8
+rows the runtime decodes one row at a time. The runtime prints its own cause:
+
+```
+[dflash-verify] mmvq_rows refused type=12 N=16 n_out=8192 K=2048
+[dflash-verify] declined at layer=0 (linear_attn=1) N=16
+```
+
+`launch_mmvq_q4k_rows` refuses `M > 8`, and the bf16 `launch_mmvq_rows` dispatcher has no
+chunking loop — while its own `_f32` sibling, eight lines away, chunks `M` into groups of 8 for
+exactly this reason. So the first Q4_K projection of a wider batch is refused,
+`dflash_verify_short_run` declines at layer 0, and `decode_packed` returns false for the whole
+batch. `type=12` is Q4_K; `n_out=8192, K=2048` is `attn_qkv.weight`, the linear-attention
+projection on every recurrent layer.
+
+The dense model's *intermittent* 32-sequence collapse is a separate observation and remains
+unexplained: same family, no established common cause. What is new is that neither can pass
+unnoticed again — see the guard below.
+
+### Closed — reuse the cache can actually serve, bounded rather than built
+
+`docs/MINING.md`'s second open surface asked whether reuse *within* a recurrent layer, a
+distance L2 serves for free, has any bytes at it. Almost none, and `eval/traffic_budget.py`
+now reports the bound as `within_layer_family`:
+
+- **The matrix state contributes zero.** `gdn_ar_fast_kernel` holds each state column in
+  registers across both of its passes — "ONE global read + ONE global write of the 2 MB/layer
+  state", in its own comment — and the batched kernel the concurrency path uses is the same
+  shape. 98% of the recurrent bytes are touched exactly twice, once each way.
+- **The conv window's shift is the whole of it.** `conv_split_kernel` reads the K-1 window
+  entries to convolve and then re-reads K-2 of them to shift the window, so the reusable bytes
+  are `conv_state x (K-2)/(K-1)` per layer: **1.97 MB per token** against an 18.5 GB step.
+
+A **0.011%** ceiling on the dense model and 0.028% on the MoE — two to three orders of magnitude
+under the floor, and the bound is generous because each thread reads its own window entries and
+most of those re-reads never leave a register. It is a property of this runtime, not of Gated
+DeltaNet: the naive kernel SparkInfer replaced read the state twice and wrote it twice, and the
+same bound would be four times larger against a runtime like that. The reuse was real; somebody
+else already took it, in registers, where it belongs.
+
+### Added — a hot-set policy that admits whole layers
+
+`HotSetPolicy::Quota`. Every policy before it answers oversubscription by moving one dial — the
+hit ratio — for every layer alike, which models the cache as something that can keep 97% of a
+byte. It cannot: a line is resident or it is not. `Quota` admits whole layers at the full hit
+ratio until the set-aside is spent and declines the window for the rest, spread evenly and
+decided from the layer ordinal alone so the choice cannot move between tokens — a window that
+moved would evict exactly the state it kept last time.
+
+It is inert where the footprint is many times the budget, which is every regime the dense model
+offers, and that is why it was not worth building until a model existed whose footprint is 1.02x
+the cache rather than 2.4x. Registered on `eval/sweep.py` and `eval/real_sweep.py`, which also
+gain `budget-fraction` and `hit-ratio` axes: on a model whose footprint is close to the cache,
+the difference between reserving 45 MiB and 60 MiB is the difference between three quarters of
+the state resident and all of it.
+
+### Added — the evaluator can no longer score a batch that never happened
+
+- **A concurrency arm whose runtime fell off the batched path is refused by name.** The adapter
+  has always counted `tokens_packed` and `max_rows_seen`; nothing read them. `real_eval.py` now
+  does, and refuses an arm that packed under half its tokens — aggregate throughput from a run
+  that decoded one row at a time is not that workload's number, and a median over repeats turns
+  one such run into a plausible-looking result for whatever configuration happened to be
+  running. Stated limitation: the control arm is unhooked by construction and emits no
+  telemetry, so a collapse *there* is still invisible. Both observed collapses were in the
+  candidate.
+- **A sweep can discard its opening run.** `--warmup-runs N`, default 0 so every result
+  published before it reproduces exactly. The first concurrency-4 control on the MoE checkpoint
+  came in at 841.9 aggregate tok/s against 910.9 and 917.6 after it — every candidate in pair 1
+  was compared against a slow control, and the arm's own noise floor became 8.3%, which no
+  fraction-of-a-percent difference can resolve against.
+
+### Added — a ceiling a reader can calibrate, and a screen for the next model
+
+- **`--matrix` accepts a model geometry.** A second model measured on the same runtime is a
+  different state shape against different decode rates; pairing one model's rates with
+  another's geometry would produce a confident, wrong ceiling with nothing in the output to
+  show it. The spec that supplies the rates may now supply the shape, and the result records
+  which was used.
+- **`break_even_step_traffic_bytes`.** The bound inverted at the significance floor: the step
+  traffic a candidate model has to come in under before a persisting window is worth anything
+  at all. Turns "try a sparser model" from advice into a threshold — 6.42 GB on this device,
+  against Qwen3.8-27B's 18.5 GB and Qwen3.6-35B-A3B's 3.56 GB.
+- **`bandwidth_bound_check`.** `implied_total_bytes_per_token` is measured time times peak
+  bandwidth: what the step *could* have moved, not what it did. Against the bytes the
+  checkpoint says the step reads, the dense model sits near 1.0 and its ceiling is nearly
+  achievable; the MoE sits at 77% and its ceiling is a looser upper bound. Publishing the
+  second kind without saying which it is would be the ceiling-in-the-wrong-currency mistake
+  again, in the other direction.
+
+
 ### Added — the real-model gate now has a producer
 
 - **SparkInfer adapter** (`integrations/sparkinfer/`, `include/recurlocal/sparkinfer.h`). The
