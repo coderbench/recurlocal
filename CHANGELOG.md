@@ -108,6 +108,24 @@ exactly this reason. So the first Q4_K projection of a wider batch is refused,
 batch. `type=12` is Q4_K; `n_out=8192, K=2048` is `attn_qkv.weight`, the linear-attention
 projection on every recurrent layer.
 
+**Proven without a patch.** The engine already splits a batch wider than its packed-row cap
+into chunks of that cap, and the cap is an environment variable, so setting it to the width the
+GEMV accepts isolates the cause exactly — nothing else changes:
+
+| | default cap (32) | `SPARKINFER_PACKED_MAX_ROWS=8` |
+|---|--:|--:|
+| c=16 | 5.8% packed, 452.8 tok/s | **94.4% packed, 1204.4 tok/s** |
+| c=32 | 3.0% packed, 455.6 tok/s | **97.3% packed, 1226.8 tok/s** |
+
+Two numbers, two questions. **The cliff is 5.4x** — crossing from 8 rows (2456 tok/s) to 16
+(452) at the default cap. **The cap recovers 2.7x**, not the whole cliff, because chunking
+re-reads the weights once per chunk: four chunks of 8 at 32 sequences is four weight passes
+where one 32-row kernel would be one. A usable workaround; a wider-row kernel is still the fix.
+
+It also makes the MoE's concurrency arms measurable, so the scored matrix for that model is
+complete rather than partial — with the cap set on **both** arms, because it is a property of
+the workload rather than of the candidate.
+
 The dense model's *intermittent* 32-sequence collapse is a separate observation and remains
 unexplained: same family, no established common cause. What is new is that neither can pass
 unnoticed again — see the guard below.
