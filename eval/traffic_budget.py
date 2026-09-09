@@ -38,7 +38,8 @@ from pathlib import Path
 MiB = 1024 * 1024
 
 
-def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs):
+def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs,
+                persisting_l2_bytes=None):
     """The share of one decode step's traffic that recurrent state accounts for."""
     layers = m["recurrent_layers"]
     per_layer = (m["lin_state_bytes_per_layer"] * state_bytes_scale
@@ -57,7 +58,7 @@ def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs):
     # which would let a submission legitimately beat a number this repository called a
     # ceiling.
     ceiling = share / (1.0 - share)
-    return {
+    out = {
         "model": m.get("label"),
         "sequences": sequences,
         "recurrent_layers": layers,
@@ -74,9 +75,44 @@ def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs):
                 "runs in (1-f) of the time, so tok/s rise by f/(1-f). A locality policy "
                 "recovers a fraction of it, never more.",
     }
+    if persisting_l2_bytes:
+        out.update(persist_family_ceiling(state_read, total_traffic, persisting_l2_bytes))
+    return out
 
 
-def matrix_ceiling(m, spec, bandwidth_gbs, output=None):
+def persist_family_ceiling(state_read, total_traffic, persisting_l2_bytes):
+    """A second, much tighter ceiling: what a persisting-L2 policy specifically can reach.
+
+    The traffic ceiling assumes all the recurrent traffic can be removed. A persisting window
+    cannot remove traffic it cannot hold. State written at layer i is read again at layer i of
+    the NEXT token, so to save a byte the cache has to keep it across a full pass over the
+    model - which means the whole per-token recurrent footprint has to be resident at once,
+    not one layer's worth. That footprint is compared here against the device's persisting-L2
+    capacity, and whatever does not fit is traffic the persist family cannot address however
+    the window is shaped.
+
+    The bound is deliberately generous: it assumes a perfect replacement policy in which every
+    resident byte hits, and it ignores the set-aside's cost to everything else competing for
+    L2. A real policy lands below it.
+    """
+    resident = min(persisting_l2_bytes, state_read)
+    saved = resident * 2 / total_traffic          # the resident bytes' read AND write-back
+    return {
+        "persist_family": {
+            "per_token_state_footprint_bytes": state_read,
+            "persisting_l2_capacity_bytes": persisting_l2_bytes,
+            "footprint_over_capacity": state_read / persisting_l2_bytes,
+            "resident_fraction_of_state": resident / state_read,
+            "ceiling_pct": saved / (1.0 - saved) * 100.0,
+            "note": "an optimistic bound on the persist family only: every resident byte "
+                    "hits, and the set-aside costs nothing to the traffic competing with it. "
+                    "State is reused a whole model pass later, so the footprint that must be "
+                    "resident is every recurrent layer for every sequence, not one layer's.",
+        }
+    }
+
+
+def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None):
     """The best score the whole section 44 matrix can physically return.
 
     Every arm has its own ceiling, and the verdict is a weighted geometric mean over all of
@@ -91,7 +127,7 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import decide
 
-    arms, ratios = {}, {}
+    arms, ratios, persist_ratios = {}, {}, {}
     for name, weight in sorted(decide.DEFAULT_WEIGHTS.items()):
         arm = (spec.get("arms") or {}).get(name)
         if arm is None:
@@ -108,12 +144,15 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None):
             if not tps:
                 raise SystemExit(f"arm {name!r}: give ms_per_token or aggregate_tps")
             ms = seqs / float(tps) * 1000.0
-        c = arm_ceiling(m, seqs, ms, float(arm.get("state_bytes_scale", 1.0)), bandwidth_gbs)
+        c = arm_ceiling(m, seqs, ms, float(arm.get("state_bytes_scale", 1.0)), bandwidth_gbs,
+                        persisting_l2_bytes or spec.get("persisting_l2_bytes"))
         c["measured"] = True
         c["weight"] = weight
         c["source"] = arm.get("source", "unspecified")
         arms[name] = c
         ratios[name] = (1.0 + c["ceiling_pct"] / 100.0, weight)
+        if "persist_family" in c:
+            persist_ratios[name] = (1.0 + c["persist_family"]["ceiling_pct"] / 100.0, weight)
 
     if not ratios:
         raise SystemExit("no arm in the matrix had a measured decode rate")
@@ -141,6 +180,18 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None):
         "significance_floor_pct": decide.SIGNIFICANCE_PCT,
         "reachable_bands": [t for th, t in decide.IMPACT if best_pct >= th],
     }
+    if persist_ratios:
+        pw = sum(w for _, w in persist_ratios.values())
+        pgm = math.exp(sum(w * math.log(r) for r, w in persist_ratios.values()) / pw)
+        p_pct = (pgm - 1.0) * 100.0
+        out["persist_family_best_possible_weighted_gain_pct"] = p_pct
+        out["persist_family_note"] = (
+            "the persist family cannot save traffic it cannot hold resident. State is reused a "
+            "whole model pass later, so the footprint that must stay in cache is every "
+            "recurrent layer for every sequence. Against this device's persisting-L2 capacity "
+            "that footprint is oversubscribed at every arm, and the shortfall grows with "
+            "concurrency faster than the room does - which is why the persist family measures "
+            "nothing at 16 sequences even though the traffic ceiling has quadrupled.")
     if best_pct < decide.SIGNIFICANCE_PCT:
         out["conclusion"] = ("no submission can clear the significance floor on this matrix; "
                              "the traffic to recover is not there")
@@ -180,6 +231,10 @@ def main():
                     help="1.0 for fp32 matrix state; 0.5 when the runtime compacts it to bf16 for "
                          "batched decode (SparkInfer does, under SPARKINFER_CB_GDN_STATE_B16), "
                          "which halves the footprint the whole question is about")
+    ap.add_argument("--persisting-l2-bytes", type=int, metavar="BYTES",
+                    help="the device's persisting-L2 capacity (recur_local_info prints it as "
+                         "persisting_l2_max_bytes). Adds a second, much tighter ceiling for "
+                         "the persist family: it cannot save traffic it cannot hold resident.")
     ap.add_argument("--measured-prefetch-cost-pct", type=float,
                     help="measured slowdown of a full extra state read, to test the model")
     ap.add_argument("--output", type=Path)
@@ -191,9 +246,11 @@ def main():
     m = pin["model"]
 
     if a.matrix is not None:
-        return matrix_ceiling(m, json.loads(a.matrix.read_text()), a.bandwidth_gbs, a.output)
+        return matrix_ceiling(m, json.loads(a.matrix.read_text()), a.bandwidth_gbs,
+                              a.output, a.persisting_l2_bytes)
 
-    out = arm_ceiling(m, a.sequences, a.ms_per_token, a.state_bytes_scale, a.bandwidth_gbs)
+    out = arm_ceiling(m, a.sequences, a.ms_per_token, a.state_bytes_scale,
+                      a.bandwidth_gbs, a.persisting_l2_bytes)
     share = out["recurrent_share_of_traffic_pct"] / 100.0
     read_share = out["state_read_bytes_per_token"] / out["implied_total_bytes_per_token"]
 

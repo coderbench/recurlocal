@@ -75,7 +75,8 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, jsonschema
-          for f in ("repo-manifest.json", "configs/qwen3.8-27b-feasibility.json"):
+          for f in ("repo-manifest.json", "configs/qwen3.8-27b-feasibility.json",
+                    "configs/rtx5090-section44-ceiling.json"):
               json.load(open(f))
           for schema in ("eval/result_schema.json", "eval/real_result_schema.json"):
               jsonschema.Draft202012Validator.check_schema(json.load(open(schema)))
@@ -95,6 +96,13 @@ jobs:
                   print(r.stdout.strip()[:400])
           print("json assets ok")
           PY
+      - name: the ceiling still computes
+        # The ceiling decides whether competing here is worth anyone's time, and it is
+        # derived from decide.py's weights and bands. A change to either that silently
+        # stopped the ceiling computing would leave the claim standing with nothing behind it.
+        run: |
+          python3 eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json \
+                                         --bandwidth-gbs 1792 > /dev/null
 
   cuda-build:
     # Device-less compile gate. Untrusted performance PRs must not reach a GPU host

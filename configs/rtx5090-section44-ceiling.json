@@ -2,6 +2,8 @@
   "_comment": "Measured decode rates for the section 44 workload matrix, on the pinned model and runtime. eval/traffic_budget.py --matrix turns these into the highest weighted gain any submission could physically earn. Every rate here is a BASELINE (control-arm) measurement from results/rtx5090-real.json; none is estimated. An arm with no measured rate is left out rather than guessed, and the tool reports which.",
   "device": "RTX 5090",
   "bandwidth_gbs": 1792,
+  "persisting_l2_bytes": 62914560,
+  "_persisting_l2_bytes_note": "persisting_l2_max_bytes as queried from the device by tools/info.cpp (recur_local_info) on this box: 60 MiB of a 96 MiB L2. Adds the persist-family ceiling, which is far tighter than the traffic ceiling.",
   "arms": {
     "batch1": {
       "sequences": 1,

@@ -424,11 +424,11 @@ class MatrixCeiling(unittest.TestCase):
                 "concurrency32": {"sequences": 32, "aggregate_tps": 928.0, "state_bytes_scale": 0.5}}
         return {"arms": {k: v for k, v in base.items() if k in names}}
 
-    def _run(self, spec):
+    def _run(self, spec, persisting=None):
         import contextlib, io
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
-            traffic_budget.matrix_ceiling(self.PIN, spec, 1792.0)
+            traffic_budget.matrix_ceiling(self.PIN, spec, 1792.0, None, persisting)
         return json.loads(buf.getvalue())
 
     def test_the_ceiling_is_weighted_the_way_the_scorer_weights(self):
@@ -485,6 +485,51 @@ class MatrixCeiling(unittest.TestCase):
         freed = arm["state_traffic_bytes_per_token"]
         gain = (total / (total - freed) - 1.0) * 100.0
         self.assertAlmostEqual(arm["ceiling_pct"], gain, places=9)
+
+    def test_the_persist_family_ceiling_never_exceeds_the_traffic_ceiling(self):
+        out = self._run(self._spec(), persisting=62914560)
+        for name, arm in out["arms"].items():
+            if not arm.get("measured"):
+                continue
+            with self.subTest(arm=name):
+                self.assertLessEqual(arm["persist_family"]["ceiling_pct"], arm["ceiling_pct"])
+
+    def test_the_persist_ceiling_falls_with_concurrency_while_the_room_grows(self):
+        # The finding this whole bound exists to state. More sequences means more recurrent
+        # traffic to recover -- but the footprint that has to stay resident to recover ANY of
+        # it grows just as fast, and the cache does not. So the persist family's ceiling moves
+        # the opposite way from the opportunity, which is why it measures nothing at 16
+        # sequences even though the traffic ceiling has quadrupled.
+        out = self._run(self._spec(), persisting=62914560)
+        order = ["batch1", "concurrency4", "concurrency16", "concurrency32"]
+        traffic = [out["arms"][n]["ceiling_pct"] for n in order]
+        persist = [out["arms"][n]["persist_family"]["ceiling_pct"] for n in order]
+        self.assertEqual(traffic, sorted(traffic), "the traffic ceiling must rise")
+        self.assertEqual(persist, sorted(persist, reverse=True), "the persist ceiling must fall")
+
+    def test_a_cache_big_enough_to_hold_it_all_reaches_the_traffic_ceiling(self):
+        # The bound has to be tight at the easy end, or it is not measuring residency.
+        out = self._run(self._spec(("batch1",)), persisting=10 ** 12)
+        arm = out["arms"]["batch1"]
+        self.assertAlmostEqual(arm["persist_family"]["resident_fraction_of_state"], 1.0)
+        self.assertAlmostEqual(arm["persist_family"]["ceiling_pct"], arm["ceiling_pct"], places=9)
+
+    def test_the_resident_fraction_is_capacity_over_footprint(self):
+        cap = 62914560
+        out = self._run(self._spec(("concurrency16",)), persisting=cap)
+        pf = out["arms"]["concurrency16"]["persist_family"]
+        self.assertAlmostEqual(pf["resident_fraction_of_state"],
+                               cap / pf["per_token_state_footprint_bytes"])
+        self.assertAlmostEqual(pf["footprint_over_capacity"],
+                               pf["per_token_state_footprint_bytes"] / cap)
+
+    def test_the_footprint_is_every_layer_not_one(self):
+        # State is reused a whole model pass later, so a per-layer footprint would understate
+        # the residency requirement 48-fold and make the persist family look viable.
+        out = self._run(self._spec(("concurrency16",)), persisting=62914560)
+        arm = out["arms"]["concurrency16"]
+        self.assertAlmostEqual(arm["persist_family"]["per_token_state_footprint_bytes"],
+                               arm["state_bytes_per_layer_per_sequence"] * 48 * 16)
 
     def test_a_matrix_with_nothing_measured_is_an_error_not_a_zero_ceiling(self):
         with self.assertRaises(SystemExit):

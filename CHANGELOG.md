@@ -152,6 +152,25 @@ while nothing in the repo ran it.
   rather than guessed. Inputs live in `configs/rtx5090-section44-ceiling.json`, every one of
   them a baseline measurement from `results/rtx5090-real.json`.
 
+### Added — why the persist family captures nothing, as arithmetic
+
+- **`eval/traffic_budget.py --persisting-l2-bytes`** computes a second ceiling, far tighter
+  than the traffic one and specific to the persist family. A persisting window cannot save
+  traffic it cannot hold: state written at layer *i* is read again at layer *i* of the **next**
+  token, so to save a byte the cache has to keep it across a full pass over the model — the
+  whole per-token recurrent footprint has to be resident at once, not one layer's worth. On
+  Qwen3.8-27B against this device's 60 MiB persisting capacity that footprint is 2.4x
+  oversubscribed at batch 1 and **20x at 16 sequences**.
+
+  The consequence is the answer to an open problem this repository had left standing as
+  "nobody has explained why": the persist family's ceiling *falls* as concurrency rises —
+  0.68% at batch 1, 0.58% at 4, 0.34% at 16 — while the traffic ceiling rises 1.68% → 7.23%
+  over the same range. The room grows and the fraction of it a persisting cache can address
+  shrinks faster. Measurement agrees: `persist` at 16 sequences, with the window genuinely
+  attached at the graph node, is +0.06% against a 0.13% control noise floor and a predicted
+  ceiling of 0.34%. The bound is deliberately generous — every resident byte hits, the
+  set-aside costs its neighbours nothing — and a real policy lands below it.
+
 ### Fixed — the ceiling was quoted in the wrong currency
 
 - **A ceiling a submission could legitimately beat.** `traffic_budget.py` reported the
