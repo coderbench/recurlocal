@@ -1,0 +1,147 @@
+{
+  "what_this_is": "SYNTHETIC recurrent-state locality benchmark on one RTX 5090. NOT a model-serving speedup: no real model or runtime was involved. Overview sections 17 and 28.",
+  "environment": {
+    "timestamp_utc": "2026-09-09T09:51:36+00:00",
+    "recurlocal_commit": null,
+    "recurlocal_dirty": null,
+    "benchmark_args": [
+      "--layers",
+      "48",
+      "--state-bytes",
+      "3145728",
+      "--tokens",
+      "32",
+      "--warmup-tokens",
+      "4",
+      "--inner-iters",
+      "2"
+    ],
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "compute_capability": "12.0",
+    "sm_count": 170,
+    "driver_version": 13020,
+    "runtime_version": 13030,
+    "clocks_pinned": false,
+    "pinned_clock_mhz": null,
+    "observed_clock_mhz": {
+      "min": 180,
+      "median": 2415,
+      "max": 2437
+    }
+  },
+  "measurement_caveats": [
+    "Graphics clocks could NOT be pinned on this box (container lacks the permission), so absolute times are not reproducible off it; same-box deltas are.",
+    "baseline and persist are tight (spread < 1%); prefetch and combined vary by ~4-5% because the pre-touch stream contends for SMs. Treat differences under ~5% on those modes as unresolved.",
+    "min-of-N is reported alongside the median because it is more robust to an unpinnable boost clock."
+  ],
+  "correctness": "pass",
+  "stability": {
+    "threshold_pct": 2.0,
+    "max_rel_spread_pct": 4.734758038841132,
+    "verdict": "unstable"
+  },
+  "modes": {
+    "baseline": {
+      "median_ms": 7.456768,
+      "min_ms": 7.436512,
+      "rel_spread_pct": 0.5226929414995986,
+      "gain_median_pct": 0.0,
+      "gain_min_of_n_pct": 0.0
+    },
+    "persist": {
+      "median_ms": 6.773472,
+      "min_ms": 6.7184,
+      "rel_spread_pct": 0.949586858851714,
+      "gain_median_pct": 10.087824973661963,
+      "gain_min_of_n_pct": 10.688735413193617
+    },
+    "prefetch": {
+      "median_ms": 6.432768,
+      "min_ms": 6.270112,
+      "rel_spread_pct": 4.734758038841132,
+      "gain_median_pct": 15.91849729385546,
+      "gain_min_of_n_pct": 18.602538519248135
+    },
+    "combined": {
+      "median_ms": 6.752608,
+      "min_ms": 6.602464,
+      "rel_spread_pct": 4.59342523659006,
+      "gain_median_pct": 10.427970941005317,
+      "gain_min_of_n_pct": 12.632374822490512
+    }
+  },
+  "surface_sweeps": {
+    "pre_touch_strategy": {
+      "scalar": {
+        "gain_median_pct": 13.809591255634967,
+        "gain_min_of_n_pct": 13.703683770176568,
+        "median_ms": 6.551968,
+        "min_ms": 6.540256,
+        "rel_spread_pct": 0.24175942251243987
+      },
+      "vec4": {
+        "gain_median_pct": 14.808811284593059,
+        "gain_min_of_n_pct": 15.405549016978771,
+        "median_ms": 6.494944,
+        "min_ms": 6.443808,
+        "rel_spread_pct": 1.7805850212103476
+      },
+      "vec4_ldcg": {
+        "gain_median_pct": 14.539064612057317,
+        "gain_min_of_n_pct": 14.900002472126772,
+        "median_ms": 6.51024,
+        "min_ms": 6.47216,
+        "rel_spread_pct": 1.544889282115563
+      }
+    },
+    "prefetch_distance": {
+      "1": {
+        "gain_median_pct": 14.684502453405003,
+        "gain_min_of_n_pct": 14.889777676704252,
+        "median_ms": 6.501984,
+        "min_ms": 6.472736,
+        "rel_spread_pct": 5.663256015394681
+      },
+      "2": {
+        "gain_median_pct": 15.578128719942864,
+        "gain_min_of_n_pct": 15.811584597060735,
+        "median_ms": 6.451712,
+        "min_ms": 6.421216,
+        "rel_spread_pct": 1.596599476232045
+      },
+      "3": {
+        "gain_median_pct": 16.985792459460814,
+        "gain_min_of_n_pct": 17.160905864321997,
+        "median_ms": 6.37408,
+        "min_ms": 6.347264,
+        "rel_spread_pct": 1.0402128620914657
+      },
+      "4": {
+        "gain_median_pct": 18.18910337691848,
+        "gain_min_of_n_pct": 18.58135690084499,
+        "median_ms": 6.309184,
+        "min_ms": 6.271232,
+        "rel_spread_pct": 3.7907913289579027
+      },
+      "6": {
+        "gain_median_pct": 21.014338462497207,
+        "gain_min_of_n_pct": 20.850667720597404,
+        "median_ms": 6.161888,
+        "min_ms": 6.153472,
+        "rel_spread_pct": 1.175224216993241
+      },
+      "8": {
+        "gain_median_pct": 20.523628990964248,
+        "gain_min_of_n_pct": 20.324432915495215,
+        "median_ms": 6.186976,
+        "min_ms": 6.180384,
+        "rel_spread_pct": 0.3382589491215032
+      }
+    }
+  },
+  "correctness_matrix": {
+    "configurations_checked": 39,
+    "checksum_mismatches": 0,
+    "note": "every pre-touch strategy x prefetch distance produced bit-identical final state"
+  }
+}

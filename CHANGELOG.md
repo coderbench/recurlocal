@@ -1,0 +1,264 @@
+# Changelog
+
+Notable changes to RecurLocal. Format loosely follows [Keep a Changelog](https://keepachangelog.com).
+
+No performance claim appears here without a measurement behind it. See `docs/FRONTIER.md`.
+
+## [Unreleased]
+
+### Added — the real-model gate now has a producer
+
+- **SparkInfer adapter** (`integrations/sparkinfer/`, `include/recurlocal/sparkinfer.h`). The
+  metric that decides this project had no way to be measured: `eval/decide.py --real` needed a
+  `real-result.json` and nothing could produce one. It can now. The adapter brackets the
+  Gated-DeltaNet layers of a **pinned** SparkInfer commit (`pin.json`) decoding Qwen3.8-27B
+  NVFP4 on an RTX 5090, as a 77-line insertion-only patch plus a library target (CI
+  asserts the patch deletes nothing). One binary
+  runs both arms: with `RECURLOCAL` unset it is the unmodified runtime.
+- **Both recurrent states, not one.** A Qwen3.8-27B layer carries a 3 MiB fp32 matrix state
+  *and* a 60 KiB bf16 convolution window, in separate allocations. v0.1 modelled the first and
+  could not even express the second: `pre_touch_async` took a `const float*`.
+  `pre_touch_bytes_async` and `PreTouchCoverage{Matrix,Conv,Both}` fix that, and the hot set
+  now counts both (3,207,168 bytes per layer, confirmed by the adapter's own telemetry).
+- **The hot-set accounting is fixed, and the fix is measurable.**
+  `HotSetModel{CurrentLayer,TokenFootprint,ReuseWindow}`. v0.1 counted the layer about to run,
+  which is how `persist` measured -11% at four concurrent sequences while the planner reported
+  *zero* oversubscription. The reuse distance for a recurrent state is a whole token, so
+  `TokenFootprint` counts every recurrent layer for every sequence and `ReuseWindow` adds the
+  traffic that passes through L2 in between. `CurrentLayer` is retained as the control: on the
+  real model the corrected model reports 48/48 layers oversubscribed where the old one reported
+  0. Also exposed on the synthetic benchmark (`--hot-set-model`) and in `eval/sweep.py`.
+- **`WindowAttach{Stream,CaptureNode}`, and the finding behind it.** SparkInfer captures the
+  whole decode step into a graph and replays it per token, and a stream access-policy window is
+  host-side state that a graph never records — so under graph decode `persist` measures its
+  cost and none of its effect. `attach_window_to_captured_node()` sets the attribute on the
+  kernel node the capture just recorded (`cudaStreamGetCaptureInfo`), needing no change to how
+  SparkInfer launches its kernels, and it works: `windows_attached_to_node` 48/48.
+
+  It is also **not documented as safe**, and a measurement says why that matters. On batch-1
+  decode it is fine. At 32 concurrent sequences, during the scored run, that arm twice
+  collapsed to a runtime fallback — `[prefill] graph capture failed -> fallback`, half the
+  steps decoding row by row, 1260 → 902 aggregate tok/s — and an immediate targeted rerun
+  reproduced it. A later 12-run probe (4 control, 4 `stream`, 4 `capture_node`, each in
+  isolation) reproduced it **zero** times, so accumulated device state is a co-factor and the
+  mutation alone is not a demonstrated cause. It has not been seen on the safe path or the
+  unhooked control, but 8 clean runs do not establish a rate. So `Stream` is the default,
+  `CaptureNode` is opt-in, and the controller checks `cudaStreamIsCapturing` for `Invalidated`
+  after each attach, counts it in `stats().capture_invalidations`, and latches itself off
+  after the first.
+
+  The axis separates the two cleanly at batch 1: `stream` **-0.019%**, `capture_node`
+  **+0.129%**. Every point of the persist result is the delivery mechanism, not the policy —
+  and the honest conclusion is about the boundary. A locality library can compute a persisting
+  window; under graph decode it cannot deliver one without the runtime attaching it at its own
+  launch site. Pre-touch has no such problem: its kernels and events are recorded like any
+  other work.
+- **`PrefetchJoin{PerLayer,TokenEnd}`.** Under capture, every fork/join pair is graph nodes,
+  and a hybrid model wants one per recurrent layer. Measured on the real model, this is worth
+  **1.20 points** — see below. It is the difference between the pre-touch costing 1.29% and
+  costing 0.09%.
+- **`WindowScope{Layer,Allocation,Ahead}` and `WindowTarget{Matrix,Conv,Widest,Narrowest}`.**
+  Only one access-policy window can be bound at a time, so with two recurrent states which one
+  it protects is a choice — and the conv state is the only one whose whole allocation fits in a
+  set-aside. Window selection and region resolution moved to the CPU planner
+  (`select_window_segment`, `resolve_window_region`), so they are unit-tested without a GPU;
+  the v0.1 equivalents lived in the CUDA controller and could not be.
+- **Row-major pre-touch** (`pre_touch_rows_async`) and a controller entry point for it. At
+  concurrency a runtime holds one state allocation per sequence and gathers their base pointers
+  into a device array. One launch per row would add 3,072 kernel nodes to a captured decode
+  graph at 32 sequences; this reads the base pointer device-side, so the launch count does not
+  depend on concurrency.
+- `eval/real_eval.py` — the scored measurement. Control and candidate interleaved on one box,
+  token-exact greedy replay as the correctness gate, per-context geometric mean, and the
+  control arm's own run-to-run spread reported as the noise floor.
+- `eval/real_sweep.py` — one adapter axis at a time against the real model, the real-runtime
+  counterpart of `eval/sweep.py`. It refuses to name a winner inside the noise floor, and
+  refuses to *estimate* a floor from fewer than three control repeats: two readings can land on
+  the same number, and a zero floor would make any difference look resolved.
+- `eval/traffic_budget.py` — what fraction of a decode step's memory traffic recurrent state
+  actually is, which is the ceiling on everything this project does.
+
+### Measured — the first real-model result, and it is a rejection
+
+One RTX 5090, CUDA 13.3, Qwen3.8-27B NVFP4 on SparkInfer `5347b27c`. Control and candidate
+are the same binary, interleaved. Batch-1 noise floor **0.023%** over 3 pairs.
+
+| | ceiling | control | `baseline` | `persist` | `prefetch` | `combined` |
+|---|--:|--:|--:|--:|--:|--:|
+| batch 1 | 1.65% | 96.1 tok/s | -0.01% | **+0.13%** | -1.29% | -1.17% |
+| concurrency 4 | 2.88% | 329 tok/s | -0.09% | +0.06% | -2.19% | -2.34% |
+| concurrency 16 | 6.73% | 769 tok/s | +0.36% | -0.21% | -5.88% | -5.40% |
+| concurrency 32 | — | 1262 tok/s | -1.13% | -1.13% | *unresolved* | *unresolved* |
+
+Output is token-exact against the unhooked runtime under greedy replay.
+
+The scored run — `persist` with safe window delivery, 3 interleaved pairs, batch 1 at three
+contexts plus concurrency 4 and 16 — is **+0.049% weighted**, and `eval/decide.py --real`
+returns `reject`: batch1 +0.059%, concurrency4 +0.091%, concurrency16 -0.013%, every arm
+inside its own run-to-run spread. Concurrency 32 is deliberately absent from the scored
+matrix and reported as unresolved instead; `real_eval.py` leaves an unmeasured arm out and
+`decide.py` renormalises the weights that remain, so a partial run reads as a partial verdict
+rather than a full one with invented halves.
+
+Three things this says that the synthetic benchmark could not:
+
+- **At batch 1 the hypothesis cannot pass, by arithmetic.** Qwen3.8-27B is a dense hybrid;
+  every weight is read every token, and recurrent state is 1.65% of the traffic. Making it
+  free would be worth 1.65%, under section 21's 2% floor, before any policy is chosen.
+- **At concurrency the room is real and none of it is captured.** The recurrent share
+  quadruples to 6.73% by 16 sequences, and `persist` moves the *wrong way* (+0.13% to -0.21%)
+  while `prefetch` gets worse in proportion to the bytes it moves.
+- **The pre-touch's cost is graph nodes, not memory.** Production decode is a captured CUDA
+  graph, so each fork/join is permanent: `PrefetchJoin::TokenEnd` recovers 1.20 of the
+  1.29 points, and the extra full read of recurrent state that remains costs 0.09%.
+
+Concurrency 32 is reported as unresolved rather than as a result: two of its four arms
+disagreed with themselves by 30% between repeats, and one of them was `baseline`, which
+installs no window and issues no pre-touch and therefore cannot cost anything. A median of
+two hides that; `real_eval.py` now publishes a `resolution` block beside every workload's
+gain so it cannot.
+
+The synthetic benchmark has now disagreed with the real model on four axes — prefetch
+distance (+21.0% at d=6 there, monotonically negative here), prefetch schedule (a 16-point
+penalty for doing less there, a saving here), pre-touch strategy (unresolved there, `ptx_l2`
+ahead by 0.70 points here) and hot-set policy (a 40-point swing there, 0.01% here). One
+structural cause: it does not capture a graph, and production decode does.
+
+`docs/OPTIMIZATION-SURFACES.md` carries the full matrix, `results/rtx5090-real.json` the raw
+data, and `eval/decide.py --real` the verdict.
+
+### Changed
+
+- `recurlocal_cuda` is compiled whole-program instead of with relocatable device code.
+  Separable compilation obliges every consumer to run a CUDA device-link step, and a runtime
+  linking RecurLocal as one more static archive got `undefined reference to
+  __cudaRegisterLinkedBinary_*` instead. Found by embedding it in SparkInfer, which is the
+  first time anything actually consumed it as a library.
+
+### Fixed
+
+- The streaming access-policy window was not clamped to the device maximum (128 MiB on an
+  RTX 5090), so hinting any larger weight buffer failed outright instead of hinting the
+  leading window. Found by measurement, not review.
+
+- The benchmark checksum sized its grid from the state and then clamped it to 65535 blocks,
+  so at the default geometry it covered only 44% of state. The correctness gate — the whole
+  guarantee that a locality change did not disturb model state — silently ignored the rest.
+  It now uses a grid-stride reduction over every element, folded in a fixed order so repeated
+  runs agree bit-for-bit rather than varying with `atomicAdd` ordering.
+- Pre-touch work ran outside the timed region: the stop event was recorded on the compute
+  stream only, so prefetch cost was never measured while its benefit was. The prefetch stream
+  is now joined before the clock stops.
+- `after_layer()` was a no-op, leaving the access-policy window bound to the compute stream.
+  Every following non-recurrent kernel inherited persisting/streaming policy against a state
+  pointer it never touches. The window is now scoped to the recurrent layer.
+- The controller was destroyed after its streams in the benchmark, so it cleared an
+  access-policy window on a destroyed stream.
+- The planner recommended a persisting window on devices reporting no persisting-L2 support,
+  where no set-aside can be reserved.
+- Unchecked `cudaMalloc` for the pre-touch scratch buffer left a sticky error on the context;
+  pre-touch now degrades to a no-op.
+- Benchmark arguments were unvalidated: `--tokens 0` emitted `inf`, which is not valid JSON
+  and crashed the evaluator.
+
+### Added
+
+- **Surface sweeps on real hardware** (`results/rtx5090-surfaces.json`) covering concurrency,
+  cache interference, hot-set policy, prefetch schedule, prefetch implementation and state
+  layout. Several overturn assumptions in the overview: kernel-integrated prefetch is 30-33
+  points *worse* than a separate stream, `persist` becomes harmful at four concurrent
+  sequences, and state layout alone is a 2.3x effect that changes which policy wins.
+- **Two shapes of cache interference** (`--stream-mode reuse|distinct`). Re-reading one buffer
+  every layer and giving each layer its own slice are different problems and give opposite
+  policy answers; only the second is what a persisting window should be protected from.
+- **First measured result** (`results/rtx5090-synthetic.json`): RTX 5090, CUDA 13.3, synthetic
+  benchmark. persist +10.1%, prefetch +15.9%, combined +10.4%; prefetch distance 6 reaches
+  +21.0%. Correctness bit-identical across 39 configurations. Synthetic only — no model, no
+  runtime, and the go/no-go gate remains open.
+- **Six pre-touch strategies** (`--pre-touch scalar|vec4|vec4_ldcg|ptx_l2|warp_tile|partial`).
+  The kernel was a single hard-coded scalar walk. `ptx_l2` issues real `prefetch.global.L2`
+  instructions — the "put this range in L2 now" primitive the overview assumed CUDA does not
+  expose for arbitrary allocations; PTX does. Adding a strategy is a kernel plus an
+  enumerator, and every strategy is measured against the others by one flag.
+- **Four hot-set policies** (`--hot-set-policy proportional|fixed|sqrt|cliff`) for what to do
+  when the recurrent state that wants to be resident exceeds the L2 set-aside. The shipped
+  heuristic was one line with no alternative to compare against; `fixed` is now the naive
+  control and `cliff` refuses the window rather than thrash a shared cache.
+- **Concurrency in the benchmark** (`--sequences N`). The per-layer hot set now scales with
+  batch, which is what makes the hot-set policy measurable at all: `hot_set_oversubscribed`
+  was 0 in every previous run because the benchmark decoded a single sequence.
+- **Streaming interference** (`--stream-bytes N`) between recurrent layers, standing in for
+  the attention and MoE weight traffic a hybrid model pushes through the same L2. Without it
+  the persisting window has nothing to defend against.
+- **Kernel-integrated prefetch** (`--prefetch-impl fused`, section 34.4). The compute kernel
+  performs the pre-touch itself, with no second stream and no extra launch, as an A/B against
+  the stream implementation on the same mode.
+- **State layout as an axis** (`--state-layout linear|head_interleaved|tile_swapped`, section
+  34.3). The map is a bijection, so every layout leaves bit-identical state and only the
+  access order changes — coalescing and cache-line utilisation, isolated from everything else.
+- **Weight/state cache QoS** (`--qos on`, section 34.6). `before_streaming_region` hints the
+  attention/MoE traffic as streaming so it passes through L2 without displacing recurrent
+  state, instead of inheriting whatever window the last recurrent layer left behind.
+- **Per-layer prefetch schedules** (`--prefetch-schedule uniform|ramp|alternating|sparse`,
+  section 34.1). A single global distance assumes every recurrent layer has the same compute
+  ahead of it to hide the walk behind, which is false in a hybrid model.
+- `eval/sweep.py`: walks one surface with everything else fixed, reports gain against that
+  surface's own noise floor, and refuses to name a winner inside it — so an unresolved axis
+  reads as open rather than solved.
+- **Prefetch distance as an open axis** (`--prefetch-distance 0..8`). It was capped at 0-or-1
+  in code, against section 34.1, and was leaving about six points on the table.
+- `docs/OPTIMIZATION-SURFACES.md`: each surface, the axis that isolates it, its measured
+  frontier, and its noise floor — including surfaces that cannot yet be competed on.
+- **Embeddable library surface.** RecurLocal is consumed by a runtime, so it now installs a
+  CMake package (`find_package(RecurLocal)`, `RecurLocal::recurlocal`,
+  `RecurLocal::recurlocal_cuda`) with public headers and a version header that CMake parses
+  as the single source of truth. CI builds an outside consumer against the installed package.
+- **CUDA Graph support.** A stream access-policy window is host-side state and is not
+  recorded into a captured graph, so the persist mode silently vanished from every replay on
+  any runtime using graph decode. The controller now detects capture and returns the window
+  in `LayerActions` for the caller to attach to its kernel launch or graph node. Pre-touch
+  forks the prefetch stream from compute with an event and rejoins it under capture — an
+  unjoined fork ends the capture invalid.
+- **Non-throwing integration boundary.** Construction and every entry point are `noexcept`
+  and report `cudaError_t`; `initialize()`/`status()` replace a throwing constructor, and
+  `validate(PlannerConfig)` lets a caller reject a bad config before building anything.
+- **Controller telemetry.** `stats()` counts windows applied, windows deferred under capture,
+  oversubscribed hot sets, pre-touch launches and bytes, and both stream priorities — so a
+  null end-to-end result can be explained instead of guessed at. Surfaced in the eval output.
+- `bind_streams` rejects the same stream for compute and prefetch, which would turn a
+  prefetch into the same work on the critical path.
+- Stated threading contract: one controller per compute stream, which is also the only
+  arrangement in which `concurrently_hot_bytes` is meaningful.
+- `recur_local_info` reports the real device when built with CUDA, instead of only
+  illustrative constants.
+- `run_eval.py --config` makes `configs/*.json` drive the benchmark geometry; it was
+  previously a file nothing read.
+- `eval/decide.py`: the go/no-go gate as a deterministic function of measurements, so the
+  project can settle its own bet rather than argue it. Refuses to accept a synthetic result
+  as a verdict. Covered by `eval/test_decide.py`, wired into `ctest`.
+- Environment provenance in the benchmark and eval output — GPU, compute capability, SM
+  count, driver and runtime version, commit and dirty-tree flag, plus observed or pinned
+  graphics clock (`--pin-clock-mhz`).
+- `eval/result_schema.json`, pinning the eval output shape.
+- Untimed warm-up tokens (`--warmup-tokens`, default 4).
+- Repeated, interleaved eval runs with median comparison and a stability verdict
+  (`--repeats`, `--stability-threshold-pct`).
+- Planner tests for device capability edges, window limits, concurrent hot sets, determinism
+  and config validation.
+- CI: Release build, JSON asset validation, and a device-less `nvcc` compile gate.
+- PR template and a harness-paths guard for `eval/`.
+
+### Changed
+
+- Build options are spelled `RECURLOCAL_*`; the `RECURLLOCAL_*` misspelling still works and
+  warns. `RECURLOCAL_WITH_CUDA` likewise, with the old macro still defined.
+- Tests use always-on checks. They previously used `assert`, so a Release build reported a
+  green run with nothing checked.
+- CMake defaults to `Release`; the documented build commands previously produced an
+  unoptimised `-O0` host build for a performance project.
+
+## [0.1.0]
+
+- Initial feasibility prototype: CPU locality planner, CUDA persisting-L2 controller,
+  asynchronous next-state pre-touch, baseline/persist/prefetch/combined modes, synthetic
+  benchmark, evaluator, CPU tests, SparkInfer integration design, GitHub CPU CI.

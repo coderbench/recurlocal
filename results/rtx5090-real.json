@@ -1,0 +1,827 @@
+{
+  "what_this_is": "Real end-to-end decode of Qwen3.8-27B on a pinned SparkInfer commit, through integrations/sparkinfer/. Control and candidate are the same binary, interleaved on one RTX 5090. This is the measurement sections 17, 21 and 28 make authoritative; the synthetic file beside it is not.",
+  "measurement_caveats": [
+    "Graphics clocks could not be pinned on this box, so absolute tok/s is not reproducible off it; the paired control/candidate deltas are.",
+    "The batch-1 mode axis used 3 interleaved pairs and measured a 0.023% noise floor. Every other axis used 2 pairs, from which real_sweep.py refuses to estimate a floor at all - a two-sample peak-to-peak spread can be exactly zero. Read those spans against the 0.023% floor measured on the same workload, not against their own.",
+    "Concurrency figures are aggregate continuous-batching throughput from qwen3_gguf_cb_bench, a different code path (decode_packed) from the batch-1 bench. The adapter's telemetry reports tokens_packed so a run that silently fell back to the single-sequence path can be identified rather than reported as concurrency.",
+    "The 32-sequence arms of the mode screen do not resolve: two of four produced 30%+ spreads between repeats, which are the runtime falling off its batched decode path rather than a cache effect. concurrency32_capture_probe below is the dedicated isolated-run measurement that replaces them, and concurrency 32 is deliberately absent from the scored matrix."
+  ],
+  "batch1_axes": {
+    "pre-touch-coverage": {
+      "variable": "RECURLOCAL_PRE_TOUCH_COVERAGE",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "prefetch",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0774,
+        96.0866
+      ],
+      "control_noise_floor_pct": 0.009575154555491124,
+      "values": {
+        "matrix": {
+          "gain_pct": -0.9829617567779891,
+          "spread_pct": 0.030071793221973397
+        },
+        "conv": {
+          "gain_pct": -0.373743216976008,
+          "spread_pct": 0.001844507033595759
+        },
+        "both": {
+          "gain_pct": -1.2911888589379972,
+          "spread_pct": 0.0034993044997130955
+        }
+      },
+      "spread_across_axis_pct": 0.9174456419619892,
+      "resolved": true,
+      "best": "conv"
+    },
+    "prefetch-distance": {
+      "variable": "RECURLOCAL_PREFETCH_DISTANCE",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "prefetch",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0825,
+        96.1042
+      ],
+      "control_noise_floor_pct": 0.02258220782188343,
+      "values": {
+        "1": {
+          "gain_pct": -1.2924930604884644,
+          "spread_pct": 0.0022345796904315366
+        },
+        "2": {
+          "gain_pct": -1.2713661827619127,
+          "spread_pct": 0.03069843629114164
+        },
+        "3": {
+          "gain_pct": -1.2294279372740302,
+          "spread_pct": 0.028166330701786597
+        },
+        "4": {
+          "gain_pct": -1.2243809556060747,
+          "spread_pct": 0.024689316333874015
+        },
+        "6": {
+          "gain_pct": -1.187385297307042,
+          "spread_pct": 0.0315340661473283
+        },
+        "8": {
+          "gain_pct": -1.1470081514479702,
+          "spread_pct": 0.026898399317351614
+        }
+      },
+      "spread_across_axis_pct": 0.14548490904049416,
+      "resolved": true,
+      "best": "8"
+    },
+    "hot-set-policy": {
+      "variable": "RECURLOCAL_HOT_SET_POLICY",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_WINDOW_SCOPE": "allocation",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0906,
+        96.0886
+      ],
+      "control_noise_floor_pct": 0.0020813907020066054,
+      "values": {
+        "proportional": {
+          "gain_pct": -0.03309417931446346,
+          "spread_pct": 0.012909583492350107
+        },
+        "fixed": {
+          "gain_pct": -0.038557606258660115,
+          "spread_pct": 0.030086893895705305
+        },
+        "sqrt": {
+          "gain_pct": -0.03111680074585621,
+          "spread_pct": 0.0018744825730209773
+        },
+        "cliff": {
+          "gain_pct": -0.03200144865427301,
+          "spread_pct": 0.012805316779440547
+        }
+      },
+      "spread_across_axis_pct": 0.007440805512803905,
+      "resolved": true,
+      "best": "sqrt"
+    },
+    "mode": {
+      "variable": "RECURLOCAL",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 3,
+      "control_tps": [
+        96.0651,
+        96.087,
+        96.0751
+      ],
+      "control_noise_floor_pct": 0.02279466792124312,
+      "values": {
+        "baseline": {
+          "gain_pct": -0.009782801003255237,
+          "spread_pct": 0.021862390666315908
+        },
+        "persist": {
+          "gain_pct": 0.1287668466487757,
+          "spread_pct": 0.039513692861240596
+        },
+        "prefetch": {
+          "gain_pct": -1.2852935360662676,
+          "spread_pct": 0.03166389709177676
+        },
+        "combined": {
+          "gain_pct": -1.1675415941897693,
+          "spread_pct": 0.017860761718460995
+        }
+      },
+      "spread_across_axis_pct": 1.4140603827150433,
+      "resolved": true,
+      "best": "persist"
+    },
+    "pre-touch": {
+      "variable": "RECURLOCAL_PRE_TOUCH",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "prefetch",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0947,
+        96.0913
+      ],
+      "control_noise_floor_pct": 0.0035382389976368533,
+      "values": {
+        "scalar": {
+          "gain_pct": -1.2618505702711058,
+          "spread_pct": 0.00816069372034539
+        },
+        "vec4": {
+          "gain_pct": -1.295828024297574,
+          "spread_pct": 0.0027876852741812235
+        },
+        "vec4_ldcg": {
+          "gain_pct": -1.3141433861186158,
+          "spread_pct": 0.023363147055563804
+        },
+        "ptx_l2": {
+          "gain_pct": -0.7354335003016077,
+          "spread_pct": 0.013445332038528409
+        },
+        "warp_tile": {
+          "gain_pct": -1.4426647862563202,
+          "spread_pct": 0.015153045537464284
+        },
+        "partial": {
+          "gain_pct": -1.016046977843943,
+          "spread_pct": 0.002664670799331505
+        }
+      },
+      "spread_across_axis_pct": 0.7072312859547125,
+      "resolved": true,
+      "best": "ptx_l2"
+    },
+    "prefetch-join": {
+      "variable": "RECURLOCAL_PREFETCH_JOIN",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "prefetch",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0796,
+        96.0797
+      ],
+      "control_noise_floor_pct": 0.00010408031253581757,
+      "values": {
+        "per_layer": {
+          "gain_pct": -1.2877336625009894,
+          "spread_pct": 0.01676329602123567
+        },
+        "token_end": {
+          "gain_pct": -0.08987334951966464,
+          "spread_pct": 0.0013541675581912034
+        }
+      },
+      "spread_across_axis_pct": 1.1978603129813248,
+      "resolved": true,
+      "best": "token_end"
+    },
+    "prefetch-schedule": {
+      "variable": "RECURLOCAL_PREFETCH_SCHEDULE",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "prefetch",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0691,
+        96.0654
+      ],
+      "control_noise_floor_pct": 0.0038514686326600795,
+      "values": {
+        "uniform": {
+          "gain_pct": -1.2763451173895324,
+          "spread_pct": 0.03780299374444696
+        },
+        "ramp": {
+          "gain_pct": -1.264999273835432,
+          "spread_pct": 0.0016307563081047465
+        },
+        "alternating": {
+          "gain_pct": -0.6483477650481184,
+          "spread_pct": 0.014328772682132139
+        },
+        "sparse": {
+          "gain_pct": -0.3046304153547563,
+          "spread_pct": 0.006798536699324884
+        }
+      },
+      "spread_across_axis_pct": 0.9717147020347761,
+      "resolved": true,
+      "best": "sparse"
+    },
+    "window-attach": {
+      "variable": "RECURLOCAL_WINDOW_ATTACH",
+      "workload": "batch 1, ctx 128, 128 tokens",
+      "fixed": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_WINDOW_SCOPE": "ahead",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 3,
+      "control_tps": [
+        96.0872,
+        96.0862,
+        96.0967
+      ],
+      "control_noise_floor_pct": 0.010927574120167195,
+      "values": {
+        "stream": {
+          "gain_pct": -0.01914927274392353,
+          "spread_pct": 0.019669397196150736
+        },
+        "capture_node": {
+          "gain_pct": 0.12925759102149215,
+          "spread_pct": 0.02984277752877694
+        }
+      },
+      "spread_across_axis_pct": 0.14840686376541568,
+      "resolved": true,
+      "best": "capture_node"
+    },
+    "window-scope": {
+      "variable": "RECURLOCAL_WINDOW_SCOPE",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0632,
+        96.0811
+      ],
+      "control_noise_floor_pct": 0.01863183034834921,
+      "values": {
+        "layer": {
+          "gain_pct": 0.14171662733653,
+          "spread_pct": 0.004703718147387642
+        },
+        "allocation": {
+          "gain_pct": -0.0002595180791820084,
+          "spread_pct": 0.015092814282149376
+        },
+        "ahead": {
+          "gain_pct": 0.14494382468237532,
+          "spread_pct": 0.014474318896455998
+        }
+      },
+      "spread_across_axis_pct": 0.14520334276155733,
+      "resolved": true,
+      "best": "ahead"
+    },
+    "window-target": {
+      "variable": "RECURLOCAL_WINDOW_TARGET",
+      "workload": "batch 1, ctx 128",
+      "fixed": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_WINDOW_SCOPE": "allocation",
+        "RECURLOCAL_STATS": "1"
+      },
+      "repeats": 2,
+      "control_tps": [
+        96.0549,
+        96.0812
+      ],
+      "control_noise_floor_pct": 0.02737642743866665,
+      "values": {
+        "matrix": {
+          "gain_pct": 0.003073126633790224,
+          "spread_pct": 0.03487088448414406
+        },
+        "conv": {
+          "gain_pct": 0.007393501303165628,
+          "spread_pct": 0.042468779184719335
+        },
+        "widest": {
+          "gain_pct": -0.009416594354028085,
+          "spread_pct": 0.055692357193536136
+        },
+        "narrowest": {
+          "gain_pct": -0.004579858830300321,
+          "spread_pct": 0.0033298708614873827
+        }
+      },
+      "spread_across_axis_pct": 0.016810095657193713,
+      "resolved": false,
+      "best": null
+    }
+  },
+  "concurrency": {
+    "16": {
+      "aggregate_control_tps": [
+        768.2,
+        770.3
+      ],
+      "repeats": 2,
+      "values": {
+        "baseline": {
+          "gain_pct": 0.3647545766630289
+        },
+        "persist": {
+          "gain_pct": -0.20790646692323556
+        },
+        "prefetch": {
+          "gain_pct": -5.8822485638479804
+        },
+        "combined": {
+          "gain_pct": -5.395336527527439
+        }
+      },
+      "spread_across_axis_pct": 6.247003140511009
+    },
+    "32": {
+      "aggregate_control_tps": [
+        1259.8,
+        1260.5
+      ],
+      "repeats": 2,
+      "values": {
+        "baseline": {
+          "gain_pct": -14.823521473441147
+        },
+        "persist": {
+          "gain_pct": -1.1188726241089464
+        },
+        "prefetch": {
+          "gain_pct": -20.089429141299753
+        },
+        "combined": {
+          "gain_pct": -7.4673677763399615
+        }
+      },
+      "spread_across_axis_pct": 18.970556517190808
+    },
+    "4": {
+      "aggregate_control_tps": [
+        328.6,
+        329.3
+      ],
+      "repeats": 2,
+      "values": {
+        "baseline": {
+          "gain_pct": -0.09113468341244158
+        },
+        "persist": {
+          "gain_pct": 0.06089661779102862
+        },
+        "prefetch": {
+          "gain_pct": -2.188849657853331
+        },
+        "combined": {
+          "gain_pct": -2.340654543223164
+        }
+      },
+      "spread_across_axis_pct": 2.4015511610141926
+    }
+  },
+  "concurrency32_capture_probe": {
+    "question": "Is the '[prefill] graph capture failed -> fallback' collapse at 32 sequences caused by the locality hook mutating the capture, or does the unmodified runtime do it too?",
+    "method": "four runs of each arm at 32 sequences, each in a fresh process, nothing else on the device",
+    "arms": {
+      "control (unhooked)": [
+        {
+          "agg_tok_s": 1261.1,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1261.1,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1271.7,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1262.5,
+          "capture_failed": 0
+        }
+      ],
+      "hooked, window_attach=stream": [
+        {
+          "agg_tok_s": 1246.4,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1248.6,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1241.9,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1251.1,
+          "capture_failed": 0
+        }
+      ],
+      "hooked, window_attach=capture_node": [
+        {
+          "agg_tok_s": 1246.2,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1248.1,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1248.7,
+          "capture_failed": 0
+        },
+        {
+          "agg_tok_s": 1248.3,
+          "capture_failed": 0
+        }
+      ]
+    },
+    "outcome": "zero capture failures in twelve runs. The collapse was observed only inside the scored evaluation's run sequence, never in isolation, so accumulated device state is a co-factor and node mutation alone is not a demonstrated cause. It has not been seen on the unhooked control or the safe attach path, but eight clean runs do not establish a rate."
+  },
+  "scored_result": {
+    "schema_version": 1,
+    "what_this_is": "Real end-to-end decode on a pinned SparkInfer commit and checkpoint. This is the metric sections 17, 21 and 28 make authoritative.",
+    "provenance": {
+      "timestamp_utc": "2026-09-09T12:09:26+00:00",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "driver": "595.84",
+      "model": "/root/models/qwen38-nvfp4",
+      "binary": "/root/rl/hook/sparkinfer/build/runtime/qwen3_gguf_bench",
+      "candidate_env": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_WINDOW_SCOPE": "ahead",
+        "RECURLOCAL_WINDOW_ATTACH": "stream",
+        "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+        "RECURLOCAL_STATS": "1"
+      },
+      "control_env": {},
+      "tokens_per_measurement": 128,
+      "contexts": [
+        128,
+        4096,
+        16384
+      ],
+      "repeats": 3,
+      "label": "persist, window scope ahead, safe stream attach",
+      "note": "best configuration reachable without mutating a graph mid-capture; see docs/OPTIMIZATION-SURFACES.md",
+      "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+      "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+      "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+      "recurlocal_commit": null
+    },
+    "correctness": {
+      "output_identical": true,
+      "method": "greedy replay, token-exact",
+      "tokens_compared": 64,
+      "prompt_ids": [
+        9707,
+        3837,
+        1879,
+        13,
+        25001,
+        752,
+        911
+      ],
+      "first_divergence": null,
+      "candidate_hook_active": true
+    },
+    "workloads": {
+      "batch1": {
+        "weight": 0.4,
+        "baseline_tps": 94.7836048091236,
+        "candidate_tps": 94.83965828372453
+      },
+      "concurrency4": {
+        "weight": 0.2,
+        "baseline_tps": 328.2,
+        "candidate_tps": 328.5
+      },
+      "concurrency16": {
+        "weight": 0.2,
+        "baseline_tps": 769.9,
+        "candidate_tps": 769.8
+      }
+    },
+    "workload_coverage": {
+      "measured": [
+        "batch1",
+        "concurrency4",
+        "concurrency16"
+      ],
+      "unmeasured": [
+        "concurrency32"
+      ],
+      "why": "Section 44 weights batch 1 at 0.40 and concurrency at 0.60. An arm that was not run is left out of the matrix rather than filled in, and the weights that remain are renormalised by decide.py - so a partial run is reported as a partial verdict instead of a full one with invented halves."
+    },
+    "per_context": {
+      "128": {
+        "baseline_tps": 95.8924,
+        "candidate_tps": 95.8357,
+        "baseline_runs": [
+          95.85,
+          95.8924,
+          95.9103
+        ],
+        "candidate_runs": [
+          95.8357,
+          95.8305,
+          95.8799
+        ],
+        "paired_ratios": [
+          0.9998508085550339,
+          0.9993544848184007,
+          0.9996830371711901
+        ],
+        "gain_pct": -0.03169628288098858,
+        "baseline_spread_pct": 0.0628829813415998,
+        "candidate_spread_pct": 0.05154655311121603,
+        "resolution": {
+          "resolved": false,
+          "floor_pct": 0.0628829813415998,
+          "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+        }
+      },
+      "4096": {
+        "baseline_tps": 94.1147,
+        "candidate_tps": 94.2276,
+        "baseline_runs": [
+          94.1147,
+          94.1057,
+          94.1261
+        ],
+        "candidate_runs": [
+          94.2276,
+          94.2258,
+          94.2439
+        ],
+        "paired_ratios": [
+          1.001199600062477,
+          1.0012762245007476,
+          1.0012515125985249
+        ],
+        "gain_pct": 0.1251512598524851,
+        "baseline_spread_pct": 0.021675678719684694,
+        "candidate_spread_pct": 0.01920880930851448,
+        "resolution": {
+          "resolved": true,
+          "floor_pct": 0.021675678719684694,
+          "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+        }
+      },
+      "16384": {
+        "baseline_tps": 94.3535,
+        "candidate_tps": 94.4636,
+        "baseline_runs": [
+          94.3297,
+          94.3535,
+          94.3644
+        ],
+        "candidate_runs": [
+          94.4677,
+          94.4572,
+          94.4636
+        ],
+        "paired_ratios": [
+          1.0014629538734883,
+          1.00109905832852,
+          1.0010512439013017
+        ],
+        "gain_pct": 0.10990583285199751,
+        "baseline_spread_pct": 0.03677659016358783,
+        "candidate_spread_pct": 0.01111539259565938,
+        "resolution": {
+          "resolved": true,
+          "floor_pct": 0.04112579756831909,
+          "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+        }
+      }
+    },
+    "per_concurrency": {
+      "concurrency4": {
+        "baseline_runs": [
+          327.7,
+          328.2,
+          328.7
+        ],
+        "candidate_runs": [
+          328.0,
+          328.5,
+          328.1
+        ],
+        "paired_ratios": [
+          1.000915471467806,
+          1.0009140767824498,
+          0.9981746273197446
+        ],
+        "gain_pct": 0.0914076782449813,
+        "baseline_spread_pct": 0.30469226081657524,
+        "candidate_spread_pct": 0.15239256324291373,
+        "resolution": {
+          "resolved": false,
+          "floor_pct": 0.30469226081657524,
+          "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+        },
+        "sequences_seen_by_adapter": 1,
+        "tokens_packed": 129,
+        "tokens_total": 138,
+        "max_rows_seen": 5
+      },
+      "concurrency16": {
+        "baseline_runs": [
+          769.9,
+          766.7,
+          771.3
+        ],
+        "candidate_runs": [
+          769.8,
+          768.2,
+          767.5
+        ],
+        "paired_ratios": [
+          0.9998701130016885,
+          1.0019564366766662,
+          0.9950732529495657
+        ],
+        "gain_pct": -0.012988699831151251,
+        "baseline_spread_pct": 0.5974801922327456,
+        "candidate_spread_pct": 0.2994011976047845,
+        "resolution": {
+          "resolved": false,
+          "floor_pct": 0.6884077879312392,
+          "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+        },
+        "sequences_seen_by_adapter": 15,
+        "tokens_packed": 127,
+        "tokens_total": 135,
+        "max_rows_seen": 17
+      }
+    },
+    "measurement": {
+      "noise_floor_pct": 0.0628829813415998,
+      "gain_pct": 0.059138365452349184,
+      "resolved": false,
+      "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
+      "unresolved_workloads": [
+        "batch1/ctx128",
+        "concurrency16",
+        "concurrency4"
+      ]
+    },
+    "adapter": {
+      "adapter": "recurlocal-sparkinfer",
+      "mode": "persist",
+      "initialised": true,
+      "broken": false,
+      "config_error": null,
+      "config": {
+        "pre_touch": "vec4",
+        "pre_touch_coverage": "both",
+        "prefetch_distance": 1,
+        "prefetch_schedule": "uniform",
+        "prefetch_join": "per_layer",
+        "window_attach": "stream",
+        "hot_set_model": "token_footprint",
+        "hot_set_policy": "proportional",
+        "window_scope": "ahead",
+        "window_target": "matrix",
+        "hit_ratio": 0.7,
+        "budget_fraction": 0.75
+      },
+      "geometry": {
+        "recurrent_layers": 48,
+        "bytes_per_layer": 3207168,
+        "sequences": 1,
+        "streamed_bytes_per_token": 0
+      },
+      "l2_set_aside_bytes": 50331648,
+      "stats": {
+        "tokens": 32,
+        "tokens_packed": 0,
+        "layers": 192,
+        "layers_packed": 0,
+        "max_rows_seen": 0,
+        "windows_applied": 0,
+        "windows_deferred_to_caller": 192,
+        "windows_attached_to_node": 0,
+        "window_attach_failures": 0,
+        "capture_invalidations": 0,
+        "hot_set_oversubscribed": 192,
+        "pre_touch_launches": 0,
+        "pre_touch_segments": 0,
+        "pre_touch_bytes": 0,
+        "pre_touch_skipped": 0,
+        "compute_stream_priority": 0,
+        "prefetch_stream_priority": 0
+      }
+    }
+  },
+  "verdict": {
+    "schema_version": 1,
+    "track": "real",
+    "provenance": {
+      "timestamp_utc": "2026-09-09T12:09:26+00:00",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "driver": "595.84",
+      "model": "/root/models/qwen38-nvfp4",
+      "binary": "/root/rl/hook/sparkinfer/build/runtime/qwen3_gguf_bench",
+      "candidate_env": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_WINDOW_SCOPE": "ahead",
+        "RECURLOCAL_WINDOW_ATTACH": "stream",
+        "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+        "RECURLOCAL_STATS": "1"
+      },
+      "control_env": {},
+      "tokens_per_measurement": 128,
+      "contexts": [
+        128,
+        4096,
+        16384
+      ],
+      "repeats": 3,
+      "label": "persist, window scope ahead, safe stream attach",
+      "note": "best configuration reachable without mutating a graph mid-capture; see docs/OPTIMIZATION-SURFACES.md",
+      "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+      "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+      "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+      "recurlocal_commit": null
+    },
+    "correctness_method": "greedy replay, token-exact",
+    "workloads": {
+      "batch1": {
+        "weight": 0.4,
+        "baseline_tps": 94.7836048091236,
+        "candidate_tps": 94.83965828372453,
+        "ratio": 1.0005913836545235,
+        "gain_pct": 0.059138365452349184
+      },
+      "concurrency16": {
+        "weight": 0.2,
+        "baseline_tps": 769.9,
+        "candidate_tps": 769.8,
+        "ratio": 0.9998701130016885,
+        "gain_pct": -0.012988699831151251
+      },
+      "concurrency4": {
+        "weight": 0.2,
+        "baseline_tps": 328.2,
+        "candidate_tps": 328.5,
+        "ratio": 1.0009140767824498,
+        "gain_pct": 0.0914076782449813
+      }
+    },
+    "weighted_gain_pct": 0.049166621487040096,
+    "weighted_ratio": 1.0004916662148704,
+    "scored": true,
+    "impact": "none",
+    "verdict": "reject",
+    "go_no_go": "reject the core hypothesis",
+    "significant": false,
+    "reason": "weighted gain 0.05% is below the 2% significance floor \u2014 not a verified improvement"
+  }
+}

@@ -10,6 +10,7 @@
   },
   "benchmark": {
     "tokens": 32,
+    "warmup_tokens": 4,
     "inner_iters": 2
   }
 }

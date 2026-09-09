@@ -1,0 +1,226 @@
+{
+  "what_this_is": "SYNTHETIC locality surface sweeps on one RTX 5090, CUDA 13.3. NOT a model-serving speedup.",
+  "geometry": {
+    "layers": 48,
+    "state_bytes_per_layer": 3145728,
+    "tokens": 32,
+    "warmup_tokens": 4
+  },
+  "caveats": [
+    "graphics clocks could not be pinned on this box; same-box deltas only",
+    "prefetch and combined modes carry ~4-5% run-to-run spread, baseline and persist under 1%"
+  ],
+  "concurrency": {
+    "1": {
+      "persist_pct": 9.89,
+      "prefetch_pct": 13.91,
+      "combined_pct": 9.88,
+      "hot_set_oversubscribed": 0
+    },
+    "2": {
+      "persist_pct": 8.32,
+      "prefetch_pct": 14.89,
+      "combined_pct": 12.64,
+      "hot_set_oversubscribed": 0
+    },
+    "4": {
+      "persist_pct": -11.08,
+      "prefetch_pct": 7.3,
+      "combined_pct": -0.39,
+      "hot_set_oversubscribed": 0
+    },
+    "8": {
+      "persist_pct": -4.44,
+      "prefetch_pct": 20.15,
+      "combined_pct": -8.98,
+      "hot_set_oversubscribed": 0
+    },
+    "16": {
+      "persist_pct": -1.76,
+      "prefetch_pct": 22.89,
+      "combined_pct": -17.56,
+      "hot_set_oversubscribed": 1728
+    },
+    "32": {
+      "persist_pct": -0.61,
+      "prefetch_pct": -4.78,
+      "combined_pct": -21.03,
+      "hot_set_oversubscribed": 1728
+    }
+  },
+  "streaming_interference_mib": {
+    "0": {
+      "persist_pct": 10.23,
+      "prefetch_pct": 14.37,
+      "combined_pct": 9.85
+    },
+    "16": {
+      "persist_pct": -6.9,
+      "prefetch_pct": 9.19,
+      "combined_pct": 8.96
+    },
+    "64": {
+      "persist_pct": -66.66,
+      "prefetch_pct": 3.02,
+      "combined_pct": -67.43
+    },
+    "256": {
+      "persist_pct": 0.36,
+      "prefetch_pct": -0.62,
+      "combined_pct": -0.25
+    }
+  },
+  "hot_set_policy_at_32_sequences": {
+    "fixed": {
+      "persist_pct": -0.12,
+      "combined_pct": -20.83
+    },
+    "proportional": {
+      "persist_pct": -0.57,
+      "combined_pct": -21.07
+    },
+    "sqrt": {
+      "persist_pct": -0.99,
+      "combined_pct": -21.4
+    },
+    "cliff": {
+      "persist_pct": -0.01,
+      "combined_pct": -4.75
+    }
+  },
+  "pre_touch_strategy_pct": {
+    "scalar": 13.53,
+    "vec4": 14.97,
+    "vec4_ldcg": 14.91,
+    "ptx_l2": 13.4,
+    "warp_tile": 14.15,
+    "partial": 14.88
+  },
+  "prefetch_distance_pct": {
+    "1": 14.7,
+    "2": 15.6,
+    "3": 17.0,
+    "4": 18.2,
+    "6": 21.0,
+    "8": 20.5
+  },
+  "key_findings": [
+    "persist becomes harmful at 4 concurrent sequences and combined loses 21% at 32; the batch-1 policy does not survive batch N (overview 32.5)",
+    "the planner reports no oversubscription until 16 sequences, yet persist is already negative at 4 - the hot-set model counts one layer and ignores the other 47",
+    "cliff (decline the window when oversubscribed) loses 16 points less than the shipped proportional heuristic at 32 sequences",
+    "a 48 MiB persisting set-aside against 64 MiB of streaming traffic costs two thirds of throughput (overview 32.4)",
+    "the pre-touch strategy axis spans 1.6 points inside a 4-5% noise floor: unresolved, not solved",
+    "partial (half the bytes touched) matches vec4 (all of them): the walk is bandwidth-bound",
+    "kernel-integrated (fused) prefetch is 30-33 points WORSE than the separate stream at every distance, overturning the v0.5 roadmap assumption that fusing reduces overhead",
+    "state layout alone is a 2.34x effect (head_interleaved 17.81 ms vs linear 7.60 ms) and changes which locality policy wins: persist is +10.5% on linear and -2.5% on head_interleaved",
+    "cliff policy scores +22.8% at 16 sequences where every other policy scores -17.4%: a 40-point swing from declining the window instead of shrinking it",
+    "reducing pre-touch traffic hurts at batch 1: uniform +21.7%, alternating +14.6%, sparse +5.9%",
+    "QoS depends entirely on the shape of the competing traffic: with distinct per-layer weights persist+qos is the best configuration (+8.4% at 64 MiB), with a re-read buffer the same hint costs 3x",
+    "bug found by measurement: the streaming window was not clamped to the device access-policy maximum (128 MiB on an RTX 5090), so any weight buffer above that failed outright"
+  ],
+  "prefetch_impl_pct": {
+    "stream_d1": 15.17,
+    "fused_d1": -15.33,
+    "stream_d2": 15.91,
+    "fused_d2": -14.18,
+    "stream_d4": 19.37,
+    "fused_d4": -13.06,
+    "stream_d6": 21.03,
+    "fused_d6": -12.09
+  },
+  "prefetch_schedule_pct": {
+    "uniform": 21.66,
+    "ramp": 21.53,
+    "alternating": 14.63,
+    "sparse": 5.88
+  },
+  "state_layout": {
+    "linear": {
+      "baseline_ms": 7.601,
+      "persist_pct": 10.54,
+      "prefetch_pct": 15.41,
+      "combined_pct": 11.29
+    },
+    "head_interleaved": {
+      "baseline_ms": 17.81,
+      "persist_pct": -2.53,
+      "prefetch_pct": 10.9,
+      "combined_pct": 10.25
+    },
+    "tile_swapped": {
+      "baseline_ms": 7.859,
+      "persist_pct": 8.21,
+      "prefetch_pct": 18.71,
+      "combined_pct": 14.73
+    }
+  },
+  "hot_set_policy_combined_pct": {
+    "8": {
+      "fixed": -9.04,
+      "proportional": -9.12,
+      "sqrt": -9.0,
+      "cliff": -9.01
+    },
+    "16": {
+      "fixed": -17.41,
+      "proportional": -17.41,
+      "sqrt": -17.45,
+      "cliff": 22.83
+    },
+    "32": {
+      "fixed": -20.8,
+      "proportional": -21.02,
+      "sqrt": -21.43,
+      "cliff": -4.77
+    }
+  },
+  "qos_absolute_ms": {
+    "note": "absolute ms; control is (baseline, qos off) at each size. reuse re-reads one buffer every layer; distinct gives each layer its own slice.",
+    "reuse": {
+      "0": {
+        "base": 7.579,
+        "base_qos": 7.587,
+        "persist": 6.863,
+        "persist_qos": 6.861
+      },
+      "16MiB": {
+        "base": 13.937,
+        "base_qos": 32.202,
+        "persist": 14.968,
+        "persist_qos": 30.869
+      },
+      "64MiB": {
+        "base": 34.037,
+        "base_qos": 102.419,
+        "persist": 101.678,
+        "persist_qos": 101.361
+      },
+      "256MiB": {
+        "base": 380.236,
+        "base_qos": 380.277,
+        "persist": 378.855,
+        "persist_qos": 379.037
+      }
+    },
+    "distinct": {
+      "64MiB": {
+        "base": 10.88,
+        "base_qos": 10.88,
+        "persist": 10.52,
+        "persist_qos": 10.04
+      },
+      "256MiB": {
+        "base": 16.46,
+        "base_qos": 16.46,
+        "persist": 16.13,
+        "persist_qos": 16.01
+      },
+      "512MiB": {
+        "base": 24.1,
+        "base_qos": 24.23,
+        "persist": 23.8,
+        "persist_qos": 23.7
+      }
+    }
+  }
+}

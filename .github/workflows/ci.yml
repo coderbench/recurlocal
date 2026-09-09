@@ -5,6 +5,106 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cmake -S . -B build -DRECURLLOCAL_BUILD_CUDA=OFF
+      - run: cmake -S . -B build -DRECURLOCAL_BUILD_CUDA=OFF
       - run: cmake --build build -j2
       - run: ctest --test-dir build --output-on-failure
+      - run: ./build/recur_local_info
+      # The planner tests use always-on checks, so a Release build must still test.
+      - run: cmake -S . -B build-release -DRECURLOCAL_BUILD_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build-release -j2
+      - run: ctest --test-dir build-release --output-on-failure
+
+  package:
+    # RecurLocal is embedded by a runtime, so "it builds" is not the bar: the installed
+    # package has to be consumable by an outside project via find_package.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DRECURLOCAL_BUILD_CUDA=OFF && cmake --build build -j2
+      - run: cmake --install build --prefix "$PWD/prefix"
+      - name: consume the installed package
+        run: |
+          mkdir -p /tmp/consumer
+          cat > /tmp/consumer/CMakeLists.txt <<'CM'
+          cmake_minimum_required(VERSION 3.24)
+          project(ConsumerSmoke LANGUAGES CXX)
+          find_package(RecurLocal 0.1 REQUIRED)
+          add_executable(consumer main.cpp)
+          target_link_libraries(consumer PRIVATE RecurLocal::recurlocal)
+          CM
+          cat > /tmp/consumer/main.cpp <<'CPP'
+          #include <recurlocal/planner.h>
+          #include <recurlocal/version.h>
+          #include <cstdio>
+          int main() {
+              recurlocal::PlannerConfig cfg;
+              if (recurlocal::validate(cfg)) return 1;
+              recurlocal::LocalityPlanner p({96u<<20, 64u<<20, 32u<<20}, cfg);
+              std::printf("RecurLocal %s window=%zu\n", recurlocal::version_string(),
+                          p.plan_for_layer(3u<<20, true).hot_window_bytes);
+              return 0;
+          }
+          CPP
+          cmake -S /tmp/consumer -B /tmp/consumer/build -DCMAKE_PREFIX_PATH="$PWD/prefix"
+          cmake --build /tmp/consumer/build -j2
+          /tmp/consumer/build/consumer
+
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m compileall -q eval/run_eval.py eval/decide.py eval/sweep.py eval/real_eval.py eval/real_sweep.py eval/traffic_budget.py
+      - name: pin.json describes a real integration
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re
+          pin = json.load(open("integrations/sparkinfer/pin.json"))
+          assert re.fullmatch(r"[0-9a-f]{40}", pin["commit"]), "the runtime commit must be pinned"
+          patch = pathlib.Path("integrations/sparkinfer") / pin["patch"]
+          assert patch.exists(), f"{patch} is missing"
+          body = patch.read_text()
+          # The hook is specified to add lines and remove none. A patch that deletes
+          # SparkInfer code is a fork, and a fork cannot be reapplied to a moving upstream.
+          removed = [l for l in body.splitlines()
+                     if l.startswith("-") and not l.startswith("---")]
+          assert not removed, f"the hook patch deletes {len(removed)} line(s): {removed[:3]}"
+          print(f"pin ok: {pin['commit'][:12]}, {patch.name} insertion-only")
+          PY
+      - run: pip install --quiet jsonschema
+      - name: validate JSON assets
+        run: |
+          python3 - <<'PY'
+          import json, jsonschema
+          for f in ("repo-manifest.json", "configs/qwen3.8-27b-feasibility.json"):
+              json.load(open(f))
+          for schema in ("eval/result_schema.json", "eval/real_result_schema.json"):
+              jsonschema.Draft202012Validator.check_schema(json.load(open(schema)))
+          # The committed real result is the input to the go/no-go gate, so it has to keep
+          # matching the schema that pins it - and it has to keep scoring.
+          import pathlib, subprocess, sys
+          real = pathlib.Path("results/rtx5090-real.json")
+          if real.exists():
+              doc = json.load(real.open())
+              scored = doc.get("scored_result")
+              if scored:
+                  jsonschema.Draft202012Validator(
+                      json.load(open("eval/real_result_schema.json"))).validate(scored)
+                  json.dump(scored, open("/tmp/real.json", "w"))
+                  r = subprocess.run([sys.executable, "eval/decide.py", "--real", "/tmp/real.json"],
+                                     capture_output=True, text=True)
+                  print(r.stdout.strip()[:400])
+          print("json assets ok")
+          PY
+
+  cuda-build:
+    # Device-less compile gate. Untrusted performance PRs must not reach a GPU host
+    # (see SECURITY.md), so nvcc compilation is the CUDA check that can run here.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends nvidia-cuda-toolkit
+      - run: nvcc --version
+      # sm_80 keeps this buildable with the distro toolkit; sm_120 needs CUDA 12.8+.
+      - run: cmake -S . -B build-cuda -DRECURLOCAL_BUILD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=80
+      - run: cmake --build build-cuda -j2
+      - run: ctest --test-dir build-cuda --output-on-failure

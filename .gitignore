@@ -5,3 +5,6 @@ build/
 eval-result.json
 __pycache__/
 .DS_Store
+build-cpu/
+si-work/
+real-result.json

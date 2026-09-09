@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gittensor-ai-lab/recurlocal/eval/real_result_schema.json",
+  "title": "RecurLocal real end-to-end result",
+  "description": "The shape eval/real_eval.py emits and eval/decide.py --real scores. Pinned because this file is the only input to the go/no-go gate: a field that quietly changes meaning changes every past verdict. Only the fields decide.py reads are required; the rest is evidence, and is required to be present rather than optional because a result without its provenance and its spreads is not reproducible or checkable.",
+  "type": "object",
+  "required": ["schema_version", "provenance", "correctness", "workloads"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "what_this_is": {"type": "string"},
+    "provenance": {
+      "type": "object",
+      "description": "Overview section 18: a release claim must name the exact runtime commit, checkpoint, device and configuration it was measured on.",
+      "required": ["timestamp_utc", "model", "candidate_env", "control_env"],
+      "properties": {
+        "timestamp_utc": {"type": "string"},
+        "gpu": {"type": ["string", "null"]},
+        "driver": {"type": ["string", "null"]},
+        "model": {"type": "string"},
+        "binary": {"type": "string"},
+        "runtime_repository": {"type": ["string", "null"]},
+        "runtime_commit": {"type": ["string", "null"]},
+        "recurlocal_commit": {"type": ["string", "null"]},
+        "candidate_env": {"type": "object"},
+        "control_env": {"type": "object"},
+        "repeats": {"type": "integer", "minimum": 1},
+        "contexts": {"type": "array", "items": {"type": "integer"}},
+        "label": {"type": "string"},
+        "note": {"type": "string"}
+      }
+    },
+    "correctness": {
+      "type": "object",
+      "description": "The exact-locality track requires bit-identical model output. decide.py rejects anything else however fast it was.",
+      "required": ["output_identical", "method"],
+      "properties": {
+        "output_identical": {"type": ["boolean", "null"]},
+        "method": {"type": "string"},
+        "tokens_compared": {"type": "integer", "minimum": 1},
+        "prompt_ids": {"type": "array", "items": {"type": "integer"}},
+        "first_divergence": {"type": ["integer", "null"]},
+        "candidate_hook_active": {"type": "boolean"}
+      }
+    },
+    "workloads": {
+      "type": "object",
+      "description": "The scored matrix. Weights need not sum to 1: an arm that was not measured is left out and decide.py renormalises what remains.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["weight", "baseline_tps", "candidate_tps"],
+        "properties": {
+          "weight": {"type": "number", "minimum": 0},
+          "baseline_tps": {"type": "number", "exclusiveMinimum": 0},
+          "candidate_tps": {"type": "number", "exclusiveMinimum": 0}
+        }
+      }
+    },
+    "workload_coverage": {
+      "type": "object",
+      "properties": {
+        "measured": {"type": "array", "items": {"type": "string"}},
+        "unmeasured": {"type": "array", "items": {"type": "string"}},
+        "why": {"type": "string"}
+      }
+    },
+    "per_context": {"type": "object", "additionalProperties": {"$ref": "#/$defs/arm"}},
+    "per_concurrency": {"type": "object", "additionalProperties": {"$ref": "#/$defs/arm"}},
+    "measurement": {
+      "type": "object",
+      "properties": {
+        "noise_floor_pct": {"type": ["number", "null"]},
+        "gain_pct": {"type": "number"},
+        "resolved": {"type": ["boolean", "null"]},
+        "unresolved_workloads": {"type": "array", "items": {"type": "string"}},
+        "note": {"type": "string"}
+      }
+    },
+    "adapter": {
+      "type": ["object", "null"],
+      "description": "The hook's own telemetry from the candidate arm. Null here means the candidate ran unhooked, which invalidates the comparison."
+    }
+  },
+  "$defs": {
+    "arm": {
+      "type": "object",
+      "description": "One workload's raw repeats, so a reader can see the spread the median came from rather than only the median.",
+      "required": ["gain_pct", "paired_ratios"],
+      "properties": {
+        "baseline_runs": {"type": "array", "items": {"type": "number"}},
+        "candidate_runs": {"type": "array", "items": {"type": "number"}},
+        "paired_ratios": {"type": "array", "items": {"type": "number"}},
+        "gain_pct": {"type": "number"},
+        "baseline_tps": {"type": "number"},
+        "candidate_tps": {"type": "number"},
+        "baseline_spread_pct": {"type": ["number", "null"]},
+        "candidate_spread_pct": {"type": ["number", "null"]},
+        "resolution": {
+          "type": "object",
+          "properties": {
+            "resolved": {"type": ["boolean", "null"]},
+            "floor_pct": {"type": ["number", "null"]},
+            "note": {"type": "string"}
+          }
+        },
+        "sequences_seen_by_adapter": {"type": ["integer", "null"]},
+        "tokens_packed": {"type": ["integer", "null"]},
+        "tokens_total": {"type": ["integer", "null"]},
+        "max_rows_seen": {"type": ["integer", "null"]}
+      }
+    }
+  }
+}

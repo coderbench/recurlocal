@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+if(@RECURLOCAL_BUILD_CUDA@)
+    find_dependency(CUDAToolkit)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/RecurLocalTargets.cmake")
+check_required_components(RecurLocal)
