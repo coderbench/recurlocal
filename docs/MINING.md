@@ -157,12 +157,38 @@ repository's own baseline died exactly there.
 `docs/OPTIMIZATION-SURFACES.md` maps every surface with the flag that isolates it and what is
 already known. Reordered by what is still genuinely open:
 
-1. **A model with less weight traffic per token.** The only direction that moves both terms the
-   right way. A sparse MoE reads a fraction of its weights per token, so the same recurrent
-   state is a much larger share of traffic at every batch size — *and* the footprint that has
-   to stay resident is unchanged, so the residency bound above does not tighten with it. Run
-   `traffic_budget.py --matrix` on a candidate model before integrating it; that is a
-   contribution on its own, whichever way it comes out.
+1. **A model with less weight traffic per token — TESTED, and it works at batch 1.** The persist
+   ceiling is `2 × min(capacity, footprint) / step_traffic`. The capacity is the device's and
+   cannot be raised, so the only lever is the denominator, and `eval/traffic_budget.py
+   --persisting-l2-bytes` now prints the threshold rather than leaving it implied: **a decode
+   step must move at most 6.42 GB** before a persisting window over this footprint reaches the
+   2% floor at all. Qwen3.8-27B moves 18.5 GB.
+
+   `configs/qwen3.6-35b-a3b-moe-ceiling.json` screens Qwen3.6-35B-A3B — same architecture
+   family, same runtime, same hook, 256 experts with 8 used per token. It moves **3.56 GB** per
+   batch-1 step, and **two terms move, not one**: the step shrinks 5.2× *and* the footprint
+   shrinks to 61.4 MiB, because this model has 30 recurrent layers of 2 MiB where the dense one
+   has 48 of 3 MiB. 1.02× the cache instead of 2.4×, so 98% of the state can be resident
+   instead of 41%.
+
+   | batch 1 | dense Qwen3.8-27B | sparse-MoE Qwen3.6-35B-A3B |
+   |---|--:|--:|
+   | traffic ceiling | 1.69% | **3.75%** |
+   | persist-family ceiling | 0.68% | **3.67%** |
+   | measured `persist`, defaults | +0.10% | **+1.26%** |
+   | measured `persist`, both dials at maximum | — | **+1.53%** |
+
+   Measured, not projected: 3 interleaved pairs, control 503.2 tok/s, noise floor 0.078%, paired
+   ratios 1.0137 / 1.0120 / 1.0126. That is the largest real-model gain in this repository and it
+   leaves **2.1 points of headroom** to a ceiling above the floor — which is what makes this a
+   surface rather than a result.
+
+   An earlier revision of this list said a sparse MoE would help because "the footprint that has
+   to stay resident is unchanged, so the residency bound does not tighten with it". That was
+   wrong in the safe direction: the footprint is not unchanged, it is 2.4× smaller, and that is
+   where most of the improvement comes from. Screen a candidate model with
+   `traffic_budget.py --matrix` before integrating it — the geometry can live in the matrix spec,
+   so a second model's rates cannot be scored against the first model's state shape.
 
 2. **Reuse the cache can actually serve — CLOSED, and the answer is no.** Every shipped policy
    targets reuse across a token, which is a full model pass away and 2.4–40x too large to hold.
