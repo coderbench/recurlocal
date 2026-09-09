@@ -226,7 +226,7 @@ as a 48-layer 3 MiB one. Two terms move at once:
 | vs 60 MiB persisting capacity | 2.4× | **1.02×** |
 | resident fraction of the state | 41% | **98%** |
 | decode step traffic | 18.5 GB | **3.56 GB** |
-| traffic ceiling | 1.69% | **3.76%** |
+| traffic ceiling | 1.69% | **3.75%** |
 | persist-family ceiling | 0.68% | **3.67%** |
 | measured `persist`, default settings | +0.10% | **+1.26%** |
 | measured `persist`, `budget_fraction=1.00` | — | **+1.53%** |

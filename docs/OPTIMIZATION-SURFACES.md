@@ -320,7 +320,7 @@ the runtime's defaults.
 | vs 60 MiB persisting capacity | 2.4x | **1.02x** |
 | resident fraction of the state | 41% | **98%** |
 | decode step traffic | 18.5 GB | **3.56 GB** |
-| traffic ceiling | 1.69% | **3.76%** |
+| traffic ceiling | 1.69% | **3.75%** |
 | persist-family ceiling | 0.68% | **3.67%** |
 
 The step shrinks 5.2x *and* the footprint shrinks below the cache. Either alone would help; both

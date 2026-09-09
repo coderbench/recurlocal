@@ -92,7 +92,7 @@ would be worth 1.69%, below the floor `eval/decide.py` rejects at, before any po
 
 **On the MoE checkpoint the same arithmetic says the opposite**, which is why surface 1 below is
 the one to read first: 30 recurrent layers x (2 MiB + 48 KiB) x 2 = 123 MiB against a 3.56 GB
-step is 3.62%, a 3.76% throughput ceiling, and the footprint fits the cache. Batch 1 is the live
+step is 3.62%, a 3.75% throughput ceiling, and the footprint fits the cache. Batch 1 is the live
 surface there and the only one that can currently be measured.
 
 ## Reproducing the measurement
