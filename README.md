@@ -228,12 +228,25 @@ as a 48-layer 3 MiB one. Two terms move at once:
 | decode step traffic | 18.5 GB | **3.56 GB** |
 | traffic ceiling | 1.69% | **3.76%** |
 | persist-family ceiling | 0.68% | **3.67%** |
-| measured `persist` | +0.10% | **+1.26%** |
+| measured `persist`, default settings | +0.10% | **+1.26%** |
+| measured `persist`, `budget_fraction=1.00` | — | **+1.53%** |
 
 Three interleaved pairs, control 503.2 tok/s, noise floor 0.078%, paired ratios
-1.0137 / 1.0120 / 1.0126. That is the largest real-model gain this repository has measured, and
-it leaves **2.4 points of headroom** to a ceiling that is above the floor — which is what makes
-batch-1 decode a surface here rather than the dead end it is on the dense model.
+1.0137 / 1.0120 / 1.0126 at the default. That is the largest real-model gain this repository has
+measured — and the L2 set-aside turns out to be the dial that matters, resolved and monotonic:
+
+| `budget_fraction` | set-aside | gain |
+|---|--:|--:|
+| 0.25 | 15 MiB | +0.68% |
+| 0.50 | 30 MiB | +0.96% |
+| 0.75 (the shipped default) | 45 MiB | +1.28% |
+| **1.00** | 60 MiB | **+1.53%** |
+
+Span 0.85% against a 0.10% noise floor. It is monotonic because the footprint is 61.4 MiB and
+each extra MiB of set-aside is another MiB that stays resident — the residency model predicting
+its own measurement. The default was leaving a quarter of a point on the floor, and even at 1.00
+there are **2.1 points of headroom** to the ceiling, which is what makes batch-1 decode a surface
+here rather than the dead end it is on the dense model.
 
 It does **not** rescue concurrency, and on this checkpoint concurrency cannot even be measured:
 above 8 rows the runtime stops batching, packs 127 of 4205 tokens at 32 sequences and decodes
