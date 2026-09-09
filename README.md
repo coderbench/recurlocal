@@ -93,7 +93,9 @@ self-disabling after a first detected invalidation.
 
 (An earlier version of this README blamed a 32-sequence throughput collapse on that mutation.
 **That was wrong**: the arms that collapsed were `baseline` and `prefetch`, which never arm the
-mechanism at all. The collapse is a runtime fallback of unknown cause — see
+mechanism at all. It is the runtime declining to batch. One instance of that family has since
+been identified and proven — a row cap in a multi-row GEMV, worth 5.4× — but *this* collapse,
+on this checkpoint, is intermittent and still unexplained. See below and
 [`docs/OPTIMIZATION-SURFACES.md`](docs/OPTIMIZATION-SURFACES.md).)
 
 The settled part is the boundary: **a locality library can compute a persisting window, but
