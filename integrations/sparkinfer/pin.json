@@ -27,5 +27,6 @@
     "runtime/src/models/qwen35.cpp: after_layer at the end of the w.linear_attn block",
     "runtime/src/models/qwen35.cpp: end_token beside the existing pf_join()",
     "runtime/CMakeLists.txt: find_package(RecurLocal) and link"
-  ]
+  ],
+  "_second_model_note": "This block pins the SCORED model. The same commit and the same hook also run Qwen3.6-35B-A3B, a sparse-MoE hybrid whose geometry lives in configs/qwen3.6-35b-a3b-moe-ceiling.json - the adapter derives every stride from the runtime's config, so a second model needs a geometry file and no code change. Results in results/rtx5090-moe-matrix.json. Changing THIS block invalidates every real-result.json produced before the change; adding a second model's geometry elsewhere does not."
 }
