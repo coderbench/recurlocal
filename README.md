@@ -337,6 +337,14 @@ here: without the node attachment the persisting policy would have been absent f
 graph replay, `windows_attached_to_node` would have read 0, and `persist` would have measured
 its cost with none of its effect.
 
+## Competing on this repository
+
+[`docs/MINING.md`](docs/MINING.md) is the competition brief. The short version: **batch-1
+decode is a dead surface** — 1.65% of ceiling, below the floor the gate rejects at — and
+**concurrent decode is where the room is**. At 32 sequences the ceiling is 11.03% and the
+shipped implementation captures none of it. That gap, not batch 1, is what a contribution
+should aim at.
+
 ## Contribution model
 
 There are deliberately no bounty-style optimization issues required. Profile `main`, find a bottleneck, and move the frontier.
