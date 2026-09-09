@@ -8,7 +8,7 @@ Gated-DeltaNet layers of a pinned SparkInfer commit decoding Qwen3.8-27B and pro
 ```
 build.sh                      clone the pinned commit, install RecurLocal, patch, build
 pin.json                      the commit, the checkpoint, the state geometry, the hook sites
-recurlocal-hook.patch         the diff against SparkInfer: 77 lines, all insertions
+recurlocal-hook.patch         the diff against SparkInfer: 88 lines, all insertions
 recurlocal_sparkinfer.cpp     the adapter (header: include/recurlocal/sparkinfer.h)
 ```
 

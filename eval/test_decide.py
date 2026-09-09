@@ -231,7 +231,8 @@ class HarnessIntegrity(unittest.TestCase):
     """The harness is meant to arbitrate. These cover the ways it could quietly not."""
 
     def test_a_run_whose_arms_did_not_resolve_is_not_significant(self):
-        doc = real_doc({"batch1": {"weight": 1.0, "baseline_tps": 100.0, "candidate_tps": 108.0}})
+        # A complete matrix, so that resolution is the only thing under test here.
+        doc = real_doc(flat(1.08))
         self.assertTrue(label.score_real(doc)["significant"])          # resolved: a real result
         doc["measurement"] = {"unresolved_workloads": ["batch1/ctx128"]}
         out = label.score_real(doc)
@@ -297,6 +298,76 @@ class ShippedArtifactIsScorable(unittest.TestCase):
     def test_a_bare_doc_missing_workloads_still_errors(self):
         with self.assertRaises(SystemExit):
             label.score_real({"correctness": {"output_identical": True}})
+
+
+class WorkloadCoverage(unittest.TestCase):
+    """An omitted workload is not a neutral omission.
+
+    Missing arms are renormalised away, so leaving one out removes it from the mean
+    instead of averaging it in. docs/MINING.md points the competition at concurrency 32,
+    which makes that the arm a submission profits most from not running. The verdict has
+    to say what was not measured and refuse to call the result significant.
+    """
+
+    def _partial(self, ratio=1.10):
+        return real_doc({name: {"weight": w, "baseline_tps": 100.0,
+                                "candidate_tps": 100.0 * ratio}
+                         for name, w in label.DEFAULT_WEIGHTS.items()
+                         if name != "concurrency32"})
+
+    def test_a_missing_arm_is_named_with_the_weight_it_took_with_it(self):
+        out = label.score_real(self._partial())
+        self.assertTrue(out["partial"])
+        self.assertEqual(out["workload_coverage"]["missing"], ["concurrency32"])
+        self.assertAlmostEqual(out["workload_coverage"]["missing_weight_share"], 0.20)
+
+    def test_an_incomplete_matrix_cannot_be_significant_however_large_the_gain(self):
+        out = label.score_real(self._partial(ratio=1.10))
+        self.assertAlmostEqual(out["weighted_gain_pct"], 10.0, places=9)
+        self.assertEqual(out["impact"], "L")          # still described...
+        self.assertFalse(out["significant"])          # ...but not banked
+        self.assertIn("concurrency32", out["reason"])
+
+    def test_allow_partial_is_the_only_way_through_and_it_is_recorded(self):
+        out = label.score_real(self._partial(), allow_partial=True)
+        self.assertTrue(out["significant"])
+        self.assertTrue(out["partial"])
+        self.assertTrue(out["partial_waived"])
+
+    def test_a_complete_matrix_is_not_flagged(self):
+        out = label.score_real(real_doc(flat(1.10)))
+        self.assertFalse(out["partial"])
+        self.assertNotIn("workload_coverage", out)
+        self.assertTrue(out["significant"])
+
+    def test_coverage_is_derived_not_taken_from_the_document(self):
+        # A submission that declares full coverage while omitting the arm is still partial:
+        # the scorer counts the workloads it actually scored.
+        doc = self._partial()
+        doc["workload_coverage"] = {"measured": sorted(label.DEFAULT_WEIGHTS), "missing": []}
+        out = label.score_real(doc)
+        self.assertEqual(out["workload_coverage"]["missing"], ["concurrency32"])
+        self.assertFalse(out["significant"])
+
+    def test_a_custom_matrix_is_not_forced_onto_section_44_names(self):
+        # A result that uses none of the section 44 names is a different matrix, not an
+        # incomplete one, and must not be flagged as missing every arm.
+        doc = real_doc({"my_workload": {"weight": 1.0, "baseline_tps": 100.0,
+                                        "candidate_tps": 110.0}})
+        out = label.score_real(doc)
+        self.assertFalse(out["partial"])
+        self.assertTrue(out["significant"])
+
+    def test_the_cli_refuses_to_exit_zero_on_a_partial_matrix(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "real.json"
+            f.write_text(json.dumps(self._partial()))
+            blocked = subprocess.run([sys.executable, str(DECIDE_PY), "--real", str(f)],
+                                     capture_output=True, text=True)
+            self.assertNotEqual(blocked.returncode, 0)
+            waived = subprocess.run([sys.executable, str(DECIDE_PY), "--real", str(f),
+                                     "--allow-partial"], capture_output=True, text=True)
+            self.assertEqual(waived.returncode, 0)
 
 
 if __name__ == "__main__":

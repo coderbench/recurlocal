@@ -12,7 +12,7 @@ No performance claim appears here without a measurement behind it. See `docs/FRO
   metric that decides this project had no way to be measured: `eval/decide.py --real` needed a
   `real-result.json` and nothing could produce one. It can now. The adapter brackets the
   Gated-DeltaNet layers of a **pinned** SparkInfer commit (`pin.json`) decoding Qwen3.8-27B
-  NVFP4 on an RTX 5090, as a 77-line insertion-only patch plus a library target (CI
+  NVFP4 on an RTX 5090, as an 88-line insertion-only patch plus a library target (CI
   asserts the patch deletes nothing). One binary
   runs both arms: with `RECURLOCAL` unset it is the unmodified runtime.
 - **Both recurrent states, not one.** A Qwen3.8-27B layer carries a 3 MiB fp32 matrix state
@@ -160,6 +160,17 @@ fail to:
 - **`decide.py` never read whether the arms resolved.** `real_eval.py` computes a per-workload
   resolution against each arm's own run-to-run spread; the scorer ignored it and could return
   `significant: true` on a matrix where nothing resolved. It now refuses.
+- **An omitted workload made the score better, not worse.** `decide.py` renormalises the
+  weights it is given, so a workload left out of the matrix is removed from the geometric
+  mean rather than averaged in — and `docs/MINING.md` points the competition at concurrency
+  32, the arm with the most room and therefore the one worth not running. The scorer now
+  derives coverage from the workloads it actually scored (never from a `workload_coverage`
+  field in the document being scored), names what is absent together with the section 44
+  weight that went with it, and refuses to mark a partial matrix `significant`. The verdict
+  is still reported, and `--allow-partial` records a maintainer's decision to score one
+  anyway. The repository's own published result is partial in exactly this way — it has no
+  concurrency-32 arm — and now says so in the verdict rather than only in the bundle.
+
 - **Nothing interlocked concurrent eval processes.** Two runs on one GPU do not go slower,
   they produce a number for a run that never happened — twice in this project's own history a
   VRAM race turned into a plausible-looking result. `real_eval.py` now takes an advisory
@@ -190,7 +201,7 @@ Three findings survived two independent refute-by-default verifiers reading the 
 
 ### Added — the CUDA code is now tested
 
-- `tests/test_cuda_controller.cu`: 115 device-side checks over the controller, the
+- `tests/test_cuda_controller.cu`: 120 device-side checks over the controller, the
   graph-capture state machine, every pre-touch strategy and the row-major path. Registered
   with `ctest`; skips cleanly with exit 0 where there is no GPU. Each regression test was
   validated by reverting its fix and confirming the test fails — one that did not was

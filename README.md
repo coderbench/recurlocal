@@ -321,14 +321,15 @@ reproducible off the box, not merely same-box comparable.
 ## Integration contract
 
 A runtime needs only the lifecycle hook shown in `integrations/sparkinfer/README.md`. The
-SparkInfer integration is 77 lines of insertions against a pinned commit, and CI asserts it
+SparkInfer integration is 88 lines of insertions against a pinned commit, and CI asserts it
 deletes nothing.
 
-The CUDA code is tested: `tests/test_cuda_controller.cu` runs 115 device-side checks over the
+The CUDA code is tested: `tests/test_cuda_controller.cu` runs 120 device-side checks over the
 controller, the graph-capture state machine and every pre-touch strategy, and
-`scripts/sanitize.sh` keeps it memcheck/initcheck/synccheck/racecheck clean. Writing those
-found nine real defects, including a persisting-L2 set-aside that was never given back and a
-failing pre-touch that could strand a host runtime's graph capture — see the CHANGELOG.
+`scripts/sanitize.sh` keeps it memcheck/initcheck/synccheck/racecheck clean. Writing those,
+and the audit that went with them, found eleven real defects in the library, including a
+persisting-L2 set-aside that was never given back and a failing pre-touch that could strand a
+host runtime's graph capture — see the CHANGELOG.
 
 `stats()` reports windows applied, windows *deferred* under graph capture, windows actually
 attached to a captured graph node, layers where the hot set was oversubscribed, and pre-touch

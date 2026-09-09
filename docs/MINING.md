@@ -71,6 +71,13 @@ candidate differ only by environment. Never compare two separately linked binari
   `windows_applied + windows_attached_to_node + pre_touch_launches == 0`, by name. This is not
   hypothetical: the first scored run in this repository was exactly that, and its +0.053%
   measured hook overhead.
+- **An incomplete workload matrix.** A workload that was not run is not averaged in as a
+  zero; it is renormalised away, so omitting an arm removes it from the mean. That makes
+  concurrency 32 — the arm with the most room — the one a submission profits most from not
+  running. `decide.py` derives coverage from the workloads it actually scored, names what is
+  absent and the weight that went with it, and refuses to call a partial matrix significant.
+  It says so even when the document claims full coverage.
+
 - **A synthetic gain with no real-model number.** `bench/cuda_bench.cu` has disagreed with the
   real model on four axes, for one structural reason: it does not capture a CUDA graph and
   production decode does. `decide.py` refuses to turn a synthetic result into a verdict.

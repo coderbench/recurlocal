@@ -75,7 +75,7 @@ def unwrap_real(doc):
     return doc
 
 
-def score_real(doc, allow_regression=False):
+def score_real(doc, allow_regression=False, allow_partial=False):
     doc = unwrap_real(doc)
     correctness = doc.get("correctness") or {}
     workloads = doc.get("workloads") or {}
@@ -113,6 +113,22 @@ def score_real(doc, allow_regression=False):
             regressions.append(name)
     out["workloads"] = per_workload
 
+    # Coverage is derived here, from the section 44 matrix, and never read out of the
+    # document being scored. A missing workload is not a neutral omission: the weights
+    # that remain are renormalised, so dropping an arm removes it from the mean entirely.
+    # The competition brief points at concurrency 32, which makes that the arm a
+    # submission profits most from leaving out. Report what is absent and how much weight
+    # went with it, and do not let a partial matrix clear the significance floor.
+    scored_names = set(workloads)
+    missing = sorted(set(DEFAULT_WEIGHTS) - scored_names) if scored_names & set(DEFAULT_WEIGHTS) else []
+    if missing:
+        out["workload_coverage"] = {
+            "matrix": "section 44",
+            "measured": sorted(scored_names),
+            "missing": missing,
+            "missing_weight_share": round(sum(DEFAULT_WEIGHTS[n] for n in missing), 4),
+        }
+
     total_weight = sum(w for _, w in ratios.values())
     if total_weight <= 0:
         raise SystemExit("workload weights sum to zero")
@@ -140,17 +156,29 @@ def score_real(doc, allow_regression=False):
     if unresolved:
         out["unresolved_workloads"] = unresolved
 
+    blocking = missing if not allow_partial else []
     _, decision, decision_text = band(gain_pct, GO_NO_GO)
     _, impact = band(gain_pct, IMPACT)
     out.update(scored=True, impact=impact, verdict=decision, go_no_go=decision_text,
-               significant=gain_pct >= SIGNIFICANCE_PCT and not unresolved)
-    if unresolved and gain_pct >= SIGNIFICANCE_PCT:
-        out["reason"] = (f"weighted gain {gain_pct:.2f}% clears the significance floor, but "
-                         f"{', '.join(unresolved)} did not resolve outside its own run-to-run "
-                         "spread — take more repeats before treating this as a result")
-    elif not out["significant"]:
-        out["reason"] = (f"weighted gain {gain_pct:.2f}% is below the {SIGNIFICANCE_PCT:.0f}% "
-                         "significance floor — not a verified improvement")
+               partial=bool(missing),
+               significant=gain_pct >= SIGNIFICANCE_PCT and not unresolved and not blocking)
+    if missing and allow_partial:
+        out["partial_waived"] = True
+    reasons = []
+    if gain_pct < SIGNIFICANCE_PCT:
+        reasons.append(f"weighted gain {gain_pct:.2f}% is below the "
+                       f"{SIGNIFICANCE_PCT:.0f}% significance floor")
+    if unresolved:
+        reasons.append(f"{', '.join(unresolved)} did not resolve outside its own run-to-run "
+                       "spread — take more repeats")
+    if blocking:
+        share = sum(DEFAULT_WEIGHTS[n] for n in blocking)
+        reasons.append(f"the workload matrix is incomplete: {', '.join(blocking)} "
+                       f"({share:.0%} of the section 44 weight) was not measured, and the "
+                       "remaining weights were renormalised to cover the gap "
+                       "(--allow-partial to score anyway)")
+    if reasons:
+        out["reason"] = "; ".join(reasons)
     return out
 
 
@@ -192,12 +220,15 @@ def main():
                      help="real end-to-end workload matrix to score")
     ap.add_argument("--allow-regression", action="store_true",
                     help="score despite a workload regressing more than 2% (maintainer decision)")
+    ap.add_argument("--allow-partial", action="store_true",
+                    help="let an incomplete section 44 workload matrix clear the significance "
+                         "floor (maintainer decision); the verdict still reports what is missing")
     ap.add_argument("--output", type=Path, help="also write the verdict here")
     a = ap.parse_args()
 
     path = a.synthetic or a.real
     doc = json.loads(path.read_text())
-    verdict = score_synthetic(doc) if a.synthetic else score_real(doc, a.allow_regression)
+    verdict = score_synthetic(doc) if a.synthetic else score_real(doc, a.allow_regression, a.allow_partial)
 
     text = json.dumps(verdict, indent=2)
     if a.output:
