@@ -41,12 +41,13 @@ Two terms move at once, which is the part the residency ratios do not show:
 
 Three interleaved pairs, control 503.18 tok/s, noise floor 0.078%, paired ratios
 1.0137 / 1.0120 / 1.0126 — resolved, and the largest real-model gain this repository has
-measured. It is a third of the ceiling and leaves 2.4 points of headroom, which is what makes
-batch-1 decode a surface here rather than the dead end it is on the dense model.
+measured; tuning the two persistence dials to their maximum takes it to **+1.63%**. That is
+44% of the ceiling and leaves 2.0 points of headroom, which is what makes batch-1 decode a
+surface here rather than the dead end it is on the dense model.
 `results/rtx5090-moe-matrix.json` carries the data.
 
-It does **not** rescue concurrency, and on this checkpoint concurrency cannot be measured at
-all — see the runtime defect below.
+It does **not** rescue concurrency, and measuring concurrency on this checkpoint first required
+finding a runtime defect — below.
 
 ### Measured — the set-aside is the dial, and the shipped default was not it
 
@@ -71,7 +72,7 @@ which is the deliberately generous bound showing itself: it assumes every reside
 that the set-aside costs its neighbours nothing, and neither is quite true.
 
 `--axis hit-ratio` says the same thing from the other side, and resolves just as cleanly —
-0.25 → +0.76%, 0.50 → +1.13%, 0.75 → +1.41%, **1.00 → +1.53%**, span 0.74% against a 0.063%
+0.25 → +0.76%, 0.50 → +1.13%, 0.75 → +1.41%, **1.00 → +1.50%**, span 0.74% against a 0.063%
 floor, measured at the default `budget_fraction`. Both dials are monotonic to their maximum and
 neither has an interior optimum, which is what a footprint that nearly fits predicts: there is
 no point on this model at which asking for less persistence is better than asking for more.

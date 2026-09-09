@@ -231,7 +231,7 @@ as a 48-layer 3 MiB one. Two terms move at once:
 | traffic ceiling | 1.69% | **3.75%** |
 | persist-family ceiling | 0.68% | **3.67%** |
 | measured `persist`, default settings | +0.10% | **+1.26%** |
-| measured `persist`, `budget_fraction=1.00` | — | **+1.53%** |
+| measured `persist`, both dials at maximum | — | **+1.63%** |
 
 Three interleaved pairs, control 503.2 tok/s, noise floor 0.078%, paired ratios
 1.0137 / 1.0120 / 1.0126 at the default. That is the largest real-model gain this repository has
@@ -245,7 +245,7 @@ measured — and the L2 set-aside turns out to be the dial that matters, resolve
 | **1.00** | 60 MiB | **+1.53%** |
 
 Span 0.85% against a 0.10% noise floor. `--axis hit-ratio` says the same from the other side —
-+0.76% / +1.13% / +1.41% / **+1.53%** over 0.25 → 1.00, span 0.74% against a 0.063% floor. Both
++0.76% / +1.13% / +1.41% / **+1.50%** over 0.25 → 1.00, span 0.74% against a 0.063% floor. Both
 dials are monotonic to their maximum with no interior optimum, which is what a footprint that
 nearly fits predicts: nowhere on this model is asking for less persistence better than asking
 for more. On the dense model the same axes span 0.02%, because no fraction of a 2.4×

@@ -12,11 +12,11 @@ reach that room either, for a reason that is arithmetic rather than implementati
 
 On a **sparse-MoE** hybrid it inverts. A decode step that moves 3.56 GB instead of 18.5 GB puts
 the recurrent footprint at 1.02x the persisting cache instead of 2.4x, and batch-1 `persist`
-measures **+1.53%** there against +0.10% on the dense model. Concurrency is the arm that cannot
+measures **+1.63%** there against +0.10% on the dense model. Concurrency is the arm that cannot
 be measured on that checkpoint, because the runtime stops batching above 8 rows.
 
 Both are below the 2% floor as weighted matrices. The difference is that one is bounded out by
-arithmetic and the other has 2.1 points of headroom to a ceiling above the floor. Read the
+arithmetic and the other has 2.0 points of headroom to a ceiling above the floor. Read the
 section for the model you intend to work on.
 
 ---
@@ -176,11 +176,11 @@ already known. Reordered by what is still genuinely open:
    | traffic ceiling | 1.69% | **3.75%** |
    | persist-family ceiling | 0.68% | **3.67%** |
    | measured `persist`, defaults | +0.10% | **+1.26%** |
-   | measured `persist`, both dials at maximum | — | **+1.53%** |
+   | measured `persist`, both dials at maximum | — | **+1.63%** |
 
    Measured, not projected: 3 interleaved pairs, control 503.2 tok/s, noise floor 0.078%, paired
    ratios 1.0137 / 1.0120 / 1.0126. That is the largest real-model gain in this repository and it
-   leaves **2.1 points of headroom** to a ceiling above the floor — which is what makes this a
+   leaves **2.0 points of headroom** to a ceiling above the floor — which is what makes this a
    surface rather than a result.
 
    An earlier revision of this list said a sparse MoE would help because "the footprint that has
