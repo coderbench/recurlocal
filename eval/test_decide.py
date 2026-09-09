@@ -405,6 +405,34 @@ class Summary(unittest.TestCase):
         self.assertIn("regressed: concurrency32", text)
 
 
+class HookRan(unittest.TestCase):
+    """The adapter clears its live flag in shutdown(), and the stats line is printed after
+    that. Anything asking "did the hook run" has to read ever_initialised or it reads false
+    on every run that worked."""
+
+    def test_a_shut_down_adapter_still_counts_as_having_run(self):
+        # Exactly the snapshot a successful run emits: shutdown() has already happened.
+        self.assertTrue(real_eval.hook_ran({"initialised": False, "ever_initialised": True}))
+
+    def test_an_adapter_that_never_started_does_not(self):
+        self.assertFalse(real_eval.hook_ran({"initialised": False, "ever_initialised": False}))
+        self.assertFalse(real_eval.hook_ran(None))
+        self.assertFalse(real_eval.hook_ran({}))
+
+    def test_an_older_adapter_without_the_field_falls_back(self):
+        self.assertTrue(real_eval.hook_ran({"initialised": True}))
+        self.assertFalse(real_eval.hook_ran({"initialised": False}))
+
+    def test_the_guard_and_the_correctness_record_cannot_drift_apart(self):
+        # They did: the guard read ever_initialised and the record read initialised, so a run
+        # the guard accepted was recorded as having no hook active. One function now, and this
+        # test fails if a second definition reappears.
+        import inspect
+        src = inspect.getsource(real_eval)
+        self.assertEqual(src.count('get("ever_initialised"'), 1,
+                         "ever_initialised must be read in exactly one place: hook_ran()")
+
+
 class MatrixCeiling(unittest.TestCase):
     """What is the most this repository can ever pay?
 

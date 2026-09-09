@@ -137,6 +137,23 @@ def policy_applied(stats):
             + st.get("pre_touch_launches", 0)) > 0
 
 
+def hook_ran(stats):
+    """Did the adapter ever initialise in this process?
+
+    ever_initialised, not initialised: the stats snapshot is printed at process exit, by
+    which time the runtime's model destructor has already called shutdown() and cleared the
+    live flag. Older adapters do not emit the field, so fall back to the live one.
+
+    One definition, used by both the guard that refuses an unhooked candidate and the
+    correctness record. They disagreed once: the record read the live flag and so said
+    candidate_hook_active=false on every run that worked, which reads as "the token-exact
+    gate compared the control against itself" - the opposite of what the gate proved.
+    """
+    if not stats:
+        return False
+    return bool(stats.get("ever_initialised", stats.get("initialised")))
+
+
 def require_hook_engaged(text, env_extra, label):
     """A candidate run that produced no telemetry ran the control.
 
@@ -152,11 +169,7 @@ def require_hook_engaged(text, env_extra, label):
                          "run emitted no RECURLOCAL_STATS line. The binary is unhooked, or the "
                          "adapter refused the configuration. Refusing to report it as a candidate.\n"
                          + text[-2000:])
-    # ever_initialised, not initialised: the stats snapshot is printed at process exit, by
-    # which time the runtime's model destructor has already called shutdown() and cleared the
-    # live flag. Older adapters do not emit the field, so fall back to the live one.
-    ran = stats.get("ever_initialised", stats.get("initialised"))
-    if not ran or stats.get("broken"):
+    if not hook_ran(stats) or stats.get("broken"):
         raise SystemExit(f"{label}: the hook did not initialise (ever_initialised="
                          f"{stats.get('ever_initialised')}, initialised={stats.get('initialised')}, "
                          f"broken={stats.get('broken')}, "
@@ -402,7 +415,7 @@ def main():
                                (i for i, (x, y) in enumerate(zip(ctrl_ids, cand_ids)) if x != y),
                                min(len(ctrl_ids), len(cand_ids))))
         if gate_stats:
-            correctness["candidate_hook_active"] = bool(gate_stats.get("initialised"))
+            correctness["candidate_hook_active"] = hook_ran(gate_stats)
         if verbose:
             print(f"    {'identical' if identical else 'DIVERGED'} over {len(ctrl_ids)} tokens", flush=True)
     else:

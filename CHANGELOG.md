@@ -152,6 +152,17 @@ while nothing in the repo ran it.
   rather than guessed. Inputs live in `configs/rtx5090-section44-ceiling.json`, every one of
   them a baseline measurement from `results/rtx5090-real.json`.
 
+### Fixed — a correctness record that understated what the gate proved
+
+- **`candidate_hook_active` was false on every run that worked.** The token-exact gate reads
+  the adapter's stats snapshot, which is printed at process exit — after the runtime's model
+  destructor has called `shutdown()` and cleared the live `initialised` flag. The guard that
+  refuses an unhooked candidate already knew this and read `ever_initialised`; the correctness
+  record did not, and recorded `candidate_hook_active: false`. That reads as "the token-exact
+  gate compared the control against itself", which is the opposite of what it proved. Both
+  sites now share one `hook_ran()`, and a test asserts `ever_initialised` is read in exactly
+  one place so the two cannot drift apart again.
+
 ### Added — a reference baseline, all four arms, one box
 
 - **`results/rtx5090-baseline-matrix.json`** is the number a submission has to beat: control
