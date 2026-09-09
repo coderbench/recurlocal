@@ -207,9 +207,12 @@ benchmarks, the flag that isolates each, and where the two disagree.
 | 7–10% | strong candidate |
 | >10% | expand immediately |
 
-**The gate has been run and the result is in the first band.** The scored measurement —
-`persist`, safe window delivery, 3 interleaved pairs, batch 1 at three contexts plus
-concurrency 4 and 16 — is **+0.053% weighted**, with token-exact output. `eval/decide.py`
+**The gate has been run and the result is in the first band.** The first scored run is
+retained only as a cautionary artifact: it used `persist` with safe window delivery, which
+under graph decode applies **no policy at all** (192 windows computed and handed back, none
+attached), so its +0.053% measured hook overhead rather than locality. `eval/real_eval.py`
+now refuses such a null candidate. A re-score with `prefetch` — whose kernels *are* recorded
+into the captured graph — is the standing result; token-exact output either way. `eval/decide.py`
 returns `reject`, and the verdict is derived from `results/rtx5090-real.json`, not asserted:
 
 ```

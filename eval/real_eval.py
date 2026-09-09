@@ -152,9 +152,14 @@ def require_hook_engaged(text, env_extra, label):
                          "run emitted no RECURLOCAL_STATS line. The binary is unhooked, or the "
                          "adapter refused the configuration. Refusing to report it as a candidate.\n"
                          + text[-2000:])
-    if not stats.get("initialised") or stats.get("broken"):
-        raise SystemExit(f"{label}: the hook did not initialise (initialised="
-                         f"{stats.get('initialised')}, broken={stats.get('broken')}, "
+    # ever_initialised, not initialised: the stats snapshot is printed at process exit, by
+    # which time the runtime's model destructor has already called shutdown() and cleared the
+    # live flag. Older adapters do not emit the field, so fall back to the live one.
+    ran = stats.get("ever_initialised", stats.get("initialised"))
+    if not ran or stats.get("broken"):
+        raise SystemExit(f"{label}: the hook did not initialise (ever_initialised="
+                         f"{stats.get('ever_initialised')}, initialised={stats.get('initialised')}, "
+                         f"broken={stats.get('broken')}, "
                          f"config_error={stats.get('config_error')}).\n" + text[-2000:])
     if stats.get("stats", {}).get("layers", 0) == 0:
         raise SystemExit(f"{label}: the hook initialised but bracketed no recurrent layer. "

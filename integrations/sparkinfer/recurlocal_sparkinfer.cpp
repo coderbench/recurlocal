@@ -50,7 +50,12 @@ bool parse_or_fail(const char* name, const char* fallback, Fn fn, const char** w
 struct Adapter {
     bool configured = false;       // env has been read
     bool usable = false;           // mode != off and the config parsed
-    bool initialised = false;      // the controller owns a device and streams
+    bool initialised = false;      // the controller owns a device and streams RIGHT NOW
+    // ...and whether it ever did. shutdown() clears `initialised`, and the stats snapshot is
+    // printed at exit - i.e. AFTER the model destructor has shut us down - so reporting only
+    // the live flag told a reader the hook had never run when it had bracketed every layer.
+    bool ever_initialised = false;
+    std::size_t l2_set_aside_at_init = 0;
     bool broken = false;           // initialisation failed; stay out of the way
     std::string mode = "off";
     const char* config_error = nullptr;
@@ -239,6 +244,8 @@ bool begin_token(const GdnStateLayout& layout) noexcept {
             a.broken = true; return false;
         }
         a.initialised = true;
+        a.ever_initialised = true;
+        a.l2_set_aside_at_init = a.controller.l2_set_aside_bytes();
         // RECURLOCAL_STATS=1 prints the counters at process exit rather than requiring the
         // runtime to call for them. A benchmark harness reads them off stderr, and a run
         // whose stats line is missing was a run with no hook - which is exactly what the
@@ -389,7 +396,8 @@ void write_stats_json(std::FILE* out) noexcept {
     const auto& c = a.config;
     std::fprintf(out,
         "{\"adapter\":\"recurlocal-sparkinfer\","
-        "\"mode\":\"%s\",\"initialised\":%s,\"broken\":%s,\"config_error\":%s,"
+        "\"mode\":\"%s\",\"initialised\":%s,\"ever_initialised\":%s,"
+        "\"broken\":%s,\"config_error\":%s,"
         "\"config\":{\"pre_touch\":\"%s\",\"pre_touch_coverage\":\"%s\",\"prefetch_distance\":%d,"
         "\"prefetch_schedule\":\"%s\",\"prefetch_join\":\"%s\",\"window_attach\":\"%s\","
         "\"hot_set_model\":\"%s\","
@@ -408,7 +416,8 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"pre_touch_skipped\":%llu,\"compute_stream_priority\":%d,"
         "\"prefetch_stream_priority\":%d}}",
         a.usable ? to_string(c.mode) : "off",
-        a.initialised ? "true" : "false", a.broken ? "true" : "false",
+        a.initialised ? "true" : "false", a.ever_initialised ? "true" : "false",
+        a.broken ? "true" : "false",
         a.config_error ? "\"set\"" : "null",
         to_string(c.pre_touch), to_string(c.pre_touch_coverage), c.prefetch_distance,
         to_string(c.prefetch_schedule), to_string(c.prefetch_join), to_string(c.window_attach),
@@ -417,7 +426,7 @@ void write_stats_json(std::FILE* out) noexcept {
         c.hit_ratio, c.persisting_budget_fraction,
         a.geometry.recurrent_layers, a.geometry.bytes_per_layer, a.geometry.sequences,
         a.geometry.streamed_bytes_per_token,
-        a.controller.l2_set_aside_bytes(),
+        a.ever_initialised ? a.l2_set_aside_at_init : a.controller.l2_set_aside_bytes(),
         (unsigned long long)a.tokens, (unsigned long long)a.tokens_packed,
         (unsigned long long)s.layers, (unsigned long long)a.layers_packed, a.max_rows_seen,
         (unsigned long long)s.windows_applied, (unsigned long long)s.windows_deferred_to_caller,

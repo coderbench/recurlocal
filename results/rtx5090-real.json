@@ -759,6 +759,17 @@
         "compute_stream_priority": 0,
         "prefetch_stream_priority": 0
       }
+    },
+    "NULL_CANDIDATE_WARNING": {
+      "what": "This scored run applied NO locality policy. It is hook overhead versus the control, not a locality result, and must not be read as the go/no-go verdict.",
+      "evidence": {
+        "windows_applied": 0,
+        "windows_attached_to_node": 0,
+        "pre_touch_launches": 0,
+        "windows_deferred_to_caller": 192
+      },
+      "why": "The candidate was persist + window_attach=stream. Under CUDA-Graph decode that computes a window per layer and hands it back for the runtime to attach; SparkInfer does not attach it, so 192 windows were deferred and none reached a kernel. eval/real_eval.py now refuses a candidate whose telemetry shows no policy was applied - this file predates that guard and would be rejected by it.",
+      "superseded_by": "a re-score with RECURLOCAL=prefetch, whose pre-touch kernels ARE recorded into the captured graph and therefore constitute a real policy"
     }
   },
   "verdict": {
@@ -823,6 +834,7 @@
     "verdict": "reject",
     "go_no_go": "reject the core hypothesis",
     "significant": false,
-    "reason": "weighted gain 0.05% is below the 2% significance floor \u2014 not a verified improvement"
+    "reason": "weighted gain 0.05% is below the 2% significance floor \u2014 not a verified improvement",
+    "NOTE": "scored from a null candidate; see scored_result.NULL_CANDIDATE_WARNING"
   }
 }
