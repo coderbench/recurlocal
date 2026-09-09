@@ -198,6 +198,15 @@ def persist_family_ceiling(state_read, total_traffic, persisting_l2_bytes):
     """
     resident = min(persisting_l2_bytes, state_read)
     saved = resident * 2 / total_traffic          # the resident bytes' read AND write-back
+    # The whole bound has one lever. The numerator is 2*min(capacity, footprint) and the
+    # capacity is fixed by the device, so on any model whose footprint already exceeds the
+    # cache the only way to raise this ceiling is to shrink the DENOMINATOR -- to run a model
+    # that moves fewer bytes per decode step. Inverting the bound at the significance floor
+    # gives the number to screen a candidate model with, before integrating it.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import decide
+    floor = decide.SIGNIFICANCE_PCT / 100.0
+    break_even = resident * 2 * (1.0 + 1.0 / floor)
     return {
         "persist_family": {
             "per_token_state_footprint_bytes": state_read,
@@ -205,6 +214,15 @@ def persist_family_ceiling(state_read, total_traffic, persisting_l2_bytes):
             "footprint_over_capacity": state_read / persisting_l2_bytes,
             "resident_fraction_of_state": resident / state_read,
             "ceiling_pct": saved / (1.0 - saved) * 100.0,
+            "break_even_step_traffic_bytes": break_even,
+            "step_traffic_bytes": total_traffic,
+            "clears_significance_floor": total_traffic <= break_even,
+            "break_even_note": (
+                f"a decode step must move at most {break_even / 1e9:.2f} GB for a persisting "
+                f"window over this footprint to reach the {decide.SIGNIFICANCE_PCT}% floor at "
+                f"all; this one moves {total_traffic / 1e9:.2f} GB. The capacity in the "
+                "numerator is the device's and cannot be raised, so a model with less weight "
+                "traffic per token is the only lever there is."),
             "note": "an optimistic bound on the persist family only: every resident byte "
                     "hits, and the set-aside costs nothing to the traffic competing with it. "
                     "State is reused a whole model pass later, so the footprint that must be "

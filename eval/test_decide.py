@@ -661,6 +661,55 @@ class PackedPathGuard(unittest.TestCase):
             real_eval.require_packed_path(self._stats(0, 0, 0), 32, "c=32")
 
 
+class BreakEvenScreen(unittest.TestCase):
+    """The number to screen a candidate model with before integrating it.
+
+    The persist bound is 2*min(capacity, footprint) / step_traffic. The capacity is the
+    device's and cannot be raised, so on any model whose footprint already exceeds the cache
+    the ONLY lever is the denominator. Inverting the bound at the significance floor turns
+    'try a sparser model' from advice into a threshold.
+    """
+
+    PIN = MatrixCeiling.PIN
+
+    def _pf(self, ms, cap=62914560, m=None):
+        return traffic_budget.arm_ceiling(m or self.PIN, 1, ms, 1.0, 1792.0,
+                                          cap)["persist_family"]
+
+    def test_a_step_at_the_break_even_lands_exactly_on_the_floor(self):
+        pf = self._pf(10.0)
+        at = pf["break_even_step_traffic_bytes"]
+        # Re-run with a step time that moves exactly that many bytes.
+        pf2 = self._pf(at / (1792.0 * 1e9) * 1000.0)
+        self.assertAlmostEqual(pf2["ceiling_pct"], label.SIGNIFICANCE_PCT, places=6)
+
+    def test_the_flag_agrees_with_the_ceiling_it_summarises(self):
+        for ms in (0.5, 1.0, 2.0, 3.5, 6.0, 10.34, 40.0):
+            with self.subTest(ms=ms):
+                pf = self._pf(ms)
+                self.assertEqual(pf["clears_significance_floor"],
+                                 pf["ceiling_pct"] >= label.SIGNIFICANCE_PCT)
+
+    def test_the_pinned_dense_model_does_not_clear_it(self):
+        pf = self._pf(10.344706303443338)
+        self.assertFalse(pf["clears_significance_floor"])
+        self.assertGreater(pf["step_traffic_bytes"], pf["break_even_step_traffic_bytes"])
+
+    def test_the_break_even_does_not_depend_on_the_step_it_is_measured_against(self):
+        # It is a property of the footprint and the cache, not of the workload -- otherwise it
+        # could not be used to screen a model whose decode rate is not yet known.
+        self.assertAlmostEqual(self._pf(2.0)["break_even_step_traffic_bytes"],
+                               self._pf(40.0)["break_even_step_traffic_bytes"])
+
+    def test_a_footprint_smaller_than_the_cache_lowers_the_break_even(self):
+        # min(capacity, footprint): a model whose whole recurrent state fits has less to save,
+        # so it needs an even shorter step to be worth a window. Screening must not reward a
+        # tiny state by pretending the cache is full of it.
+        small = dict(self.PIN, recurrent_layers=4)
+        self.assertLess(self._pf(10.0, m=small)["break_even_step_traffic_bytes"],
+                        self._pf(10.0)["break_even_step_traffic_bytes"])
+
+
 class SecondModelGeometry(unittest.TestCase):
     """A second model measured on the same runtime must not inherit the first one's shape.
 
