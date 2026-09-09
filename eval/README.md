@@ -71,6 +71,18 @@ fixed and refuses to name a winner inside the noise floor. It also refuses to *e
 floor from fewer than three control repeats — two readings can land on the same number, and a
 zero floor would make any difference look resolved.
 
+`--warmup-runs N` discards leading measurements before the first counted pair. Default 0, so
+every result published before the flag existed reproduces exactly; use it when the opening run
+of a sweep is measurably slow, because control runs first and that slowness lands entirely in
+pair 1 — on one arm it turned a fraction-of-a-percent question into an 8.3% noise floor.
+
+Two axes only resolve where the recurrent footprint is close to the persisting cache:
+`budget-fraction` and `hit-ratio`. On a model whose footprint is several times the cache they
+span 0.02%; where it is 1.02x they span 0.85% and 0.74% and both are monotonic to their
+maximum. `hot-set-policy` cannot be swept whole wherever the footprint is oversubscribed —
+`cliff` declines every window, applies no policy, and is refused as a null candidate, which
+aborts the axis. Use `--values proportional,fixed,sqrt,quota`.
+
 Other real metrics worth recording alongside: recurrent-kernel time, HBM bytes attributable to
 recurrent state, L2 hit/sector counters, joules/token.
 
