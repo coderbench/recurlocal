@@ -253,12 +253,28 @@ The shipped defaults (0.75, 0.70) were leaving a quarter of a point on the floor
 the far end there are **2.1 points of headroom** to the ceiling — which is what makes batch-1
 decode a surface here rather than the dead end it is on the dense model.
 
-It does **not** rescue concurrency, and on this checkpoint concurrency cannot even be measured:
-above 8 rows the runtime stops batching, packs 127 of 4205 tokens at 32 sequences and decodes
-the rest one row at a time, so aggregate throughput falls *below* the single-sequence rate. That
-turned out to be a missing chunking loop in SparkInfer's bf16 multi-row GEMV dispatcher and is worth
-**5.4×** — see [`docs/MINING.md`](docs/MINING.md). `eval/real_eval.py` now refuses such an arm by
-name rather than scoring it.
+### And a 5.4× cliff in the runtime, found on the way
+
+Concurrency on this checkpoint could not be measured at first: above 8 rows the runtime stops
+batching, packs 127 of 4205 tokens at 32 sequences and decodes the rest one row at a time, so
+aggregate throughput falls *below* the single-sequence rate. `launch_mmvq_q4k_rows` refuses
+`M > 8` and the bf16 `launch_mmvq_rows` dispatcher has no chunking loop, where its own `_f32`
+sibling does. The runtime says so itself — `mmvq_rows refused type=12 N=16 n_out=8192 K=2048`,
+then `declined at layer=0`.
+
+Proven without a patch, because the engine already chunks a wide batch by its packed-row cap and
+the cap is an environment variable:
+
+| | default cap | `SPARKINFER_PACKED_MAX_ROWS=8` |
+|---|--:|--:|
+| c=16 | 5.8% packed, 452.8 tok/s | **94.4% packed, 1204.4 tok/s** |
+| c=32 | 3.0% packed, 455.6 tok/s | **97.3% packed, 1226.8 tok/s** |
+
+The cliff is **5.4×** (2456 tok/s at 8 rows against 452 at 16); the cap recovers **2.7×** of it,
+because chunking re-reads the weights once per chunk. That is two orders of magnitude more than
+anything this library does to a decode step, and it is SparkInfer's to fix.
+`eval/real_eval.py` now refuses a concurrency arm that fell off the batched path rather than
+scoring it. Details in [`docs/MINING.md`](docs/MINING.md).
 
 Raw data: [`results/rtx5090-moe-matrix.json`](results/rtx5090-moe-matrix.json).
 [`docs/OPTIMIZATION-SURFACES.md`](docs/OPTIMIZATION-SURFACES.md) has the full matrix.
