@@ -355,6 +355,48 @@ pre-touch adds one extra read of the recurrent state, 64 MB against a 3.56 GB st
 the traffic where the same read was 0.35% of an 18.5 GB one, and the graph-node cost is charged
 against a step 5.2x shorter.
 
+## Axes that were dead on the dense model and are live here
+
+On Qwen3.8-27B the recurrent footprint is 2.4x the persisting capacity at batch 1 and 39.9x at
+32 sequences, so no window *shape* mattered: `window-target` spanned 0.02% and `hot-set-policy`
+0.01%. At 1.02x the choice is between holding most of the state and holding all of it, and the
+same axes resolve.
+
+| `--axis budget-fraction` | set-aside | gain |
+|---|--:|--:|
+| 0.25 | 15 MiB | +0.68% |
+| 0.50 | 30 MiB | +0.96% |
+| 0.75 (the shipped default) | 45 MiB | +1.28% |
+| **1.00** | 60 MiB | **+1.53%** |
+
+Span 0.85% against a 0.097% floor, 3 pairs with the opening run discarded.
+
+| `--axis hit-ratio` | gain |
+|---|--:|
+| 0.25 | +0.76% |
+| 0.50 | +1.13% |
+| 0.75 | +1.41% |
+| **1.00** | **+1.50%** |
+
+Span 0.74% against a 0.063% floor, at the default `budget_fraction`.
+
+**Both dials are monotonic to their maximum with no interior optimum.** That is what a footprint
+which nearly fits predicts, and it is the opposite of the synthetic benchmark's finding that
+backing off is better under pressure — because there the footprint was many times the budget and
+here it is 1.02x. The shipped defaults (0.75, 0.70) leave about a quarter of a point unclaimed.
+
+Capture efficiency against the residency-scaled ceiling falls from 76% at `budget_fraction` 0.25
+to 43% at 1.00. That is the deliberately generous bound showing itself: it assumes every resident
+byte hits and that the set-aside costs its neighbours nothing, and the second assumption weakens
+as the set-aside grows.
+
+**`cliff` cannot be measured on this model, and the null-candidate guard is right about that.**
+Sweeping the whole `hot-set-policy` axis aborts on it: at batch 1 the footprint is oversubscribed,
+so `cliff` declines every window, applies no policy at all, and `real_eval.py` refuses the arm by
+name — `windows_applied=0, windows_attached_to_node=0, pre_touch_launches=0`. A policy whose
+answer to pressure is to do nothing *is* `baseline`. Sweep the axis with
+`--values proportional,fixed,sqrt,quota`.
+
 ## The concurrency arms of this matrix are not concurrency measurements
 
 Aggregate throughput at 16 and 32 sequences came in at 453 and 456 tok/s — *below* the 503 tok/s
