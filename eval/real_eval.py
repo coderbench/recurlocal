@@ -113,6 +113,44 @@ def median(xs):
     return statistics.median(xs) if xs else 0.0
 
 
+def geomean(xs):
+    if not xs:
+        return 1.0
+    prod = 1.0
+    for x in xs:
+        prod *= x
+    return prod ** (1.0 / len(xs))
+
+
+def batch1_arm(per_context, ctxs):
+    """Combine the per-context results into the single batch-1 workload decide.py scores.
+
+    One estimator, everywhere. This used to be a ratio *of medians*
+    (median(candidate)/median(baseline)) while every other arm — and this module's own
+    documented method — used the median *of paired ratios*. On tight data the two agree; on
+    the drifting clocks this harness is designed for they do not, and the arm that disagreed
+    carried the highest weight in the verdict. Controls of [100, 110, 120] against candidates
+    of [105, 110, 132] are +5.0% paired and +0.0% as a ratio of medians: same measurements,
+    opposite go/no-go.
+
+    Pairing is the whole point of interleaving. Discarding it throws away the only thing that
+    makes a same-box comparison valid.
+
+    Lives out here, not inline in main(), so it can be tested without a GPU and a 21 GB
+    checkpoint — which is why the inconsistency survived as long as it did.
+    """
+    ratios, refs = [], []
+    for c in ctxs:
+        arm = per_context[str(c)]
+        if arm["paired_ratios"]:
+            ratios.append(median(arm["paired_ratios"]))
+        if arm["baseline_tps"] > 0:
+            refs.append(arm["baseline_tps"])
+    ratio = geomean(ratios) if ratios else 1.0
+    baseline_ref = geomean(refs) if refs else 0.0
+    return ratio, baseline_ref
+
+
 def resolution(gain_pct, *spreads):
     """Is this workload's difference bigger than the run-to-run spread that produced it?
 
@@ -344,18 +382,9 @@ def main():
         }
 
     # The batch-1 workload decide.py scores is the whole context sweep, combined as a
-    # geometric mean so no single context can carry the arm.
-    def geomean(xs):
-        if not xs:
-            return 1.0
-        prod = 1.0
-        for x in xs:
-            prod *= x
-        return prod ** (1.0 / len(xs))
-
-    batch1_ratio = geomean([per_context[str(c)]["candidate_tps"] / per_context[str(c)]["baseline_tps"]
-                            for c in ctxs if per_context[str(c)]["baseline_tps"] > 0])
-    baseline_ref = geomean([per_context[str(c)]["baseline_tps"] for c in ctxs])
+    # geometric mean so no single context can carry the arm — using the same paired-ratio
+    # estimator as every other arm. See batch1_arm().
+    batch1_ratio, baseline_ref = batch1_arm(per_context, ctxs)
 
     # The measurement's own noise floor: the worst per-context control spread. A gain under
     # it is not resolved by this experiment, whatever its sign.

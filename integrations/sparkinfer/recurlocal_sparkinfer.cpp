@@ -402,6 +402,7 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"layers_packed\":%llu,\"max_rows_seen\":%d,\"windows_applied\":%llu,"
         "\"windows_deferred_to_caller\":%llu,\"windows_attached_to_node\":%llu,"
         "\"window_attach_failures\":%llu,\"capture_invalidations\":%llu,"
+        "\"released_during_capture\":%llu,\"hit_ratio_reduced\":%llu,"
         "\"hot_set_oversubscribed\":%llu,"
         "\"pre_touch_launches\":%llu,\"pre_touch_segments\":%llu,\"pre_touch_bytes\":%llu,"
         "\"pre_touch_skipped\":%llu,\"compute_stream_priority\":%d,"
@@ -422,6 +423,7 @@ void write_stats_json(std::FILE* out) noexcept {
         (unsigned long long)s.windows_applied, (unsigned long long)s.windows_deferred_to_caller,
         (unsigned long long)s.windows_attached_to_node, (unsigned long long)s.window_attach_failures,
         (unsigned long long)s.capture_invalidations,
+        (unsigned long long)s.released_during_capture, (unsigned long long)s.hit_ratio_reduced,
         (unsigned long long)s.hot_set_oversubscribed, (unsigned long long)s.pre_touch_launches,
         (unsigned long long)s.pre_touch_segments, (unsigned long long)s.pre_touch_bytes,
         (unsigned long long)s.pre_touch_skipped,

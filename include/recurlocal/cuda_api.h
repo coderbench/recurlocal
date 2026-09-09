@@ -74,7 +74,8 @@ struct ControllerStats {
     std::uint64_t windows_applied = 0;
     std::uint64_t windows_cleared = 0;
     std::uint64_t windows_deferred_to_caller = 0;  // graph capture was active
-    std::uint64_t hot_set_oversubscribed = 0;      // planner had to cut the hit ratio
+    std::uint64_t hot_set_oversubscribed = 0;      // the hot set exceeded the L2 budget
+    std::uint64_t hit_ratio_reduced = 0;           // ...and the policy responded by backing off
     std::uint64_t pre_touch_launches = 0;
     std::uint64_t pre_touch_bytes = 0;
     std::uint64_t pre_touch_skipped = 0;           // no scratch, or no next state
@@ -92,6 +93,10 @@ struct ControllerStats {
     // The controller latches node attachment off after the first one.
     std::uint64_t capture_invalidations = 0;
     std::uint64_t pre_touch_segments = 0;
+    // The controller was torn down while its compute stream was still capturing. That is a
+    // caller bug (an exception unwinding mid-capture, usually), but it is one the library
+    // must not make worse by spraying failing CUDA calls into the caller's context.
+    std::uint64_t released_during_capture = 0;
     int compute_stream_priority = 0;
     int prefetch_stream_priority = 0;
 };
@@ -171,7 +176,10 @@ public:
     // window the last recurrent layer left behind.
     cudaError_t before_streaming_region(void* ptr, std::size_t bytes) noexcept;
     cudaError_t after_streaming_region() noexcept;
-    // Drops the window, waits for outstanding pre-touch work, releases the L2 set-aside.
+    // Drops the window, waits for outstanding pre-touch work, and returns the device-wide
+    // persisting-L2 set-aside to whatever it was before initialize() claimed it. Call this
+    // when the runtime is done with locality control; the controller needs initialize()
+    // again afterwards to reserve a set-aside once more.
     cudaError_t reset() noexcept;
 
     const LocalityPlanner& planner() const noexcept { return planner_; }
@@ -205,6 +213,12 @@ private:
     float* scratch_ = nullptr;
     std::size_t scratch_count_ = 0;
     std::size_t l2_set_aside_bytes_ = 0;
+    // What the device's persisting-L2 limit was before we touched it. The limit is
+    // device-wide and context-lifetime: without restoring it, merely constructing a
+    // controller carves a permanent hole out of L2 for every other kernel in the process,
+    // including after the controller is gone.
+    std::size_t previous_l2_set_aside_ = 0;
+    bool l2_set_aside_owned_ = false;
     bool window_active_ = false;
     // A pre-touch fork is outstanding on the prefetch stream and has not been rejoined.
     bool prefetch_fork_outstanding_ = false;

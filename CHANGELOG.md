@@ -78,6 +78,70 @@ No performance claim appears here without a measurement behind it. See `docs/FRO
 - `eval/traffic_budget.py` — what fraction of a decode step's memory traffic recurrent state
   actually is, which is the ceiling on everything this project does.
 
+### Fixed — production defects, found by auditing the code and by testing it
+
+The repository shipped 1,428 lines of CUDA with no tests at all. Writing them found real
+defects; so did `compute-sanitizer`, which `CONTRIBUTING.md` had required of contributors
+while nothing in the repo ran it.
+
+- **The device-wide persisting-L2 set-aside was never given back.** `initialize()` reserved it
+  with `cudaDeviceSetLimit`; `reset()`'s header promised to release it and only evicted
+  persisting *lines*; the destructor cleared a bookkeeping member without telling the driver.
+  Any process that ever constructed a controller — including in `RECURLOCAL=baseline`, a
+  no-op control — ran the rest of its life with a smaller L2 for every other kernel. Now
+  restored to its prior value, and the integration calls `shutdown()` from the model
+  destructor so it happens while the CUDA context is still alive.
+- **`before_layer`'s legacy overload ignored `WindowAttach::Stream`** and armed the
+  undocumented graph-node mutation regardless — so a consumer asking for the documented-safe
+  default still got a graph mutated mid-capture.
+- **A failing pre-touch stranded the caller's graph capture.** The fork that pulls the
+  prefetch stream into a capture was emitted *before* the flag recording that a join is owed,
+  so any early return in between left the capture unjoined with nothing to fix it.
+  `cudaStreamEndCapture` then fails and returns a null graph — which SparkInfer's `cu()`
+  helper logs without aborting, after which every decode step replays a null graph and emits
+  the same stale token forever. Triggerable by a *stale* error latched by unrelated code,
+  because the pre-touch reports a bare `cudaGetLastError()`.
+- **`configure_persisting_l2()` left the caller's current device changed.** It called
+  `cudaSetDevice()` and never restored it, so merely constructing a controller repointed the
+  calling thread's GPU.
+- **The planner budgeted against the requested set-aside, not the granted one.** The driver
+  does not honour the request: an RTX 5090 has a non-zero default (18 MiB) and returns 18 MiB
+  for a 15 MiB ask. Every oversubscription decision inherited that rounding.
+- **`stats().hot_set_oversubscribed` counted the wrong thing** — it keyed off
+  `hit_ratio_reduced`, which `HotSetPolicy::Fixed` never sets, so it read zero under exactly
+  the policy that ignores oversubscription hardest. The two are now separate counters.
+- **`release()` during an active capture poisoned the caller's context.** `cudaMalloc`,
+  `cudaFree` and `cudaDeviceSetLimit` are all illegal while a stream is capturing;
+  compute-sanitizer counted 14 such errors when a controller was destroyed mid-capture. It
+  now drops its handles without touching the driver, and counts it.
+- **The pre-touch consumed the host runtime's pending CUDA error.** Launch status was
+  reported with `cudaGetLastError()`, which *clears* the per-thread error slot — so an
+  embedded RecurLocal could swallow an error the host had not yet checked, and the host's own
+  next check would report success for whatever really failed. Now `cudaPeekAtLastError()`,
+  which reports without consuming.
+- **`WindowScope::Ahead` widened past memory the caller never declared** when no allocation
+  base was supplied — and the unit test asserted that behaviour as correct.
+- **`cudaStreamCaptureStatusInvalidated` was treated as an active capture**, so the controller
+  kept deferring windows into a graph that could never be instantiated.
+- **`real_eval.py` scored the batch-1 arm with a different estimator from every other arm**
+  and from its own documented method: a ratio of medians rather than the median of paired
+  ratios, discarding the pairing that makes an interleaved same-box comparison valid. On
+  drifting clocks the two disagree enough to flip a verdict. The estimator is unified,
+  extracted from `main()` so it is testable without a GPU, and covered. The committed result
+  was recomputed from its stored paired ratios: **+0.049% → +0.053%**, verdict unchanged
+  (`reject`) — this data was tight enough that the bug did not bite.
+
+### Added — the CUDA code is now tested
+
+- `tests/test_cuda_controller.cu`: 115 device-side checks over the controller, the
+  graph-capture state machine, every pre-touch strategy and the row-major path. Registered
+  with `ctest`; skips cleanly with exit 0 where there is no GPU. Each regression test was
+  validated by reverting its fix and confirming the test fails — one that did not was
+  rewritten, and one that cannot be caught on a single-GPU box says so at runtime rather than
+  reporting a green tick.
+- `scripts/sanitize.sh`: memcheck, initcheck, synccheck and racecheck. All clean; memcheck
+  found the release-during-capture defect above on its first run.
+
 ### Measured — the first real-model result, and it is a rejection
 
 One RTX 5090, CUDA 13.3, Qwen3.8-27B NVFP4 on SparkInfer `5347b27c`. Control and candidate
@@ -93,8 +157,8 @@ are the same binary, interleaved. Batch-1 noise floor **0.023%** over 3 pairs.
 Output is token-exact against the unhooked runtime under greedy replay.
 
 The scored run — `persist` with safe window delivery, 3 interleaved pairs, batch 1 at three
-contexts plus concurrency 4 and 16 — is **+0.049% weighted**, and `eval/decide.py --real`
-returns `reject`: batch1 +0.059%, concurrency4 +0.091%, concurrency16 -0.013%, every arm
+contexts plus concurrency 4 and 16 — is **+0.053% weighted**, and `eval/decide.py --real`
+returns `reject`: batch1 +0.068%, concurrency4 +0.091%, concurrency16 -0.013%, every arm
 inside its own run-to-run spread. Concurrency 32 is deliberately absent from the scored
 matrix and reported as unresolved instead; `real_eval.py` leaves an unmeasured arm out and
 `decide.py` renormalises the weights that remain, so a partial run reads as a partial verdict

@@ -16,7 +16,7 @@ index b0babf5..bc9373b 100644
  # with the CUDA toolkit as CUDA::nvml — link + flag it when present so the build degrades cleanly
  # on boxes/toolkits without the NVML stub.
 diff --git a/runtime/src/models/qwen35.cpp b/runtime/src/models/qwen35.cpp
-index 8646140..652549d 100644
+index 8646140..bd47f4d 100644
 --- a/runtime/src/models/qwen35.cpp
 +++ b/runtime/src/models/qwen35.cpp
 @@ -26,6 +26,10 @@
@@ -30,7 +30,18 @@ index 8646140..652549d 100644
  #include "sparkinfer/thermal_governor.h"
  #include "sparkinfer/kv_ops.h"
  #include "sparkinfer/gguf.h"
-@@ -1269,6 +1273,24 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -771,6 +775,10 @@ Qwen35Model::Qwen35Model(const Qwen35Config& cfg, KVCacheManager* kv, moe::MoEEn
+ }
+ 
+ Qwen35Model::~Qwen35Model() {
++    // RecurLocal: hand the device back while the CUDA context is still alive. Without this
++    // the locality layer's persisting-L2 set-aside - a device-wide reservation - outlives
++    // the model and shrinks L2 for everything else in the process.
++    recurlocal::sparkinfer::shutdown();
+     if (p_->lm_head_fp4_payload) cudaFree(p_->lm_head_fp4_payload);
+     if (p_->lm_head_fp4_sf_buf) cudaFree(p_->lm_head_fp4_sf_buf);
+     if (p_->gdn_state_stage) cudaFree(p_->gdn_state_stage);
+@@ -1269,6 +1277,24 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
             "linear conv reset");
      }
  
@@ -55,7 +66,7 @@ index 8646140..652549d 100644
      // Prefill graph: embed→layers→final norm (no LM head). Decode graph: full path + argmax.
      // DFlash's per-layer hidden capture used to require the eager path entirely (a captured
      // graph bakes fixed destinations, and dflash_hidden[cap_row] varies call to call) -- the
-@@ -1513,6 +1535,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1513,6 +1539,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
          };
  
          if (w.linear_attn) {
@@ -65,7 +76,7 @@ index 8646140..652549d 100644
              const bool any_q4k = (w.wqkv_type == 12 || w.wqkv_gate_type == 12 ||
                                    w.ssm_alpha_type == 12 || w.ssm_beta_type == 12);
              const bool any_q6k = (w.wqkv_type == 14 || w.wqkv_gate_type == 14 ||
-@@ -1591,6 +1616,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1591,6 +1620,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
                                                   c.linear_head_dim, c.linear_conv_kernel,
                                                   c.rms_eps, st);
              }
@@ -75,7 +86,7 @@ index 8646140..652549d 100644
              if (gdn_pipelined) cudaStreamWaitEvent(st, s.ev_gdn_ab, 0);
              float* layer_state = s.lin_state +
                  (size_t)L * c.linear_v_heads * c.linear_head_dim * c.linear_head_dim;
-@@ -1603,6 +1631,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1603,6 +1635,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
                                            c.linear_q_heads, c.linear_v_heads,
                                            c.linear_head_dim, c.gdn_qh_block, st,
                                            s.active_lin_state_b16);
@@ -84,7 +95,7 @@ index 8646140..652549d 100644
              if (gdn_pipelined && !gdn_fused_proj) cudaStreamWaitEvent(st, s.ev_gdn_z, 0);
              const bool gdn_gn_q8 = s.gguf && s.use_pq && s.use_llama &&
                                     (w.ssm_out_type == 12 || w.ssm_out_type == 8) &&
-@@ -1631,6 +1661,10 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1631,6 +1665,10 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
                                                    c.linear_v_heads, c.linear_head_dim, c.rms_eps, st);
                  proj_from(s.lin_norm, w.ssm_out, w.ssm_out_type, s.ao, H, s.linear_vdim);
              }
@@ -95,7 +106,7 @@ index 8646140..652549d 100644
          } else {
              // ---- Q/K/V projection (q_has_gate-aware; q_has_gate=false is byte-identical to Qwen3-MoE) ----
              if (s.gguf) {
-@@ -2283,6 +2317,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -2283,6 +2321,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
          dflash_maybe_capture_layer(L);
      }
      pf_join();   // last layer's prefetch: must be joined before the capture ends or the graph is malformed
@@ -104,7 +115,7 @@ index 8646140..652549d 100644
      // xn now holds RMSNorm(x_final, final_norm)
      dbg_bf16(s.xn, H, 80, -2);   // tag 80: final-norm output (lm_head input)
      dbg_xn_snapshot(s.xn, c.n_layers);   // extra slot: final-norm output, for lm_head cross-check
-@@ -3419,6 +3455,29 @@ bool Qwen35Model::decode_packed(const int* tokens, const int* positions,
+@@ -3419,6 +3459,29 @@ bool Qwen35Model::decode_packed(const int* tokens, const int* positions,
      ctx.packed_lin_state = reinterpret_cast<float* const*>(s.packed_dev_states);
      ctx.packed_lin_conv  = reinterpret_cast<void* const*>(s.packed_dev_convs);
      ctx.packed_state_b16 = packed_state_b16;

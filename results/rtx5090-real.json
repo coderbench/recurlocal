@@ -534,7 +534,7 @@
       "batch1": {
         "weight": 0.4,
         "baseline_tps": 94.7836048091236,
-        "candidate_tps": 94.83965828372453
+        "candidate_tps": 94.84783208444625
       },
       "concurrency4": {
         "weight": 0.2,
@@ -703,14 +703,15 @@
     },
     "measurement": {
       "noise_floor_pct": 0.0628829813415998,
-      "gain_pct": 0.059138365452349184,
+      "gain_pct": 0.06776200952895994,
       "resolved": false,
       "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
       "unresolved_workloads": [
         "batch1/ctx128",
         "concurrency16",
         "concurrency4"
-      ]
+      ],
+      "estimator_note": "batch1 recomputed from the stored paired_ratios with the median-of-paired-ratios estimator. The run that produced this file used ratio-of-medians for this one arm, inconsistently with every other arm and with the documented method; on this data the two agree to within 0.01 points, but the estimator was corrected rather than left to matter on noisier data. No measurement was re-run - only the combination arithmetic."
     },
     "adapter": {
       "adapter": "recurlocal-sparkinfer",
@@ -796,9 +797,9 @@
       "batch1": {
         "weight": 0.4,
         "baseline_tps": 94.7836048091236,
-        "candidate_tps": 94.83965828372453,
-        "ratio": 1.0005913836545235,
-        "gain_pct": 0.059138365452349184
+        "candidate_tps": 94.84783208444625,
+        "ratio": 1.0006776200952896,
+        "gain_pct": 0.06776200952895994
       },
       "concurrency16": {
         "weight": 0.2,
@@ -815,8 +816,8 @@
         "gain_pct": 0.0914076782449813
       }
     },
-    "weighted_gain_pct": 0.049166621487040096,
-    "weighted_ratio": 1.0004916662148704,
+    "weighted_gain_pct": 0.05347792092478265,
+    "weighted_ratio": 1.0005347792092478,
     "scored": true,
     "impact": "none",
     "verdict": "reject",

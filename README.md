@@ -209,13 +209,13 @@ benchmarks, the flag that isolates each, and where the two disagree.
 
 **The gate has been run and the result is in the first band.** The scored measurement —
 `persist`, safe window delivery, 3 interleaved pairs, batch 1 at three contexts plus
-concurrency 4 and 16 — is **+0.049% weighted**, with token-exact output. `eval/decide.py`
+concurrency 4 and 16 — is **+0.053% weighted**, with token-exact output. `eval/decide.py`
 returns `reject`, and the verdict is derived from `results/rtx5090-real.json`, not asserted:
 
 ```
 $ eval/decide.py --real results/rtx5090-real.json
-verdict: reject   weighted gain 0.049%   impact none   significant false
-  batch1         +0.059%  (w=0.40)
+verdict: reject   weighted gain 0.053%   impact none   significant false
+  batch1         +0.068%  (w=0.40)
   concurrency4   +0.091%  (w=0.20)
   concurrency16  -0.013%  (w=0.20)
 ```
@@ -311,6 +311,12 @@ reproducible off the box, not merely same-box comparable.
 A runtime needs only the lifecycle hook shown in `integrations/sparkinfer/README.md`. The
 SparkInfer integration is 77 lines of insertions against a pinned commit, and CI asserts it
 deletes nothing.
+
+The CUDA code is tested: `tests/test_cuda_controller.cu` runs 115 device-side checks over the
+controller, the graph-capture state machine and every pre-touch strategy, and
+`scripts/sanitize.sh` keeps it memcheck/initcheck/synccheck/racecheck clean. Writing those
+found nine real defects, including a persisting-L2 set-aside that was never given back and a
+failing pre-touch that could strand a host runtime's graph capture — see the CHANGELOG.
 
 `stats()` reports windows applied, windows *deferred* under graph capture, windows actually
 attached to a captured graph node, layers where the hot set was oversubscribed, and pre-touch

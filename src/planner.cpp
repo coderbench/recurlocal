@@ -126,13 +126,16 @@ WindowRegion resolve_window_region(const StateSegment& seg, WindowScope scope,
             if (have_base) return {seg.base, seg.base_bytes};
             break;
         case WindowScope::Ahead: {
+            // Reaching past this layer's slice is only safe where the caller told us how big
+            // the allocation is. With no base declared, the slice is the ONLY memory we know
+            // belongs to the runtime, so widening would hint - and, via Ahead's use in the
+            // pre-touch sizing, potentially read - memory nobody said we owned.
+            if (!have_base) return {seg.ptr, seg.bytes};
             const std::size_t reach = prefetch_distance > 0
                                     ? static_cast<std::size_t>(prefetch_distance) + 1 : 1;
             std::size_t span = seg.bytes * reach;
-            if (have_base) {
-                const auto remaining = static_cast<std::size_t>(base + seg.base_bytes - slice);
-                if (span > remaining) span = remaining;
-            }
+            const auto remaining = static_cast<std::size_t>(base + seg.base_bytes - slice);
+            if (span > remaining) span = remaining;
             return {seg.ptr, span};
         }
     }
@@ -205,7 +208,7 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
 
     // Without a reserved L2 set-aside the hardware has nothing to hold a persisting
     // window in, so the plan must not ask an integrating runtime to install one.
-    const auto budget = recommended_l2_set_aside();
+    const auto budget = effective_l2_budget();
     if (use_persist && current_state_bytes && caps_.access_policy_max_window_bytes && budget) {
         std::size_t window = std::min(current_state_bytes, caps_.access_policy_max_window_bytes);
         if (config_.max_hot_window_bytes) window = std::min(window, config_.max_hot_window_bytes);

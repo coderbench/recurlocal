@@ -245,6 +245,18 @@ public:
     const DeviceCaps& caps() const noexcept { return caps_; }
     const PlannerConfig& config() const noexcept { return config_; }
     std::size_t recommended_l2_set_aside() const noexcept;
+    // What the driver actually granted, once someone has asked it. cudaDeviceSetLimit does
+    // not promise to honour the request: on an RTX 5090 a 15 MiB request comes back as
+    // 18 MiB, and the device already has a non-zero default before anyone asks. Budgeting
+    // the hot set against the number we WANTED rather than the one we GOT makes every
+    // oversubscription decision wrong by the rounding. Zero means "not measured yet, fall
+    // back to the recommendation".
+    void set_granted_l2_set_aside(std::size_t bytes) noexcept { granted_l2_set_aside_ = bytes; }
+    std::size_t granted_l2_set_aside() const noexcept { return granted_l2_set_aside_; }
+    // The budget the hot set is actually compared against.
+    std::size_t effective_l2_budget() const noexcept {
+        return granted_l2_set_aside_ ? granted_l2_set_aside_ : recommended_l2_set_aside();
+    }
     // The prefetch distance this layer index resolves to under the configured schedule,
     // 0 for "do not prefetch here". A runtime has to know it before calling into the
     // controller, because it is the runtime that must hand over the state that many
@@ -273,6 +285,7 @@ private:
 
     DeviceCaps caps_{};
     PlannerConfig config_{};
+    std::size_t granted_l2_set_aside_ = 0;
 };
 
 const char* to_string(LocalityMode mode) noexcept;

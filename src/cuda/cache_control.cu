@@ -27,10 +27,27 @@ cudaError_t configure_persisting_l2(int device, std::size_t requested_bytes, std
     cudaDeviceProp prop{};
     auto err = cudaGetDeviceProperties(&prop, device); if (err != cudaSuccess) return err;
     const auto desired = std::min(requested_bytes, static_cast<std::size_t>(prop.persistingL2CacheMaxSize));
-    err = cudaSetDevice(device); if (err != cudaSuccess) return err;
-    err = cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, desired); if (err != cudaSuccess) return err;
-    std::size_t actual=0; err = cudaDeviceGetLimit(&actual, cudaLimitPersistingL2CacheSize);
-    if (err==cudaSuccess && actual_bytes) *actual_bytes=actual;
+
+    // The limit is per-device, so setting it means selecting that device first - but the
+    // current device belongs to the CALLER, not to us. A runtime that drives two GPUs and
+    // happens to construct a controller for device 1 would find its thread silently
+    // repointed, and the next unqualified launch would land on the wrong GPU. Save and
+    // restore, including on every early return.
+    int previous = device;
+    err = cudaGetDevice(&previous); if (err != cudaSuccess) return err;
+    const bool switched = previous != device;
+    if (switched) { err = cudaSetDevice(device); if (err != cudaSuccess) return err; }
+
+    err = cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, desired);
+    if (err == cudaSuccess) {
+        std::size_t actual = 0;
+        err = cudaDeviceGetLimit(&actual, cudaLimitPersistingL2CacheSize);
+        if (err == cudaSuccess && actual_bytes) *actual_bytes = actual;
+    }
+    if (switched) {
+        const auto restore = cudaSetDevice(previous);
+        if (err == cudaSuccess) err = restore;
+    }
     return err;
 }
 
@@ -93,9 +110,25 @@ cudaError_t CudaLocalityController::initialize(int device, PlannerConfig config)
     planner_ = LocalityPlanner(caps, config);
 
     // A device that cannot reserve a set-aside is not an error; the planner simply will
-    // not ask for a persisting window on it.
-    if (configure_persisting_l2(device_, planner_.recommended_l2_set_aside(), &l2_set_aside_bytes_) != cudaSuccess) {
-        l2_set_aside_bytes_ = 0; cudaGetLastError();
+    // not ask for a persisting window on it. Record what the limit was first, so release()
+    // can give the device back exactly what it had rather than guessing at zero.
+    previous_l2_set_aside_ = 0;
+    l2_set_aside_owned_ = false;
+    const auto wanted = planner_.recommended_l2_set_aside();
+    if (wanted) {
+        if (cudaDeviceGetLimit(&previous_l2_set_aside_, cudaLimitPersistingL2CacheSize) != cudaSuccess) {
+            previous_l2_set_aside_ = 0; cudaGetLastError();
+        }
+        if (configure_persisting_l2(device_, wanted, &l2_set_aside_bytes_) == cudaSuccess) {
+            l2_set_aside_owned_ = true;
+            // Tell the planner what we GOT. Without this it keeps budgeting against the
+            // request, and every hot-set decision inherits the driver's rounding error.
+            planner_.set_granted_l2_set_aside(l2_set_aside_bytes_);
+        } else {
+            l2_set_aside_bytes_ = 0; cudaGetLastError();
+        }
+    } else {
+        l2_set_aside_bytes_ = 0;
     }
 
     scratch_count_ = 8192;
@@ -111,15 +144,55 @@ cudaError_t CudaLocalityController::initialize(int device, PlannerConfig config)
 }
 
 cudaError_t CudaLocalityController::release() noexcept {
-    if (compute_stream_ && window_active_) { clear_access_policy_window(compute_stream_); window_active_ = false; }
-    if (scratch_) { cudaFree(scratch_); scratch_ = nullptr; scratch_count_ = 0; }
-    if (fork_event_) { cudaEventDestroy(fork_event_); fork_event_ = nullptr; }
-    if (join_event_) { cudaEventDestroy(join_event_); join_event_ = nullptr; }
+    // Two states in which none of the cleanup below is legal, and in which attempting it
+    // makes things worse rather than better:
+    //
+    //  1. The compute stream is still capturing. cudaMalloc/cudaFree/cudaDeviceSetLimit are
+    //     all forbidden during capture, so every call would fail AND leave an error on the
+    //     caller's context for their next unrelated cudaGetLastError() to trip over.
+    //     Confirmed with compute-sanitizer: destroying a controller mid-capture produced 14
+    //     cudaErrorStreamCaptureUnsupported errors before this guard existed.
+    //  2. The CUDA runtime is already unloading, which is where a static or long-lived
+    //     member's destructor runs.
+    //
+    // In both cases we drop our handles without touching the driver. That leaks one scratch
+    // buffer and two events in case 1, which is the lesser evil: the caller is already in a
+    // broken state and a poisoned context would hide the real cause.
+    bool capturing = false;
+    if (compute_stream_) {
+        cudaStreamCaptureStatus st = cudaStreamCaptureStatusNone;
+        if (cudaStreamIsCapturing(compute_stream_, &st) == cudaSuccess)
+            capturing = st != cudaStreamCaptureStatusNone;
+        else cudaGetLastError();
+    }
+    if (capturing) ++stats_.released_during_capture;
+    const bool runtime_alive = !capturing && cudaFree(nullptr) != cudaErrorCudartUnloading;
+    cudaGetLastError();
+
+    if (runtime_alive) {
+        if (compute_stream_ && window_active_) clear_access_policy_window(compute_stream_);
+        if (scratch_) cudaFree(scratch_);
+        if (fork_event_) cudaEventDestroy(fork_event_);
+        if (join_event_) cudaEventDestroy(join_event_);
+        // Give the device-wide persisting-L2 set-aside back. Nothing else does: reset()
+        // calls cudaCtxResetPersistingL2Cache(), which evicts persisting LINES but leaves
+        // the reservation standing, so without this a process that ever built a controller
+        // ran the rest of its life with a smaller L2.
+        if (l2_set_aside_owned_) {
+            configure_persisting_l2(device_, previous_l2_set_aside_, nullptr);
+            cudaGetLastError();
+        }
+    }
+    window_active_ = false;
+    scratch_ = nullptr; scratch_count_ = 0;
+    fork_event_ = nullptr; join_event_ = nullptr;
     compute_stream_ = prefetch_stream_ = nullptr;
     prefetch_fork_outstanding_ = false;
     window_pending_node_attach_ = false;
     node_attach_disabled_ = false;
     l2_set_aside_bytes_ = 0;
+    previous_l2_set_aside_ = 0;
+    l2_set_aside_owned_ = false;
     status_ = cudaErrorNotPermitted;
     return cudaSuccess;
 }
@@ -144,7 +217,10 @@ bool CudaLocalityController::graph_capture_active() const noexcept {
     if (!compute_stream_) return false;
     cudaStreamCaptureStatus capture = cudaStreamCaptureStatusNone;
     if (cudaStreamIsCapturing(compute_stream_, &capture) != cudaSuccess) { cudaGetLastError(); return false; }
-    return capture != cudaStreamCaptureStatusNone;
+    // Only Active is a capture we can still contribute to. Invalidated means the capture is
+    // already doomed and will fail at cudaStreamEndCapture; treating it as active kept us
+    // deferring windows and forking streams into a graph that can never be instantiated.
+    return capture == cudaStreamCaptureStatusActive;
 }
 
 
@@ -167,7 +243,12 @@ LayerPlan CudaLocalityController::plan_and_window(const StateSegment* current, i
     ++layer_index_;
     const bool capturing = graph_capture_active();
     ++stats_.layers;
-    if (plan.hit_ratio_reduced) ++stats_.hot_set_oversubscribed;
+    // Count what the name says. This used to key off hit_ratio_reduced, which
+    // HotSetPolicy::Fixed never sets - so the counter read zero under precisely the policy
+    // that ignores oversubscription hardest, and a run could look healthy while every layer
+    // was over budget.
+    if (plan.hot_set_oversubscribed) ++stats_.hot_set_oversubscribed;
+    if (plan.hit_ratio_reduced) ++stats_.hit_ratio_reduced;
     if (actions) {
         *actions = LayerActions{};
         actions->plan = plan;
@@ -232,6 +313,13 @@ cudaError_t CudaLocalityController::before_layer(const StateSegment* window_segm
         if (!forked && fork_event_) {
             auto e = cudaEventRecord(fork_event_, compute_stream_); if (e != cudaSuccess) return e;
             e = cudaStreamWaitEvent(prefetch_stream_, fork_event_, 0); if (e != cudaSuccess) return e;
+            // The instant the prefetch stream joins the capture, a join is OWED. Set the flag
+            // here, not after the loop: any early return between the fork and the end of the
+            // loop would otherwise leave the capture with an unjoined fork and no record that
+            // one is outstanding, and end_sequence() would emit nothing. The host runtime's
+            // cudaStreamEndCapture then fails with cudaErrorStreamCaptureUnjoined and it may
+            // proceed with a null graph.
+            prefetch_fork_outstanding_ = true;
         }
         forked = true;
         auto e = pre_touch_rows_async(plan.pre_touch, set.device_bases, set.rows,
@@ -281,6 +369,13 @@ cudaError_t CudaLocalityController::before_layer(const StateSegment* current, in
         if (!forked && fork_event_) {
             auto e = cudaEventRecord(fork_event_, compute_stream_); if (e != cudaSuccess) return e;
             e = cudaStreamWaitEvent(prefetch_stream_, fork_event_, 0); if (e != cudaSuccess) return e;
+            // The instant the prefetch stream joins the capture, a join is OWED. Set the flag
+            // here, not after the loop: any early return between the fork and the end of the
+            // loop would otherwise leave the capture with an unjoined fork and no record that
+            // one is outstanding, and end_sequence() would emit nothing. The host runtime's
+            // cudaStreamEndCapture then fails with cudaErrorStreamCaptureUnjoined and it may
+            // proceed with a null graph.
+            prefetch_fork_outstanding_ = true;
         }
         forked = true;
         auto e = pre_touch_bytes_async(plan.pre_touch, seg.ptr, seg.bytes,
@@ -372,7 +467,8 @@ cudaError_t CudaLocalityController::before_layer(void* current_state, std::size_
     ++layer_index_;
     const bool capturing = graph_capture_active();
     ++stats_.layers;
-    if (plan.hit_ratio_reduced) ++stats_.hot_set_oversubscribed;
+    if (plan.hot_set_oversubscribed) ++stats_.hot_set_oversubscribed;
+    if (plan.hit_ratio_reduced) ++stats_.hit_ratio_reduced;
     if (actions) {
         *actions = LayerActions{};
         actions->plan = plan;
@@ -389,7 +485,12 @@ cudaError_t CudaLocalityController::before_layer(void* current_state, std::size_
         // kernel launch config or graph node, which is the only path a graph records.
         ++stats_.windows_deferred_to_caller;
         pending_window_ = make_access_policy_window(plan, current_state);
-        window_pending_node_attach_ = true;
+        // Same rule as the segment path: node mutation is opt-in. Without this check the
+        // documented-safe WindowAttach::Stream default was silently ignored on this
+        // overload, and a consumer that asked for the safe path still got a graph mutated
+        // mid-capture.
+        window_pending_node_attach_ = planner_.config().window_attach == WindowAttach::CaptureNode
+                                   && !node_attach_disabled_;
         if (actions) {
             actions->window_requires_launch_attribute = true;
             actions->window = pending_window_;
@@ -416,6 +517,7 @@ cudaError_t CudaLocalityController::before_layer(void* current_state, std::size_
         if (fork_event_) {
             auto e = cudaEventRecord(fork_event_, compute_stream_); if (e != cudaSuccess) return e;
             e = cudaStreamWaitEvent(prefetch_stream_, fork_event_, 0); if (e != cudaSuccess) return e;
+            prefetch_fork_outstanding_ = true;   // a join is owed from here on; see above
         }
         auto e = pre_touch_async(plan.pre_touch, next_state, next_state_count, scratch_, scratch_count_, prefetch_stream_);
         if (e != cudaSuccess) return e;
@@ -488,7 +590,18 @@ cudaError_t CudaLocalityController::reset() noexcept {
         auto e = cudaStreamSynchronize(prefetch_stream_);
         if (e != cudaSuccess) return e;
     }
-    return cudaCtxResetPersistingL2Cache();
+    // The header promises this "releases the L2 set-aside", and until now it did not: it
+    // only evicted persisting LINES. Honour the documented contract - a caller that calls
+    // reset() is telling us it is done with the device, and leaving a device-wide
+    // reservation behind after that is a leak with a performance cost for everyone else.
+    auto e = cudaCtxResetPersistingL2Cache();
+    if (l2_set_aside_owned_) {
+        const auto restore = configure_persisting_l2(device_, previous_l2_set_aside_, nullptr);
+        if (e == cudaSuccess) e = restore;
+        l2_set_aside_owned_ = false;
+        l2_set_aside_bytes_ = 0;
+    }
+    return e;
 }
 
 } // namespace recurlocal

@@ -9,6 +9,7 @@ import json, math, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import real_eval
 import decide as label  # noqa: E402
 
 DECIDE_PY = Path(__file__).resolve().parent / "decide.py"
@@ -185,6 +186,45 @@ class CommandLine(unittest.TestCase):
             {"batch1": {"weight": 1.0, "baseline_tps": 100.0, "candidate_tps": 90.0}}))
         self.assertEqual(code, 1)
 
+
+
+class RealEvalEstimator(unittest.TestCase):
+    """The batch-1 arm carries weight 0.40, so the estimator behind it decides verdicts.
+
+    These tests exist because that arm used a different estimator from every other arm and
+    from the module's own documented method, and nothing could catch it: the computation was
+    inline in main(), which needs a GPU and a 21 GB checkpoint to reach.
+    """
+
+    @staticmethod
+    def _arm(base, cand):
+        return {"baseline_tps": real_eval.median(base), "candidate_tps": real_eval.median(cand),
+                "paired_ratios": [c / b for b, c in zip(base, cand)]}
+
+    def test_pairing_is_not_discarded(self):
+        # Drifting clocks: the pairing is the only thing that makes this comparison valid.
+        per = {"128": self._arm([100.0, 110.0, 120.0], [105.0, 110.0, 132.0])}
+        ratio, _ = real_eval.batch1_arm(per, [128])
+        self.assertAlmostEqual(ratio, 1.05, places=9)          # median of [1.05, 1.00, 1.10]
+        # The ratio-of-medians estimator this replaced would have returned 110/110 = 1.0 and
+        # turned a 'promising' verdict into 'reject' on the same measurements.
+        self.assertNotAlmostEqual(ratio, 1.0, places=3)
+
+    def test_matches_the_per_context_number_it_is_built_from(self):
+        per = {"128": self._arm([100.0, 100.0, 100.0], [101.0, 102.0, 103.0])}
+        ratio, base = real_eval.batch1_arm(per, [128])
+        self.assertAlmostEqual((ratio - 1.0) * 100.0, 2.0, places=9)   # the median pair, +2%
+        self.assertAlmostEqual(base, 100.0, places=9)
+
+    def test_contexts_combine_geometrically_so_none_can_carry_the_arm(self):
+        per = {"128": self._arm([100.0], [200.0]), "4096": self._arm([100.0], [50.0])}
+        ratio, _ = real_eval.batch1_arm(per, [128, 4096])
+        self.assertAlmostEqual(ratio, 1.0, places=9)   # 2x and 0.5x cancel, as they must
+
+    def test_degenerate_inputs_do_not_fabricate_a_gain(self):
+        self.assertEqual(real_eval.batch1_arm({}, []), (1.0, 0.0))
+        per = {"128": {"baseline_tps": 0.0, "candidate_tps": 0.0, "paired_ratios": []}}
+        self.assertEqual(real_eval.batch1_arm(per, [128]), (1.0, 0.0))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

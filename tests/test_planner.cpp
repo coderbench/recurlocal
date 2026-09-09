@@ -611,10 +611,12 @@ static void test_window_scope_never_leaves_the_allocation() {
     fill_segments(segs, state_base, conv_base, n_layers - 3, n_layers);
     CHECK(resolve_window_region(segs[0], WindowScope::Ahead, 8).bytes == 3 * 3 * MiB);
 
-    // A caller that cannot describe the allocation gets the slice, not a guess.
+    // A caller that cannot describe the allocation gets the slice, not a guess - for BOTH
+    // widening scopes. Ahead used to extrapolate to (distance+1) slices here, hinting memory
+    // the caller never said it owned; the slice is the only extent we actually know.
     StateSegment bare{segs[0].ptr, segs[0].bytes, nullptr, 0, StateKind::Matrix};
     CHECK(resolve_window_region(bare, WindowScope::Allocation, 4).bytes == segs[0].bytes);
-    CHECK(resolve_window_region(bare, WindowScope::Ahead, 4).bytes == 5 * segs[0].bytes);
+    CHECK(resolve_window_region(bare, WindowScope::Ahead, 4).bytes == segs[0].bytes);
 }
 
 static void test_pre_touch_coverage_selects_states() {
@@ -664,6 +666,30 @@ static void test_recurrent_layer_walk() {
     CHECK(!is_recurrent_layer(-1, 4));
 }
 
+// The driver does not promise to honour a set-aside request: an RTX 5090 returns 18 MiB for
+// a 15 MiB ask, and starts from a non-zero default. Budgeting against the request rather than
+// the grant makes every oversubscription decision wrong by that rounding.
+static void test_budget_follows_the_granted_set_aside_not_the_request() {
+    PlannerConfig cfg = base_config();
+    cfg.hot_set_policy = HotSetPolicy::Fixed;
+    LocalityPlanner p(blackwell_like(), cfg);
+    CHECK(p.recommended_l2_set_aside() == 32 * MiB);
+    CHECK(p.granted_l2_set_aside() == 0);
+    CHECK(p.effective_l2_budget() == 32 * MiB);      // nothing measured yet -> the request
+
+    // A hot set of 40 MiB oversubscribes a 32 MiB request...
+    CHECK(p.plan_for_layer(8 * MiB, true, 32 * MiB).hot_set_oversubscribed);
+    // ...but NOT a device that actually granted 48 MiB.
+    p.set_granted_l2_set_aside(48 * MiB);
+    CHECK(p.effective_l2_budget() == 48 * MiB);
+    CHECK(!p.plan_for_layer(8 * MiB, true, 32 * MiB).hot_set_oversubscribed);
+    CHECK(p.plan_for_layer(8 * MiB, true, 64 * MiB).hot_set_oversubscribed);
+
+    // And a device that granted LESS than asked must tighten, not keep the optimistic number.
+    p.set_granted_l2_set_aside(16 * MiB);
+    CHECK(p.plan_for_layer(8 * MiB, true, 16 * MiB).hot_set_oversubscribed);
+}
+
 int main() {
     test_set_aside_and_modes();
     test_window_limits();
@@ -696,6 +722,7 @@ int main() {
     test_window_scope_never_leaves_the_allocation();
     test_pre_touch_coverage_selects_states();
     test_recurrent_layer_walk();
+    test_budget_follows_the_granted_set_aside_not_the_request();
 
     if (g_failures) { std::cout << g_failures << " planner check(s) failed\n"; return 1; }
     std::cout << "planner tests passed\n";

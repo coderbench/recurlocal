@@ -13,7 +13,9 @@ ctest --test-dir build --output-on-failure          # planner + label bands must
 python3 eval/run_eval.py --binary ./build/recur_local_cuda_bench --repeats 5
 ```
 
-If `compute-sanitizer` is available, your kernels must be clean.
+Your kernels must be sanitizer-clean: `scripts/sanitize.sh build` runs memcheck, initcheck,
+synccheck and racecheck. It is not optional decoration — memcheck found a real defect (a
+controller destroyed mid-capture issuing 14 illegal CUDA calls) the first time it was run.
 
 Do not change model math in the exact-locality track.
 

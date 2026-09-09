@@ -133,6 +133,14 @@ unsigned grid_for(std::size_t work, std::size_t scratch_count) {
 
 } // namespace
 
+// Launch status is reported with cudaPeekAtLastError(), never cudaGetLastError().
+//
+// The difference matters because this library lives inside someone else's process.
+// cudaGetLastError() CLEARS the per-thread error slot, so a pre-touch would silently consume
+// an error the host runtime had not yet checked - its own next error check would then report
+// success for whatever really failed. Peek reports without consuming. It can still surface a
+// stale error as though it were ours, which is why the fork/join bookkeeping no longer
+// depends on this call succeeding.
 namespace recurlocal {
 
 cudaError_t pre_touch_async(PreTouchStrategy strategy, const float* ptr, std::size_t count,
@@ -147,7 +155,7 @@ cudaError_t pre_touch_async(PreTouchStrategy strategy, const float* ptr, std::si
     if (strategy == PreTouchStrategy::Scalar) {
         pre_touch_scalar<<<grid_for(count, scratch_count), kThreads, 0, stream>>>(
             ptr, count, scratch, scratch_count);
-        return cudaGetLastError();
+        return cudaPeekAtLastError();
     }
 
     if (strategy == PreTouchStrategy::PtxL2) {
@@ -155,7 +163,7 @@ cudaError_t pre_touch_async(PreTouchStrategy strategy, const float* ptr, std::si
         const std::size_t lines = (bytes + 127) / 128;
         pre_touch_ptx_l2<<<grid_for(lines, scratch_count), kThreads, 0, stream>>>(
             reinterpret_cast<const char*>(ptr), bytes, scratch, scratch_count);
-        return cudaGetLastError();
+        return cudaPeekAtLastError();
     }
 
     // Warming only the leading part of the state: cheaper, and enough if the recurrent
@@ -170,7 +178,7 @@ cudaError_t pre_touch_async(PreTouchStrategy strategy, const float* ptr, std::si
 
     if (strategy == PreTouchStrategy::WarpTile) {
         pre_touch_warp_tile<<<blocks, kThreads, 0, stream>>>(vec, vec_count, scratch, scratch_count);
-        return cudaGetLastError();
+        return cudaPeekAtLastError();
     }
     if (strategy == PreTouchStrategy::Vec4 || strategy == PreTouchStrategy::Partial) {
         pre_touch_vec4<<<blocks, kThreads, 0, stream>>>(
@@ -179,7 +187,7 @@ cudaError_t pre_touch_async(PreTouchStrategy strategy, const float* ptr, std::si
         pre_touch_vec4_ldcg<<<blocks, kThreads, 0, stream>>>(
             vec, vec_count, tail, tail_count, scratch, scratch_count);
     }
-    return cudaGetLastError();
+    return cudaPeekAtLastError();
 }
 
 cudaError_t pre_touch_async(const float* ptr, std::size_t count, float* scratch,
@@ -203,7 +211,7 @@ cudaError_t pre_touch_rows_async(PreTouchStrategy strategy, const void* const* d
         grid.x = grid_for(lines, scratch_count);
         pre_touch_rows_ptx_l2<<<grid, kThreads, 0, stream>>>(
             device_bases, rows, byte_offset, bytes, scratch, scratch_count);
-        return cudaGetLastError();
+        return cudaPeekAtLastError();
     }
     std::size_t effective = bytes;
     if (strategy == PreTouchStrategy::Partial)
@@ -212,7 +220,7 @@ cudaError_t pre_touch_rows_async(PreTouchStrategy strategy, const void* const* d
     grid.x = grid_for(vec_per_row, scratch_count);
     pre_touch_rows_vec4<<<grid, kThreads, 0, stream>>>(
         device_bases, rows, byte_offset, vec_per_row, scratch, scratch_count);
-    return cudaGetLastError();
+    return cudaPeekAtLastError();
 }
 
 // Byte-oriented entry point. A hybrid model's second recurrent state is bf16 (Qwen3.8-27B's
@@ -232,7 +240,7 @@ cudaError_t pre_touch_bytes_async(PreTouchStrategy strategy, const void* ptr, st
         const std::size_t lines = (bytes + 127) / 128;
         pre_touch_ptx_l2<<<grid_for(lines, scratch_count), kThreads, 0, stream>>>(
             static_cast<const char*>(ptr), bytes, scratch, scratch_count);
-        return cudaGetLastError();
+        return cudaPeekAtLastError();
     }
     return pre_touch_async(strategy, static_cast<const float*>(ptr), bytes / sizeof(float),
                            scratch, scratch_count, stream);

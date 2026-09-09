@@ -87,6 +87,16 @@ if(RECURLOCAL_BUILD_CUDA)
         target_compile_options(recurlocal_sparkinfer PRIVATE -Wall -Wextra)
     endif()
 
+    # Device-side contract tests. They skip cleanly with exit 0 when no GPU is present, so
+    # this stays registered even on a device-less CUDA build box - the alternative is a
+    # suite that only exists on the one machine that can run it.
+    if(RECURLOCAL_BUILD_TESTS)
+        add_executable(test_cuda_controller tests/test_cuda_controller.cu)
+        target_link_libraries(test_cuda_controller PRIVATE recurlocal_cuda CUDA::cudart)
+        set_target_properties(test_cuda_controller PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
+        add_test(NAME cuda_controller COMMAND test_cuda_controller)
+    endif()
+
     add_executable(recur_local_cuda_bench bench/cuda_bench.cu)
     target_link_libraries(recur_local_cuda_bench PRIVATE recurlocal_cuda CUDA::cudart)
     set_target_properties(recur_local_cuda_bench PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
