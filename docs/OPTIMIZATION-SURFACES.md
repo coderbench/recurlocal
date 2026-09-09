@@ -360,8 +360,15 @@ window is what lets prefetch work unimpeded.
 
 The shipped heuristic is the *worst* of the backing-off policies, and the policy that simply
 refuses the window when oversubscribed loses 16 points less than it. Backing off the hit ratio
-does not work; declining to compete does. Nobody has explained why — that explanation, with
-hardware counters behind it, is a real contribution.
+does not work; declining to compete does.
+
+The residency bound at the top of this document points the same way: a window over a footprint
+the cache cannot hold does not degrade gracefully, so refusing it beats shrinking it. That is a
+hypothesis here rather than a result — this is the synthetic bench, which does not capture a
+CUDA graph and has disagreed with the real model on four axes — and the real model shows a 0.01%
+spread across all four hot-set policies at batch 1, where the footprint is only 2.4x
+oversubscribed. Whether the two are the same effect is open, and settling it with hardware
+counters is a real contribution.
 
 ## Surface: cache interference and QoS
 
