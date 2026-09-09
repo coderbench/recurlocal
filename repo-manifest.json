@@ -1,9 +1,9 @@
 {
   "name": "RecurLocal",
   "version": "0.1.0",
-  "status": "feasibility test COMPLETE and the go/no-go answered: reject on this model. Real end-to-end decode measured on a pinned SparkInfer commit and Qwen3.8-27B across the full section 44 matrix, and the reason is arithmetic - the recurrent-state footprint that a persisting cache would have to hold is 2.4x its capacity at batch 1 and 39.9x at 32 sequences, so the persist family tops out at 0.52% weighted while the traffic ceiling is 5.22%",
+  "status": "feasibility test COMPLETE on TWO models, and they disagree - which is the finding. On the dense Qwen3.8-27B the go/no-go is reject and the reason is arithmetic: the recurrent footprint a persisting cache would have to hold is 2.4x its capacity at batch 1 and 39.9x at 32 sequences, so the persist family tops out at 0.52% weighted against a 5.22% traffic ceiling. On the sparse-MoE Qwen3.6-35B-A3B the same arithmetic inverts: a 3.56 GB decode step puts the footprint at 1.02x capacity, the persist ceiling at 3.67%, and measured batch-1 persist at +1.53% - the largest real-model gain here, with 2.1 points of headroom left. Its concurrency arms cannot be measured because the runtime does not batch that checkpoint above 8 rows, a runtime defect worth 5.4x that this work identified",
   "core": "software-directed CUDA locality for mutable recurrent LLM state, embeddable in an inference runtime, with enumerated optimization surfaces measured against a real model rather than a microbenchmark",
-  "validated": "CPU build, planner and decision tests, 120 device-side controller checks on an RTX 5090, compute-sanitizer clean (memcheck/initcheck/synccheck/racecheck), install + find_package consumption, eval schema and pinned-integration validation, and a COMPLETE section 44 workload matrix measured on Qwen3.8-27B/SparkInfer with token-exact output and the hook proven active during the gate",
+  "validated": "CPU build, planner and decision tests (85 Python checks, 4 of them on the new quota policy validated by reverting it), 120 device-side controller checks on an RTX 5090, compute-sanitizer clean (memcheck/initcheck/synccheck/racecheck), install + find_package consumption, eval schema and pinned-integration validation, a COMPLETE section 44 workload matrix on Qwen3.8-27B/SparkInfer with token-exact output and the hook proven active, and a second model measured on the same pinned commit and box with three ceilings computed per arm (traffic, persist-family, within-layer) and the bandwidth-bound check that says how tight each one is",
   "files": [
     ".github/workflows/ci.yml",
     ".gitignore",
@@ -15,6 +15,7 @@
     "SECURITY.md",
     "bench/cuda_bench.cu",
     "cmake/RecurLocalConfig.cmake.in",
+    "configs/qwen3.6-35b-a3b-moe-ceiling.json",
     "configs/qwen3.8-27b-feasibility.json",
     "configs/rtx5090-section44-ceiling.json",
     "docs/DESIGN.md",
@@ -42,6 +43,7 @@
     "integrations/sparkinfer/recurlocal-hook.patch",
     "integrations/sparkinfer/recurlocal_sparkinfer.cpp",
     "results/rtx5090-baseline-matrix.json",
+    "results/rtx5090-moe-matrix.json",
     "results/rtx5090-real-complete.json",
     "results/rtx5090-real.json",
     "results/rtx5090-surfaces.json",
