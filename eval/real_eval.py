@@ -205,10 +205,10 @@ def packed_path_used(stats, concurrency):
 
     This is the 32-sequence cliff, made visible. SparkInfer declines a packed forward for
     reasons that have nothing to do with locality -- a row set that moved, a tail chunk of one
-    row, an unsupported shape -- and when it does, aggregate throughput drops by about a third
-    while every other number in the run looks normal. A median over repeats then turns one
-    collapsed run into a plausible-looking 'result' for whatever configuration happened to be
-    running.
+    row, a weight quantisation its multi-row GEMV refuses at that width -- and when it does,
+    aggregate throughput falls by anything from a third to a factor of five while every other
+    number in the run looks normal. A median over repeats then turns one collapsed run into a
+    plausible-looking 'result' for whatever configuration happened to be running.
 
     The adapter already counts what settles it: `tokens_packed` of `tokens`, and
     `max_rows_seen`. Returns a record for the artifact, and whether the arm is usable.
@@ -584,6 +584,10 @@ def main():
             "tokens_packed": stats_n.get("stats", {}).get("tokens_packed"),
             "tokens_total": stats_n.get("stats", {}).get("tokens"),
             "max_rows_seen": stats_n.get("stats", {}).get("max_rows_seen"),
+            # The share the guard judged, kept beside the raw counts: an arm that passed at 88%
+            # packed and one that passed at 51% are not equally trustworthy, and a reader
+            # cannot tell which from the gain.
+            "packing": packed_path_used(stats_n, n),
         }
         if name in DEFAULT_WEIGHTS:
             workloads[name] = {"weight": DEFAULT_WEIGHTS[name],
