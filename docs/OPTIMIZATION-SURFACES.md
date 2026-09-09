@@ -380,6 +380,20 @@ Span 0.85% against a 0.097% floor, 3 pairs with the opening run discarded.
 
 Span 0.74% against a 0.063% floor, at the default `budget_fraction`.
 
+| `--axis window-target` | bytes it protects | gain |
+|---|--:|--:|
+| `matrix` | 2 MiB/layer | **+1.31%** |
+| `widest` | the same allocation | +1.31% |
+| `conv` | 48 KiB/layer | +0.30% |
+| `narrowest` | the same allocation | +0.28% |
+
+Span 1.04% against a 0.080% floor — **resolved**, where on the dense model this axis spans 0.02%
+and is formally open. `widest` and `narrowest` land on the matrix and conv states respectively,
+which is the arithmetic working: the two pairs agree to within their own spreads. Worth noting
+that the conv state is 2.3% of the recurrent bytes and still returns +0.30% by itself, because
+1.4 MiB of it is entirely resident — the only recurrent state on either model whose whole
+allocation fits in a set-aside with room to spare.
+
 **Both dials are monotonic to their maximum with no interior optimum.** That is what a footprint
 which nearly fits predicts, and it is the opposite of the synthetic benchmark's finding that
 backing off is better under pressure — because there the footprint was many times the budget and
