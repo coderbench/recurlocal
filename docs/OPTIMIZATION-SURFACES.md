@@ -404,6 +404,24 @@ to 43% at 1.00. That is the deliberately generous bound showing itself: it assum
 byte hits and that the set-aside costs its neighbours nothing, and the second assumption weakens
 as the set-aside grows.
 
+| `--axis hot-set-policy` at `budget_fraction=1.00`, `hit_ratio=1.00` | gain | spread |
+|---|--:|--:|
+| `fixed` | +1.631% | 0.122% |
+| `quota` | +1.631% | 0.084% |
+| `proportional` (the shipped heuristic) | +1.583% | 0.142% |
+| `sqrt` | +1.557% | 0.084% |
+
+Span **0.075% inside a 0.190% floor — OPEN, not solved.** `quota` ties the best figure and beats
+the shipped heuristic by 0.048 points, which is inside the noise and therefore not a result. The
+reading that fits: with both dials at maximum the footprint is 1.02x the set-aside, so there is
+almost nothing for a policy to ration and all four converge. The regime where admitting whole
+layers should differ from shaving every hit ratio is **concurrency**, where the footprint is 8 to
+16x the set-aside — and that has not been measured. It is the most concrete open item this model
+leaves.
+
+Worth noting what this table does show: **the two dials compound.** +1.63% together against
++1.53% and +1.50% for each alone, and this is the best measured configuration on either model.
+
 **`cliff` cannot be measured on this model, and the null-candidate guard is right about that.**
 Sweeping the whole `hot-set-policy` axis aborts on it: at batch 1 the footprint is oversubscribed,
 so `cliff` declines every window, applies no policy at all, and `real_eval.py` refuses the arm by
