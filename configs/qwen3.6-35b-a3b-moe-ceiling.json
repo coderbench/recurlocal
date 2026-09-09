@@ -22,5 +22,7 @@
     "n_experts": 256,
     "experts_used_per_token": 8
   },
-  "arms": {}
+  "arms": {},
+  "active_weight_bytes_per_token": 2626185728,
+  "_active_weight_bytes_note": "Weight bytes one decode step reads, summed from the checkpoint's own tensor table and quantisation types: 1.5975 GB of per-block non-expert weights (attn_qkv Q8_0, attn_gate, ssm_out, the shared expert, the router), 0.4172 GB of output head (Q6_K), and 0.6115 GB for the 8 of 256 experts a token routes to. token_embd is excluded - one row per token. traffic_budget.py adds the recurrent-state traffic it computes and reports the ratio against measured-time x peak bandwidth, which says whether the ceiling above is tight or merely true. Note this assumes every row in a concurrent batch routes to the same experts, which is exactly what qwen3_gguf_cb_bench does - it submits one identical prompt per request. A production batch of DIFFERENT prompts would touch far more of the 256 experts per step, raising the denominator and lowering the recurrent share."
 }

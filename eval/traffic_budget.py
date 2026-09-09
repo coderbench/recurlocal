@@ -49,7 +49,7 @@ BANDWIDTH_BOUND_MIN = 0.80
 
 
 def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs,
-                persisting_l2_bytes=None, active_bytes_per_token=None):
+                persisting_l2_bytes=None, active_weight_bytes_per_token=None):
     """The share of one decode step's traffic that recurrent state accounts for."""
     layers = m["recurrent_layers"]
     per_layer = (m["lin_state_bytes_per_layer"] * state_bytes_scale
@@ -85,15 +85,19 @@ def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs,
                 "runs in (1-f) of the time, so tok/s rise by f/(1-f). A locality policy "
                 "recovers a fraction of it, never more.",
     }
-    if active_bytes_per_token:
-        out.update(bandwidth_bound_check(active_bytes_per_token, total_traffic))
+    if active_weight_bytes_per_token:
+        # The bytes the step HAS to move: the weights it actually reads plus the recurrent
+        # traffic computed above. Composed here rather than supplied whole, so a config only
+        # has to state the one quantity that is a property of the checkpoint.
+        out.update(bandwidth_bound_check(active_weight_bytes_per_token + state_traffic,
+                                         total_traffic, active_weight_bytes_per_token))
     out.update(within_layer_ceiling(m, layers, sequences, total_traffic))
     if persisting_l2_bytes:
         out.update(persist_family_ceiling(state_read, total_traffic, persisting_l2_bytes))
     return out
 
 
-def bandwidth_bound_check(active_bytes_per_token, total_traffic):
+def bandwidth_bound_check(active_bytes_per_token, total_traffic, weight_bytes=None):
     """Is this step actually bandwidth-bound? The ceiling's tightness depends on it.
 
     `implied_total_bytes_per_token` is measured step time times peak bandwidth, so it is what
@@ -113,6 +117,7 @@ def bandwidth_bound_check(active_bytes_per_token, total_traffic):
     return {
         "bandwidth_bound_check": {
             "active_bytes_per_token": active_bytes_per_token,
+            "active_weight_bytes_per_token": weight_bytes,
             "bandwidth_utilisation": util,
             "bound": bound,
             "note": ("the step moves %.2f GB of the %.2f GB peak bandwidth would allow in the "
@@ -277,7 +282,8 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None
             ms = seqs / float(tps) * 1000.0
         c = arm_ceiling(m, seqs, ms, float(arm.get("state_bytes_scale", 1.0)), bandwidth_gbs,
                         persisting_l2_bytes or spec.get("persisting_l2_bytes"),
-                        arm.get("active_bytes_per_token"))
+                        arm.get("active_weight_bytes_per_token")
+                        or spec.get("active_weight_bytes_per_token"))
         c["measured"] = True
         c["weight"] = weight
         c["source"] = arm.get("source", "unspecified")

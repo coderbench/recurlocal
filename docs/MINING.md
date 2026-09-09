@@ -149,11 +149,31 @@ already known. Reordered by what is still genuinely open:
    `traffic_budget.py --matrix` on a candidate model before integrating it; that is a
    contribution on its own, whichever way it comes out.
 
-2. **Reuse the cache can actually serve.** Every shipped policy targets reuse across a token,
-   which is a full model pass away and 2.4–40x too large to hold. Reuse *within* a layer — the
-   conv state feeding the matrix state, or state a kernel touches more than once — is a
-   distance the cache can serve. Nobody has measured whether there is anything there. Note the
-   conv state is only 1.9–3.8% of the recurrent bytes, so bound it before building it.
+2. **Reuse the cache can actually serve — CLOSED, and the answer is no.** Every shipped policy
+   targets reuse across a token, which is a full model pass away and 2.4–40x too large to hold.
+   Reuse *within* a layer is a distance L2 serves for free, so the only question was whether
+   there are any bytes at that distance. Bounded rather than built, from the pinned runtime's
+   own kernels:
+
+   - **The matrix state contributes zero.** `gdn_ar_fast_kernel` holds each state column in
+     registers across both of its passes — "ONE global read + ONE global write of the 2 MB/layer
+     state", in its own comment — and the batched kernel the concurrency path uses is the same
+     shape. 98% of the recurrent bytes are touched exactly twice, once each way. There is no
+     second touch for a cache policy to catch.
+   - **The conv window's shift is the whole of it.** `conv_split_kernel` reads the K−1 window
+     entries to convolve and then re-reads K−2 of them to shift the window forward, so the
+     reusable bytes are `conv_state × (K−2)/(K−1)` per layer — **1.97 MB per token**, against an
+     18.5 GB step.
+
+   `eval/traffic_budget.py` reports it as `within_layer_family`: a **0.011%** ceiling on the
+   dense model and **0.028%** on the MoE, two to three orders of magnitude under the floor. The
+   bound is generous — each thread reads its own window entries, so most of those re-reads never
+   leave a register in the first place.
+
+   Worth knowing what this does *not* say: it is a property of this runtime, not of Gated
+   DeltaNet. The naive kernel SparkInfer replaced read the state twice and wrote it twice, and
+   against a runtime like that the same bound would be four times larger. The reuse was real;
+   somebody else already took it, in registers, where it belongs.
 
 3. **The 32-sequence runtime fallback.** Something occasionally drops SparkInfer onto its
    per-row decode path at 32 sequences. Reproduced on a second box: `prefetch` ratios

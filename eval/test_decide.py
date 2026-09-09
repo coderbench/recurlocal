@@ -825,6 +825,17 @@ class BandwidthBoundCheck(unittest.TestCase):
         self.assertEqual(self._check(traffic_budget.BANDWIDTH_BOUND_MIN * total * 0.999,
                                      total)["bound"], "loose")
 
+    def test_the_state_traffic_is_added_to_the_declared_weight_bytes(self):
+        # A config states one number, the weights the checkpoint says the step reads. The
+        # recurrent traffic is already computed from the geometry, so composing them here is
+        # what keeps a concurrency arm from having to hand-total bytes that scale with rows.
+        arm = traffic_budget.arm_ceiling(MatrixCeiling.PIN, 4, 12.0, 0.5, 1792.0,
+                                         active_weight_bytes_per_token=int(2.0e9))
+        c = arm["bandwidth_bound_check"]
+        self.assertEqual(c["active_weight_bytes_per_token"], int(2.0e9))
+        self.assertAlmostEqual(c["active_bytes_per_token"],
+                               2.0e9 + arm["state_traffic_bytes_per_token"])
+
     def test_it_is_absent_unless_the_arm_declares_active_bytes(self):
         # It is an optional diagnostic, so an arm that cannot supply the number must still
         # produce a ceiling rather than a crash or a fabricated utilisation.

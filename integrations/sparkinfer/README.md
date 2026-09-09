@@ -110,7 +110,7 @@ Every mechanism is an environment variable, so one binary runs the whole matrix.
 | `RECURLOCAL_PREFETCH_DISTANCE` | `0`–`8` | recurrent layers ahead |
 | `RECURLOCAL_PREFETCH_SCHEDULE` | `uniform` `ramp` `alternating` `sparse` | how the distance varies with depth |
 | `RECURLOCAL_PREFETCH_JOIN` | `per_layer` `token_end` | graph nodes spent on ordering the pre-touch |
-| `RECURLOCAL_HOT_SET_POLICY` | `proportional` `fixed` `sqrt` `cliff` | what to do when oversubscribed |
+| `RECURLOCAL_HOT_SET_POLICY` | `proportional` `fixed` `sqrt` `cliff` `quota` | what to do when oversubscribed |
 | `RECURLOCAL_HIT_RATIO`, `RECURLOCAL_BUDGET_FRACTION`, `RECURLOCAL_MIN_HIT_RATIO` | float | window hit ratio, L2 set-aside fraction, back-off floor |
 | `RECURLOCAL_SEQUENCES` | int | sequences decoding concurrently, for the accounting |
 | `RECURLOCAL_STREAMED_BYTES_PER_TOKEN` | int | non-recurrent bytes through L2 per token, for `reuse_window` |
