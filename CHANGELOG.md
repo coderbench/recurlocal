@@ -140,6 +140,30 @@ while nothing in the repo ran it.
   was recomputed from its stored paired ratios: **+0.049% → +0.053%**, verdict unchanged
   (`reject`) — this data was tight enough that the bug did not bite.
 
+### Added — what is the most this repository can ever pay?
+
+- **`eval/traffic_budget.py --matrix`** answers the question one level above a single arm.
+  Each workload has a physical ceiling, and the verdict is a weighted geometric mean over all
+  of them, so the number that decides whether the project is worth competing on is what a
+  submission scores if it hits *every* ceiling at once — one that made recurrent state
+  entirely free. The weights and the bands come from `decide.py` rather than being restated,
+  and a test pins that the two agree: a ceiling advertised in one currency and paid in another
+  would be worse than no ceiling. Arms with no measured decode rate are excluded and named
+  rather than guessed. Inputs live in `configs/rtx5090-section44-ceiling.json`, every one of
+  them a baseline measurement from `results/rtx5090-real.json`.
+
+### Fixed — the ceiling was quoted in the wrong currency
+
+- **A ceiling a submission could legitimately beat.** `traffic_budget.py` reported the
+  recurrent-state *share of traffic* as the ceiling. But the scorer measures
+  `candidate_tps / baseline_tps`, and a step carrying *f* less traffic runs in *(1−f)* of the
+  time — so throughput rises by *f/(1−f)*, which is more than *f*. Every published ceiling was
+  understated: 1.65 → 1.68% at batch 1, and 11.03 → **12.40%** at 32 sequences, the surface
+  `docs/MINING.md` points the competition at. The error was in the safe direction for the
+  project's own verdict and the wrong direction for everyone else: a contribution could have
+  exceeded a number this repository called a physical limit. The same conversion applies to
+  the pre-touch cost prediction, the other way round, and was corrected with it.
+
 ### Fixed — the evaluator was not fit to arbitrate
 
 The harness is meant to decide whether a contribution is accepted. Three ways it could quietly

@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import real_eval
+import traffic_budget
 import decide as label  # noqa: E402
 
 DECIDE_PY = Path(__file__).resolve().parent / "decide.py"
@@ -368,6 +369,96 @@ class WorkloadCoverage(unittest.TestCase):
             waived = subprocess.run([sys.executable, str(DECIDE_PY), "--real", str(f),
                                      "--allow-partial"], capture_output=True, text=True)
             self.assertEqual(waived.returncode, 0)
+
+
+class MatrixCeiling(unittest.TestCase):
+    """What is the most this repository can ever pay?
+
+    Each arm has a physical ceiling, and the verdict is a weighted mean over all of them, so
+    the number that decides whether the project is worth competing on is what a submission
+    scores if it hits every ceiling at once. That is only meaningful if it is computed with
+    the same weights and bands the scorer uses -- hence the agreement test below.
+    """
+
+    PIN = json.loads((Path(__file__).resolve().parent.parent /
+                      "integrations" / "sparkinfer" / "pin.json").read_text())["model"]
+
+    def _spec(self, names=("batch1", "concurrency4", "concurrency16", "concurrency32")):
+        base = {"batch1": {"sequences": 1, "ms_per_token": 10.41, "state_bytes_scale": 1.0},
+                "concurrency4": {"sequences": 4, "aggregate_tps": 329.43, "state_bytes_scale": 0.5},
+                "concurrency16": {"sequences": 16, "aggregate_tps": 770.1, "state_bytes_scale": 0.5},
+                "concurrency32": {"sequences": 32, "aggregate_tps": 928.0, "state_bytes_scale": 0.5}}
+        return {"arms": {k: v for k, v in base.items() if k in names}}
+
+    def _run(self, spec):
+        import contextlib, io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            traffic_budget.matrix_ceiling(self.PIN, spec, 1792.0)
+        return json.loads(buf.getvalue())
+
+    def test_the_ceiling_is_weighted_the_way_the_scorer_weights(self):
+        # Feed each arm's ceiling to decide.py as a candidate that achieved exactly it. The
+        # scorer's weighted gain must equal the ceiling tool's. If the two ever disagree,
+        # the repository is advertising a ceiling in one currency and paying in another.
+        out = self._run(self._spec())
+        doc = real_doc({name: {"baseline_tps": 100.0,
+                               "candidate_tps": 100.0 * (1 + arm["ceiling_pct"] / 100.0)}
+                        for name, arm in out["arms"].items() if arm.get("measured")})
+        self.assertAlmostEqual(label.score_real(doc, allow_partial=True)["weighted_gain_pct"],
+                               out["best_possible_weighted_gain_pct"], places=9)
+
+    def test_an_arm_with_no_measured_rate_is_excluded_and_named(self):
+        out = self._run(self._spec(("batch1", "concurrency4", "concurrency16")))
+        self.assertEqual(out["arms_without_a_measured_rate"], ["concurrency32"])
+        self.assertAlmostEqual(out["weights_covered"], 0.80)
+        self.assertFalse(out["arms"]["concurrency32"]["measured"])
+
+    def test_aggregate_tps_is_converted_per_step_not_per_token(self):
+        # One step advances every sequence, so 4 sequences at 329.43 aggregate tok/s is a
+        # 12.14 ms step, not 3.04 ms. Getting this backwards inflates the ceiling 4x.
+        out = self._run(self._spec(("concurrency4",)))
+        self.assertAlmostEqual(out["arms"]["concurrency4"]["measured_ms_per_token"],
+                               4 / 329.43 * 1000.0, places=6)
+
+    def test_bands_are_the_scorers_bands(self):
+        out = self._run(self._spec())
+        best = out["best_possible_weighted_gain_pct"]
+        self.assertEqual(out["best_possible_impact"], label.band(best, label.IMPACT)[1])
+        self.assertEqual(out["best_possible_verdict"], label.band(best, label.GO_NO_GO)[1])
+
+    def test_the_ceiling_is_in_throughput_terms_not_traffic_share(self):
+        # A step carrying f less traffic runs in (1-f) of the time, so tok/s rise by
+        # f/(1-f). The scorer measures candidate_tps/baseline_tps, so the ceiling has to be
+        # quoted in that currency; quoting the raw share understates it, and a submission
+        # that beat a published "ceiling" would discredit every other number here.
+        out = self._run(self._spec())
+        for name, arm in out["arms"].items():
+            if not arm.get("measured"):
+                continue
+            with self.subTest(arm=name):
+                f = arm["recurrent_share_of_traffic_pct"] / 100.0
+                self.assertAlmostEqual(arm["ceiling_pct"], 100.0 * f / (1 - f), places=9)
+                self.assertGreater(arm["ceiling_pct"], arm["recurrent_share_of_traffic_pct"])
+
+    def test_removing_that_traffic_really_does_return_the_ceiling(self):
+        # End to end, in the units that decide the verdict: take the measured step time,
+        # subtract exactly the recurrent-state bytes, and the resulting tok/s must be the
+        # ceiling the tool published.
+        out = self._run(self._spec(("concurrency16",)))
+        arm = out["arms"]["concurrency16"]
+        total = arm["implied_total_bytes_per_token"]
+        freed = arm["state_traffic_bytes_per_token"]
+        gain = (total / (total - freed) - 1.0) * 100.0
+        self.assertAlmostEqual(arm["ceiling_pct"], gain, places=9)
+
+    def test_a_matrix_with_nothing_measured_is_an_error_not_a_zero_ceiling(self):
+        with self.assertRaises(SystemExit):
+            self._run({"arms": {}})
+
+    def test_an_arm_without_a_rate_at_all_is_an_error(self):
+        with self.assertRaises(SystemExit):
+            self._run({"arms": {"batch1": {"sequences": 1}}})
 
 
 if __name__ == "__main__":

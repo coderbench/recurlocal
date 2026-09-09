@@ -32,10 +32,132 @@ bandwidth, or the pre-touch is working and the real read is being served from ca
     eval/traffic_budget.py --ms-per-token 10.42 --bandwidth-gbs 1792
     eval/traffic_budget.py --ms-per-token 10.42 --bandwidth-gbs 1792 --sequences 32
 """
-import argparse, json, sys
+import argparse, json, math, sys
 from pathlib import Path
 
 MiB = 1024 * 1024
+
+
+def arm_ceiling(m, sequences, ms_per_token, state_bytes_scale, bandwidth_gbs):
+    """The share of one decode step's traffic that recurrent state accounts for."""
+    layers = m["recurrent_layers"]
+    per_layer = (m["lin_state_bytes_per_layer"] * state_bytes_scale
+                 + m["lin_conv_state_bytes_per_layer"])
+    # Every recurrent layer reads its state and writes it back, once per token, per sequence.
+    state_read = per_layer * layers * sequences
+    state_traffic = state_read * 2
+
+    total_traffic = bandwidth_gbs * 1e9 * (ms_per_token / 1000.0)
+    share = state_traffic / total_traffic
+    # The share of traffic and the ceiling on THROUGHPUT are not the same number, and the
+    # difference is not academic. Removing a fraction f of a bandwidth-bound step's traffic
+    # shortens the step to (1-f)T, so tokens per second rise by f/(1-f) -- more than f. The
+    # scorer measures candidate_tps/baseline_tps, so f/(1-f) is the ceiling in the currency
+    # the verdict is paid in. Reporting f there understates it by 1.4 points at 32 sequences,
+    # which would let a submission legitimately beat a number this repository called a
+    # ceiling.
+    ceiling = share / (1.0 - share)
+    return {
+        "model": m.get("label"),
+        "sequences": sequences,
+        "recurrent_layers": layers,
+        "state_bytes_per_layer_per_sequence": per_layer,
+        "state_read_bytes_per_token": state_read,
+        "state_traffic_bytes_per_token": state_traffic,
+        "measured_ms_per_token": ms_per_token,
+        "device_bandwidth_gbs": bandwidth_gbs,
+        "implied_total_bytes_per_token": total_traffic,
+        "recurrent_share_of_traffic_pct": share * 100.0,
+        "ceiling_pct": ceiling * 100.0,
+        "note": "ceiling_pct is what removing ALL recurrent-state traffic would be worth, in "
+                "the throughput terms the scorer measures: a step carrying f less traffic "
+                "runs in (1-f) of the time, so tok/s rise by f/(1-f). A locality policy "
+                "recovers a fraction of it, never more.",
+    }
+
+
+def matrix_ceiling(m, spec, bandwidth_gbs, output=None):
+    """The best score the whole section 44 matrix can physically return.
+
+    Every arm has its own ceiling, and the verdict is a weighted geometric mean over all of
+    them. So the interesting number is not any one arm's ceiling but what a submission would
+    score if it hit ALL of them - a submission that makes recurrent state entirely free.
+    That is the most this repository can ever pay, and if it lands in a low band then no
+    amount of contributor effort moves it, because the traffic is not there to recover.
+
+    Bands and weights come from decide.py rather than being restated here: a ceiling
+    expressed in bands that had drifted from the scorer's would be worse than no ceiling.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import decide
+
+    arms, ratios = {}, {}
+    for name, weight in sorted(decide.DEFAULT_WEIGHTS.items()):
+        arm = (spec.get("arms") or {}).get(name)
+        if arm is None:
+            arms[name] = {"measured": False,
+                          "note": "no measured decode rate for this arm; it cannot be given a "
+                                  "ceiling, and the matrix ceiling below excludes it"}
+            continue
+        seqs = int(arm.get("sequences", 1))
+        ms = arm.get("ms_per_token")
+        if ms is None:
+            # At concurrency one step advances every sequence, so the step time is
+            # sequences/aggregate_tps - not the reciprocal of the aggregate rate.
+            tps = arm.get("aggregate_tps")
+            if not tps:
+                raise SystemExit(f"arm {name!r}: give ms_per_token or aggregate_tps")
+            ms = seqs / float(tps) * 1000.0
+        c = arm_ceiling(m, seqs, ms, float(arm.get("state_bytes_scale", 1.0)), bandwidth_gbs)
+        c["measured"] = True
+        c["weight"] = weight
+        c["source"] = arm.get("source", "unspecified")
+        arms[name] = c
+        ratios[name] = (1.0 + c["ceiling_pct"] / 100.0, weight)
+
+    if not ratios:
+        raise SystemExit("no arm in the matrix had a measured decode rate")
+
+    total_weight = sum(w for _, w in ratios.values())
+    gm = math.exp(sum(w * math.log(r) for r, w in ratios.values()) / total_weight)
+    best_pct = (gm - 1.0) * 100.0
+    _, impact = decide.band(best_pct, decide.IMPACT)
+    _, decision, decision_text = decide.band(best_pct, decide.GO_NO_GO)
+
+    missing = sorted(n for n, v in arms.items() if not v.get("measured"))
+    out = {
+        "what_this_is": "the highest weighted score the section 44 matrix can physically "
+                        "return on this model and device, if a submission removed ALL "
+                        "recurrent-state traffic on every arm",
+        "model": m.get("label"),
+        "device_bandwidth_gbs": bandwidth_gbs,
+        "arms": arms,
+        "arms_without_a_measured_rate": missing,
+        "weights_covered": round(total_weight, 4),
+        "best_possible_weighted_gain_pct": best_pct,
+        "best_possible_impact": impact,
+        "best_possible_verdict": decision,
+        "best_possible_go_no_go": decision_text,
+        "significance_floor_pct": decide.SIGNIFICANCE_PCT,
+        "reachable_bands": [t for th, t in decide.IMPACT if best_pct >= th],
+    }
+    if best_pct < decide.SIGNIFICANCE_PCT:
+        out["conclusion"] = ("no submission can clear the significance floor on this matrix; "
+                             "the traffic to recover is not there")
+    else:
+        out["conclusion"] = (f"a submission that made recurrent state free would score "
+                             f"{best_pct:.2f}% ({impact}); bands above that are unreachable "
+                             "on this model and device, however good the policy")
+
+    text = json.dumps(out, indent=2)
+    if output:
+        output.write_text(text + "\n")
+    print(text)
+    print(f"\nbest possible weighted gain: {best_pct:.2f}%  ->  impact {impact}, "
+          f"go/no-go {decision}", file=sys.stderr)
+    if missing:
+        print(f"arms with no measured rate (excluded): {', '.join(missing)}", file=sys.stderr)
+    return 0
 
 
 def main():
@@ -44,7 +166,11 @@ def main():
     ap.add_argument("--pin", type=Path,
                     default=Path(__file__).resolve().parent.parent / "integrations" / "sparkinfer" / "pin.json",
                     help="state geometry comes from the pinned integration")
-    ap.add_argument("--ms-per-token", type=float, required=True,
+    ap.add_argument("--matrix", type=Path, metavar="ARMS_JSON",
+                    help="score the whole section 44 matrix instead of one arm: the highest "
+                         "weighted gain any submission could physically earn. See "
+                         "configs/rtx5090-section44-ceiling.json")
+    ap.add_argument("--ms-per-token", type=float,
                     help="milliseconds per decode STEP, not per emitted token. At concurrency "
                          "one step advances every sequence, so this is sequences/aggregate_tps: "
                          "4 sequences at 329 aggregate tok/s is 12.16, not 3.04.")
@@ -58,39 +184,23 @@ def main():
                     help="measured slowdown of a full extra state read, to test the model")
     ap.add_argument("--output", type=Path)
     a = ap.parse_args()
+    if a.matrix is None and a.ms_per_token is None:
+        ap.error("--ms-per-token is required unless --matrix is given")
 
     pin = json.loads(a.pin.read_text())
     m = pin["model"]
-    layers = m["recurrent_layers"]
-    per_layer = (m["lin_state_bytes_per_layer"] * a.state_bytes_scale
-                 + m["lin_conv_state_bytes_per_layer"])
-    # Every recurrent layer reads its state and writes it back, once per token, per sequence.
-    state_read = per_layer * layers * a.sequences
-    state_traffic = state_read * 2
 
-    step_seconds = a.ms_per_token / 1000.0
-    total_traffic = a.bandwidth_gbs * 1e9 * step_seconds
+    if a.matrix is not None:
+        return matrix_ceiling(m, json.loads(a.matrix.read_text()), a.bandwidth_gbs, a.output)
 
-    share = state_traffic / total_traffic
-    read_share = state_read / total_traffic
-    out = {
-        "model": m.get("label"),
-        "sequences": a.sequences,
-        "recurrent_layers": layers,
-        "state_bytes_per_layer_per_sequence": per_layer,
-        "state_read_bytes_per_token": state_read,
-        "state_traffic_bytes_per_token": state_traffic,
-        "measured_ms_per_token": a.ms_per_token,
-        "device_bandwidth_gbs": a.bandwidth_gbs,
-        "implied_total_bytes_per_token": total_traffic,
-        "recurrent_share_of_traffic_pct": share * 100.0,
-        "ceiling_pct": share * 100.0,
-        "note": "ceiling_pct is what removing ALL recurrent-state traffic would be worth. A "
-                "locality policy recovers a fraction of it, never more.",
-    }
+    out = arm_ceiling(m, a.sequences, a.ms_per_token, a.state_bytes_scale, a.bandwidth_gbs)
+    share = out["recurrent_share_of_traffic_pct"] / 100.0
+    read_share = out["state_read_bytes_per_token"] / out["implied_total_bytes_per_token"]
 
     if a.measured_prefetch_cost_pct is not None:
-        predicted = read_share * 100.0
+        # An extra read grows the step's traffic by read_share, so the step takes
+        # (1+read_share) of the time and throughput falls by read_share/(1+read_share).
+        predicted = read_share / (1.0 + read_share) * 100.0
         out["traffic_model_check"] = {
             "predicted_extra_read_cost_pct": predicted,
             "measured_prefetch_cost_pct": a.measured_prefetch_cost_pct,
@@ -106,11 +216,13 @@ def main():
         a.output.write_text(text + "\n")
     print(text)
 
+    ceiling_pct = out["ceiling_pct"]
     verdict = ("BELOW the 2% go/no-go floor: no locality policy on this state can reach it"
-               if share * 100.0 < 2.0 else
+               if ceiling_pct < 2.0 else
                "above the 2% floor: a locality policy has room to matter here")
     print(f"\nrecurrent state is {share * 100:.2f}% of decode traffic at "
-          f"{a.sequences} sequence(s) -- {verdict}", file=sys.stderr)
+          f"{a.sequences} sequence(s), a throughput ceiling of {ceiling_pct:.2f}% "
+          f"-- {verdict}", file=sys.stderr)
     return 0
 
 

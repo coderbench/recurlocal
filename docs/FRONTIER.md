@@ -27,9 +27,22 @@ device or a new concurrency:
 eval/traffic_budget.py --ms-per-token 10.41 --bandwidth-gbs 1792 --sequences 1
 ```
 
-On Qwen3.8-27B at batch 1 the answer is **1.65%**, below the 2% floor section 21 rejects at,
+On Qwen3.8-27B at batch 1 the answer is **1.68%**, below the 2% floor section 21 rejects at,
 before any implementation question is asked. A ceiling below the floor is not a reason to tune
 harder; it is the answer.
+
+The ceiling is quoted in throughput, not in traffic share, because that is what the scorer
+measures: a step carrying *f* less traffic runs in *(1−f)* of the time, so tok/s rise by
+*f/(1−f)*. The two differ by 0.03 points at batch 1 and by 1.4 at 32 sequences.
+
+`--matrix` asks the question one level up — not what one arm's ceiling is, but what a
+submission would score if it hit *every* arm's ceiling at once, weighted the way section 44
+weights them. That is the most this repository can ever pay, and it is worth knowing before
+recruiting anyone to compete for it:
+
+```bash
+eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json --bandwidth-gbs 1792
+```
 
 The share is not fixed, though, and where it moves is where the frontier is. Model weights are
 read once per decode step however many sequences are in flight; recurrent state is read once

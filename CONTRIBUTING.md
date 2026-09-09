@@ -38,7 +38,12 @@ Before optimizing for a model, check what the best possible result would be wort
 
 ```bash
 eval/traffic_budget.py --ms-per-token <measured> --bandwidth-gbs <device> --sequences <N>
+eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json --bandwidth-gbs 1792
 ```
+
+The first gives one workload's ceiling; the second gives the highest weighted score the whole
+section 44 matrix can physically return, so you can see which bands are reachable at all
+before choosing what to work on.
 
 ## Adding a mechanism
 

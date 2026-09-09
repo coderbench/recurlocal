@@ -15,16 +15,23 @@ recurrent state accounts for. Model weights are read once per decode step howeve
 sequences are in flight; recurrent state is read once *per sequence*. So the share — and the
 whole opportunity — grows with concurrency:
 
-| regime | ceiling | best measured to date | unclaimed |
-|---|--:|--:|--:|
-| batch 1 | **1.65%** | +0.13% | — below the 2% floor; nothing to win |
-| concurrency 4 | 2.88% | +0.06% | ~2.8 points |
-| concurrency 16 | 6.73% | +0.36% | ~6.4 points |
-| concurrency 32 | **11.03%** | ~0% (unresolved) | **~11 points** |
+| regime | state share of traffic | ceiling | best measured to date | unclaimed |
+|---|--:|--:|--:|--:|
+| batch 1 | 1.65% | **1.68%** | +0.13% | — below the 2% floor; nothing to win |
+| concurrency 4 | 2.88% | 2.97% | +0.06% | ~2.9 points |
+| concurrency 16 | 6.74% | 7.23% | +0.36% | ~6.9 points |
+| concurrency 32 | 11.03% | **12.40%** | ~0% (unresolved) | **~12 points** |
 
 Ceilings from `eval/traffic_budget.py` on Qwen3.8-27B NVFP4 / RTX 5090, with the state
 bf16-compacted as the runtime does for batched decode. "Best measured" is the strongest arm in
 `results/rtx5090-real.json`.
+
+The two left-hand columns differ on purpose, and the gap grows with concurrency. Traffic share
+is what fraction of the step's bytes the state accounts for; the ceiling is what removing them
+is worth in the throughput the scorer actually measures. A step carrying *f* less traffic runs
+in *(1−f)* of the time, so tok/s rise by *f/(1−f)*. Quoting the share as the ceiling understates
+it by 1.4 points at 32 sequences — enough that a submission could beat a number this repository
+had called a ceiling.
 
 Read that table as the competition brief. **At 32 concurrent sequences there are roughly
 eleven points on the table and the shipped implementation captures none of them** — its best
@@ -42,10 +49,11 @@ arithmetic:
 recurrent state per token   48 x (3 MiB fp32 + 60 KiB bf16) x 2  =  294 MiB
 decode step                 10.41 ms x 1792 GB/s                 =   18.6 GB
 recurrent share                                                      1.65%
+throughput ceiling          f/(1-f)                                  1.68%
 ```
 
 Qwen3.8-27B is a *dense* hybrid: every weight is read every token. Making recurrent state free
-would be worth 1.65%, below the floor `eval/decide.py` rejects at, before any policy is chosen.
+would be worth 1.68%, below the floor `eval/decide.py` rejects at, before any policy is chosen.
 
 ## Reproducing the measurement
 

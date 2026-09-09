@@ -1,0 +1,25 @@
+{
+  "_comment": "Measured decode rates for the section 44 workload matrix, on the pinned model and runtime. eval/traffic_budget.py --matrix turns these into the highest weighted gain any submission could physically earn. Every rate here is a BASELINE (control-arm) measurement from results/rtx5090-real.json; none is estimated. An arm with no measured rate is left out rather than guessed, and the tool reports which.",
+  "device": "RTX 5090",
+  "bandwidth_gbs": 1792,
+  "arms": {
+    "batch1": {
+      "sequences": 1,
+      "ms_per_token": 10.41,
+      "state_bytes_scale": 1.0,
+      "source": "results/rtx5090-real.json batch1 control; single-sequence decode keeps the fp32 matrix state"
+    },
+    "concurrency4": {
+      "sequences": 4,
+      "aggregate_tps": 329.43,
+      "state_bytes_scale": 0.5,
+      "source": "results/rtx5090-real.json per_concurrency.concurrency4.baseline_runs, mean of 3; packed decode compacts the state to bf16"
+    },
+    "concurrency16": {
+      "sequences": 16,
+      "aggregate_tps": 770.1,
+      "state_bytes_scale": 0.5,
+      "source": "results/rtx5090-real.json per_concurrency.concurrency16.baseline_runs, mean of 3; packed decode compacts the state to bf16"
+    }
+  }
+}

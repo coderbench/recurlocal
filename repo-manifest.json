@@ -16,6 +16,7 @@
     "bench/cuda_bench.cu",
     "cmake/RecurLocalConfig.cmake.in",
     "configs/qwen3.8-27b-feasibility.json",
+    "configs/rtx5090-section44-ceiling.json",
     "docs/DESIGN.md",
     "docs/FRONTIER.md",
     "docs/MINING.md",
