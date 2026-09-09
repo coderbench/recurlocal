@@ -487,15 +487,15 @@
     "schema_version": 1,
     "what_this_is": "Real end-to-end decode on a pinned SparkInfer commit and checkpoint. This is the metric sections 17, 21 and 28 make authoritative.",
     "provenance": {
-      "timestamp_utc": "2026-09-09T12:09:26+00:00",
+      "timestamp_utc": "2026-09-09T17:03:20+00:00",
       "gpu": "NVIDIA GeForce RTX 5090",
       "driver": "595.84",
       "model": "/root/models/qwen38-nvfp4",
       "binary": "/root/rl/hook/sparkinfer/build/runtime/qwen3_gguf_bench",
       "candidate_env": {
-        "RECURLOCAL": "persist",
-        "RECURLOCAL_WINDOW_SCOPE": "ahead",
-        "RECURLOCAL_WINDOW_ATTACH": "stream",
+        "RECURLOCAL": "prefetch",
+        "RECURLOCAL_PREFETCH_JOIN": "token_end",
+        "RECURLOCAL_PRE_TOUCH": "ptx_l2",
         "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
         "RECURLOCAL_STATS": "1"
       },
@@ -507,8 +507,8 @@
         16384
       ],
       "repeats": 3,
-      "label": "persist, window scope ahead, safe stream attach",
-      "note": "best configuration reachable without mutating a graph mid-capture; see docs/OPTIMIZATION-SURFACES.md",
+      "label": "prefetch, token_end joins, ptx_l2 walk",
+      "note": "the best configuration that applies a real policy without mutating a graph mid-capture",
       "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
       "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
       "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
@@ -528,23 +528,23 @@
         911
       ],
       "first_divergence": null,
-      "candidate_hook_active": true
+      "candidate_hook_active": false
     },
     "workloads": {
       "batch1": {
         "weight": 0.4,
-        "baseline_tps": 94.7836048091236,
-        "candidate_tps": 94.84783208444625
+        "baseline_tps": 94.8267877647483,
+        "candidate_tps": 94.84176036362555
       },
       "concurrency4": {
         "weight": 0.2,
-        "baseline_tps": 328.2,
-        "candidate_tps": 328.5
+        "baseline_tps": 329.3,
+        "candidate_tps": 327.1033353547605
       },
       "concurrency16": {
         "weight": 0.2,
-        "baseline_tps": 769.9,
-        "candidate_tps": 769.8
+        "baseline_tps": 770.5,
+        "candidate_tps": 760.4
       }
     },
     "workload_coverage": {
@@ -560,83 +560,83 @@
     },
     "per_context": {
       "128": {
-        "baseline_tps": 95.8924,
-        "candidate_tps": 95.8357,
+        "baseline_tps": 95.9215,
+        "candidate_tps": 95.8643,
         "baseline_runs": [
-          95.85,
-          95.8924,
-          95.9103
+          95.902,
+          95.9268,
+          95.9215
         ],
         "candidate_runs": [
-          95.8357,
-          95.8305,
-          95.8799
+          95.8542,
+          95.8643,
+          95.8727
         ],
         "paired_ratios": [
-          0.9998508085550339,
-          0.9993544848184007,
-          0.9996830371711901
+          0.9995015745239932,
+          0.9993484615352539,
+          0.9994912506580902
         ],
-        "gain_pct": -0.03169628288098858,
-        "baseline_spread_pct": 0.0628829813415998,
-        "candidate_spread_pct": 0.05154655311121603,
+        "gain_pct": -0.05087493419098088,
+        "baseline_spread_pct": 0.025854474752791654,
+        "candidate_spread_pct": 0.019298112018748228,
         "resolution": {
-          "resolved": false,
-          "floor_pct": 0.0628829813415998,
+          "resolved": true,
+          "floor_pct": 0.025854474752791654,
           "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
         }
       },
       "4096": {
-        "baseline_tps": 94.1147,
-        "candidate_tps": 94.2276,
+        "baseline_tps": 94.1658,
+        "candidate_tps": 94.24,
         "baseline_runs": [
-          94.1147,
-          94.1057,
-          94.1261
+          94.1197,
+          94.1658,
+          94.1727
         ],
         "candidate_runs": [
-          94.2276,
-          94.2258,
-          94.2439
+          94.1966,
+          94.24,
+          94.2407
         ],
         "paired_ratios": [
-          1.001199600062477,
-          1.0012762245007476,
-          1.0012515125985249
+          1.000817044678213,
+          1.0007879718539001,
+          1.0007220776297165
         ],
-        "gain_pct": 0.1251512598524851,
-        "baseline_spread_pct": 0.021675678719684694,
-        "candidate_spread_pct": 0.01920880930851448,
+        "gain_pct": 0.07879718539001157,
+        "baseline_spread_pct": 0.056283703850029926,
+        "candidate_spread_pct": 0.04679541595925324,
         "resolution": {
           "resolved": true,
-          "floor_pct": 0.021675678719684694,
+          "floor_pct": 0.056283703850029926,
           "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
         }
       },
       "16384": {
-        "baseline_tps": 94.3535,
-        "candidate_tps": 94.4636,
+        "baseline_tps": 94.4026,
+        "candidate_tps": 94.3993,
         "baseline_runs": [
-          94.3297,
-          94.3535,
-          94.3644
+          94.3275,
+          94.4164,
+          94.4026
         ],
         "candidate_runs": [
-          94.4677,
-          94.4572,
-          94.4636
+          94.387,
+          94.4348,
+          94.3993
         ],
         "paired_ratios": [
-          1.0014629538734883,
-          1.00109905832852,
-          1.0010512439013017
+          1.0006307810553656,
+          1.0001948813977233,
+          0.9999650433356707
         ],
-        "gain_pct": 0.10990583285199751,
-        "baseline_spread_pct": 0.03677659016358783,
-        "candidate_spread_pct": 0.01111539259565938,
+        "gain_pct": 0.019488139772327884,
+        "baseline_spread_pct": 0.0941711351170363,
+        "candidate_spread_pct": 0.05063596869891533,
         "resolution": {
-          "resolved": true,
-          "floor_pct": 0.04112579756831909,
+          "resolved": false,
+          "floor_pct": 0.0941711351170363,
           "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
         }
       }
@@ -644,26 +644,26 @@
     "per_concurrency": {
       "concurrency4": {
         "baseline_runs": [
-          327.7,
-          328.2,
-          328.7
+          329.3,
+          329.2,
+          329.8
         ],
         "candidate_runs": [
-          328.0,
-          328.5,
-          328.1
+          327.1,
+          327.3,
+          327.6
         ],
         "paired_ratios": [
-          1.000915471467806,
-          1.0009140767824498,
-          0.9981746273197446
+          0.9933191618584878,
+          0.9942284325637911,
+          0.9933292904790783
         ],
-        "gain_pct": 0.0914076782449813,
-        "baseline_spread_pct": 0.30469226081657524,
-        "candidate_spread_pct": 0.15239256324291373,
+        "gain_pct": -0.6670709520921747,
+        "baseline_spread_pct": 0.18220467658670594,
+        "candidate_spread_pct": 0.15276504735716467,
         "resolution": {
-          "resolved": false,
-          "floor_pct": 0.30469226081657524,
+          "resolved": true,
+          "floor_pct": 0.18220467658670594,
           "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
         },
         "sequences_seen_by_adapter": 1,
@@ -673,26 +673,26 @@
       },
       "concurrency16": {
         "baseline_runs": [
-          769.9,
-          766.7,
-          771.3
+          769.3,
+          770.5,
+          770.5
         ],
         "candidate_runs": [
-          769.8,
-          768.2,
-          767.5
+          759.6,
+          760.4,
+          758.3
         ],
         "paired_ratios": [
-          0.9998701130016885,
-          1.0019564366766662,
-          0.9950732529495657
+          0.9873911347978683,
+          0.9868916288124594,
+          0.9841661258922777
         ],
-        "gain_pct": -0.012988699831151251,
-        "baseline_spread_pct": 0.5974801922327456,
-        "candidate_spread_pct": 0.2994011976047845,
+        "gain_pct": -1.3108371187540602,
+        "baseline_spread_pct": 0.15574302401038878,
+        "candidate_spread_pct": 0.2764612954186444,
         "resolution": {
-          "resolved": false,
-          "floor_pct": 0.6884077879312392,
+          "resolved": true,
+          "floor_pct": 0.3267845031243532,
           "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
         },
         "sequences_seen_by_adapter": 15,
@@ -702,33 +702,31 @@
       }
     },
     "measurement": {
-      "noise_floor_pct": 0.0628829813415998,
-      "gain_pct": 0.06776200952895994,
+      "noise_floor_pct": 0.0941711351170363,
+      "gain_pct": 0.015789419034617502,
       "resolved": false,
       "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
       "unresolved_workloads": [
-        "batch1/ctx128",
-        "concurrency16",
-        "concurrency4"
-      ],
-      "estimator_note": "batch1 recomputed from the stored paired_ratios with the median-of-paired-ratios estimator. The run that produced this file used ratio-of-medians for this one arm, inconsistently with every other arm and with the documented method; on this data the two agree to within 0.01 points, but the estimator was corrected rather than left to matter on noisier data. No measurement was re-run - only the combination arithmetic."
+        "batch1/ctx16384"
+      ]
     },
     "adapter": {
       "adapter": "recurlocal-sparkinfer",
-      "mode": "persist",
-      "initialised": true,
+      "mode": "prefetch",
+      "initialised": false,
+      "ever_initialised": true,
       "broken": false,
       "config_error": null,
       "config": {
-        "pre_touch": "vec4",
+        "pre_touch": "ptx_l2",
         "pre_touch_coverage": "both",
         "prefetch_distance": 1,
         "prefetch_schedule": "uniform",
-        "prefetch_join": "per_layer",
+        "prefetch_join": "token_end",
         "window_attach": "stream",
         "hot_set_model": "token_footprint",
         "hot_set_policy": "proportional",
-        "window_scope": "ahead",
+        "window_scope": "layer",
         "window_target": "matrix",
         "hit_ratio": 0.7,
         "budget_fraction": 0.75
@@ -747,44 +745,35 @@
         "layers_packed": 0,
         "max_rows_seen": 0,
         "windows_applied": 0,
-        "windows_deferred_to_caller": 192,
+        "windows_deferred_to_caller": 0,
         "windows_attached_to_node": 0,
         "window_attach_failures": 0,
         "capture_invalidations": 0,
-        "hot_set_oversubscribed": 192,
-        "pre_touch_launches": 0,
-        "pre_touch_segments": 0,
-        "pre_touch_bytes": 0,
+        "released_during_capture": 0,
+        "hit_ratio_reduced": 0,
+        "hot_set_oversubscribed": 0,
+        "pre_touch_launches": 188,
+        "pre_touch_segments": 376,
+        "pre_touch_bytes": 602947584,
         "pre_touch_skipped": 0,
         "compute_stream_priority": 0,
         "prefetch_stream_priority": 0
       }
-    },
-    "NULL_CANDIDATE_WARNING": {
-      "what": "This scored run applied NO locality policy. It is hook overhead versus the control, not a locality result, and must not be read as the go/no-go verdict.",
-      "evidence": {
-        "windows_applied": 0,
-        "windows_attached_to_node": 0,
-        "pre_touch_launches": 0,
-        "windows_deferred_to_caller": 192
-      },
-      "why": "The candidate was persist + window_attach=stream. Under CUDA-Graph decode that computes a window per layer and hands it back for the runtime to attach; SparkInfer does not attach it, so 192 windows were deferred and none reached a kernel. eval/real_eval.py now refuses a candidate whose telemetry shows no policy was applied - this file predates that guard and would be rejected by it.",
-      "superseded_by": "a re-score with RECURLOCAL=prefetch, whose pre-touch kernels ARE recorded into the captured graph and therefore constitute a real policy"
     }
   },
   "verdict": {
     "schema_version": 1,
     "track": "real",
     "provenance": {
-      "timestamp_utc": "2026-09-09T12:09:26+00:00",
+      "timestamp_utc": "2026-09-09T17:03:20+00:00",
       "gpu": "NVIDIA GeForce RTX 5090",
       "driver": "595.84",
       "model": "/root/models/qwen38-nvfp4",
       "binary": "/root/rl/hook/sparkinfer/build/runtime/qwen3_gguf_bench",
       "candidate_env": {
-        "RECURLOCAL": "persist",
-        "RECURLOCAL_WINDOW_SCOPE": "ahead",
-        "RECURLOCAL_WINDOW_ATTACH": "stream",
+        "RECURLOCAL": "prefetch",
+        "RECURLOCAL_PREFETCH_JOIN": "token_end",
+        "RECURLOCAL_PRE_TOUCH": "ptx_l2",
         "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
         "RECURLOCAL_STATS": "1"
       },
@@ -796,8 +785,8 @@
         16384
       ],
       "repeats": 3,
-      "label": "persist, window scope ahead, safe stream attach",
-      "note": "best configuration reachable without mutating a graph mid-capture; see docs/OPTIMIZATION-SURFACES.md",
+      "label": "prefetch, token_end joins, ptx_l2 walk",
+      "note": "the best configuration that applies a real policy without mutating a graph mid-capture",
       "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
       "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
       "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
@@ -807,34 +796,36 @@
     "workloads": {
       "batch1": {
         "weight": 0.4,
-        "baseline_tps": 94.7836048091236,
-        "candidate_tps": 94.84783208444625,
-        "ratio": 1.0006776200952896,
-        "gain_pct": 0.06776200952895994
+        "baseline_tps": 94.8267877647483,
+        "candidate_tps": 94.84176036362555,
+        "ratio": 1.0001578941903462,
+        "gain_pct": 0.015789419034617502
       },
       "concurrency16": {
         "weight": 0.2,
-        "baseline_tps": 769.9,
-        "candidate_tps": 769.8,
-        "ratio": 0.9998701130016885,
-        "gain_pct": -0.012988699831151251
+        "baseline_tps": 770.5,
+        "candidate_tps": 760.4,
+        "ratio": 0.9868916288124594,
+        "gain_pct": -1.3108371187540602
       },
       "concurrency4": {
         "weight": 0.2,
-        "baseline_tps": 328.2,
-        "candidate_tps": 328.5,
-        "ratio": 1.0009140767824498,
-        "gain_pct": 0.0914076782449813
+        "baseline_tps": 329.3,
+        "candidate_tps": 327.1033353547605,
+        "ratio": 0.9933292904790783,
+        "gain_pct": -0.6670709520921747
       }
     },
-    "weighted_gain_pct": 0.05347792092478265,
-    "weighted_ratio": 1.0005347792092478,
+    "weighted_gain_pct": -0.48811330723499413,
+    "weighted_ratio": 0.9951188669276501,
+    "unresolved_workloads": [
+      "batch1/ctx16384"
+    ],
     "scored": true,
     "impact": "none",
     "verdict": "reject",
     "go_no_go": "reject the core hypothesis",
     "significant": false,
-    "reason": "weighted gain 0.05% is below the 2% significance floor \u2014 not a verified improvement",
-    "NOTE": "scored from a null candidate; see scored_result.NULL_CANDIDATE_WARNING"
+    "reason": "weighted gain -0.49% is below the 2% significance floor \u2014 not a verified improvement"
   }
 }

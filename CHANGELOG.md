@@ -188,10 +188,15 @@ are the same binary, interleaved. Batch-1 noise floor **0.023%** over 3 pairs.
 
 Output is token-exact against the unhooked runtime under greedy replay.
 
-The scored run — `persist` with safe window delivery, 3 interleaved pairs, batch 1 at three
-contexts plus concurrency 4 and 16 — is **+0.053% weighted**, and `eval/decide.py --real`
-returns `reject`: batch1 +0.068%, concurrency4 +0.091%, concurrency16 -0.013%, every arm
-inside its own run-to-run spread. Concurrency 32 is deliberately absent from the scored
+The scored run — `prefetch` with `token_end` joins and the `ptx_l2` walk, 3 interleaved pairs,
+batch 1 at three contexts plus concurrency 4 and 16 — is **-0.488% weighted**, and
+`eval/decide.py --real` returns `reject`: batch1 +0.016%, concurrency4 -0.667%,
+concurrency16 -1.311%. The policy demonstrably ran (188 pre-touch launches at batch 1; the
+concurrency arms went through `decode_packed`, 129/138 tokens packed at c=4). It costs more
+than it saves, and the cost grows with concurrency as the axis sweeps predicted.
+
+An earlier scored run reported +0.053% for `persist` with safe window delivery; that was a
+null candidate which applied no policy at all, and the harness now refuses such runs. Concurrency 32 is deliberately absent from the scored
 matrix and reported as unresolved instead; `real_eval.py` leaves an unmeasured arm out and
 `decide.py` renormalises the weights that remain, so a partial run reads as a partial verdict
 rather than a full one with invented halves.

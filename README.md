@@ -207,12 +207,27 @@ benchmarks, the flag that isolates each, and where the two disagree.
 | 7–10% | strong candidate |
 | >10% | expand immediately |
 
-**The gate has been run and the result is in the first band.** The first scored run is
-retained only as a cautionary artifact: it used `persist` with safe window delivery, which
-under graph decode applies **no policy at all** (192 windows computed and handed back, none
-attached), so its +0.053% measured hook overhead rather than locality. `eval/real_eval.py`
-now refuses such a null candidate. A re-score with `prefetch` — whose kernels *are* recorded
-into the captured graph — is the standing result; token-exact output either way. `eval/decide.py`
+**The gate has been run and the result is in the first band.** The scored candidate is
+`prefetch` with `token_end` joins and the `ptx_l2` walk — the best configuration that applies
+a real policy without mutating a graph mid-capture. 3 interleaved pairs, batch 1 at three
+contexts plus concurrency 4 and 16, token-exact output:
+
+```
+$ eval/decide.py --real results/rtx5090-real.json
+verdict: reject   weighted gain -0.488%   significant false
+  batch1         +0.016%  (w=0.40)   [ctx16384 did not resolve]
+  concurrency4   -0.667%  (w=0.20)
+  concurrency16  -1.311%  (w=0.20)
+```
+
+The pre-touch really ran — 188 launches at batch 1, and the concurrency arms went through
+`decode_packed` (129/138 tokens packed at c=4, 127/135 at c=16). It costs more than it saves,
+and the cost grows with concurrency exactly as the axis sweeps predicted.
+
+An earlier scored run reported +0.053% for `persist` with safe window delivery. That was a
+**null candidate**: under graph decode it computed 192 windows, handed every one back, and
+none was ever attached — it measured hook overhead, not locality. `eval/real_eval.py` now
+refuses such a run by name. `eval/decide.py`
 returns `reject`, and the verdict is derived from `results/rtx5090-real.json`, not asserted:
 
 ```
