@@ -1,0 +1,33 @@
+{
+  "name": "RecurLocal",
+  "version": "0.1.0",
+  "status": "feasibility-prototype",
+  "core": "software-directed CUDA locality for mutable recurrent LLM state",
+  "validated": "CPU-only CMake build and planner test passed in generation environment",
+  "files": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "CMakeLists.txt",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "README.md",
+    "SECURITY.md",
+    "bench/cuda_bench.cu",
+    "configs/qwen3.8-27b-feasibility.json",
+    "docs/DESIGN.md",
+    "docs/FRONTIER.md",
+    "eval/README.md",
+    "eval/run_eval.py",
+    "include/recurlocal/cuda_api.h",
+    "include/recurlocal/planner.h",
+    "integrations/sparkinfer/README.md",
+    "scripts/build_cpu.sh",
+    "scripts/build_cuda.sh",
+    "scripts/run_feasibility.sh",
+    "src/cuda/cache_control.cu",
+    "src/cuda/prefetch.cu",
+    "src/planner.cpp",
+    "tests/test_planner.cpp",
+    "tools/info.cpp"
+  ]
+}

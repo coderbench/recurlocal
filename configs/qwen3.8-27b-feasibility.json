@@ -1,0 +1,15 @@
+{
+  "description": "Synthetic memory-locality geometry inspired by Qwen3.8-27B config; not a model benchmark",
+  "recurrent_layers": 48,
+  "state": {
+    "value_heads": 48,
+    "value_head_dim": 128,
+    "matrix_dim": 128,
+    "dtype": "float32",
+    "matrix_state_bytes_per_recurrent_layer": 3145728
+  },
+  "benchmark": {
+    "tokens": 32,
+    "inner_iters": 2
+  }
+}

@@ -1,0 +1,7 @@
+build/
+*.o
+*.a
+*.so
+eval-result.json
+__pycache__/
+.DS_Store
