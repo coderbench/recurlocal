@@ -252,6 +252,32 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
                     p.hit_ratio = 0.0;
                     p.hit_ratio_reduced = true;
                     break;
+                case HotSetPolicy::Quota: {
+                    // How many window-sized units the set-aside holds, against how many the
+                    // declared hot set contains. Both are in bytes, so this needs no layer
+                    // count and no sequence count from the caller: at concurrency the hot set
+                    // already counts every sequence, which is exactly why the admitted
+                    // fraction has to shrink with it.
+                    const std::size_t admissible = window ? budget / window : 0;
+                    const std::size_t units = window ? (hot + window - 1) / window : 0;
+                    // Spread the admitted layers evenly rather than taking a prefix, so no
+                    // contiguous run of the model is left entirely uncovered, and decide from
+                    // the layer ordinal alone so every token makes the identical choice - a
+                    // window that moved between tokens would evict the state it just kept.
+                    // (i * admissible) % units < admissible selects exactly `admissible` of
+                    // `units` indices, evenly spaced, starting at the first.
+                    const std::size_t i = layer_index < 0 ? 0u : static_cast<std::size_t>(layer_index);
+                    const bool admit = admissible > 0 && units > 0 &&
+                                       (i * admissible) % units < admissible;
+                    if (!admit) {
+                        p.use_persisting_window = false;
+                        p.hot_window_bytes = 0;
+                        p.hit_ratio = 0.0;
+                    }
+                    // Declining this layer's window IS the back-off, so it is reported as one.
+                    p.hit_ratio_reduced = !admit;
+                    break;
+                }
             }
         }
     }
@@ -305,6 +331,7 @@ const char* to_string(HotSetPolicy policy) noexcept {
         case HotSetPolicy::Fixed: return "fixed";
         case HotSetPolicy::Sqrt: return "sqrt";
         case HotSetPolicy::Cliff: return "cliff";
+        case HotSetPolicy::Quota: return "quota";
     }
     return "unknown";
 }
@@ -316,6 +343,7 @@ HotSetPolicy parse_hot_set_policy(const char* text) {
     if (s == "fixed") return HotSetPolicy::Fixed;
     if (s == "sqrt") return HotSetPolicy::Sqrt;
     if (s == "cliff") return HotSetPolicy::Cliff;
+    if (s == "quota") return HotSetPolicy::Quota;
     throw std::invalid_argument("unknown hot-set policy: " + s);
 }
 

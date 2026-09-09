@@ -30,7 +30,7 @@ AXES = {
     "prefetch-schedule":  ("RECURLOCAL_PREFETCH_SCHEDULE", ["uniform", "ramp", "alternating", "sparse"]),
     "prefetch-join":      ("RECURLOCAL_PREFETCH_JOIN", ["per_layer", "token_end"]),
     "hot-set-model":      ("RECURLOCAL_HOT_SET_MODEL", ["current_layer", "token_footprint", "reuse_window"]),
-    "hot-set-policy":     ("RECURLOCAL_HOT_SET_POLICY", ["proportional", "fixed", "sqrt", "cliff"]),
+    "hot-set-policy":     ("RECURLOCAL_HOT_SET_POLICY", ["proportional", "fixed", "sqrt", "cliff", "quota"]),
     "window-scope":       ("RECURLOCAL_WINDOW_SCOPE", ["layer", "allocation", "ahead"]),
     "window-target":      ("RECURLOCAL_WINDOW_TARGET", ["matrix", "conv", "widest", "narrowest"]),
     # How the window reaches the kernel under graph capture. Not a tuning knob: capture_node

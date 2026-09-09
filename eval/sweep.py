@@ -22,7 +22,7 @@ AXES = {
                                                                     "ptx_l2", "warp_tile", "partial"],
                           "mode": "prefetch"},
     "prefetch-distance": {"flag": "--prefetch-distance", "values": [1, 2, 3, 4, 6, 8], "mode": "prefetch"},
-    "hot-set-policy":    {"flag": "--hot-set-policy",    "values": ["fixed", "proportional", "sqrt", "cliff"],
+    "hot-set-policy":    {"flag": "--hot-set-policy",    "values": ["fixed", "proportional", "sqrt", "cliff", "quota"],
                           "mode": "persist"},
     "sequences":         {"flag": "--sequences",         "values": [1, 2, 4, 8, 16, 32], "mode": "combined"},
     "stream-bytes":      {"flag": "--stream-bytes",      "values": [0, 16 << 20, 64 << 20, 256 << 20],

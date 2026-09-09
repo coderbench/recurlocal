@@ -248,7 +248,7 @@ static void test_hot_set_policies_differ_under_pressure() {
     // Every policy must agree that the hot set is oversubscribed; they differ only in
     // what they do about it. Telemetry stays comparable across policies that way.
     for (auto policy : {HotSetPolicy::Proportional, HotSetPolicy::Fixed,
-                        HotSetPolicy::Sqrt, HotSetPolicy::Cliff}) {
+                        HotSetPolicy::Sqrt, HotSetPolicy::Cliff, HotSetPolicy::Quota}) {
         CHECK(plan_with(policy).hot_set_oversubscribed);
     }
 
@@ -271,13 +271,110 @@ static void test_hot_set_policies_differ_under_pressure() {
     // Below the budget every policy behaves identically, so a policy change cannot
     // silently alter the uncontended case.
     for (auto policy : {HotSetPolicy::Proportional, HotSetPolicy::Fixed,
-                        HotSetPolicy::Sqrt, HotSetPolicy::Cliff}) {
+                        HotSetPolicy::Sqrt, HotSetPolicy::Cliff, HotSetPolicy::Quota}) {
         PlannerConfig cfg = base_config();
         cfg.hot_set_policy = policy;
         const auto easy = LocalityPlanner(blackwell_like(), cfg).plan_for_layer(3 * MiB, true, 8 * MiB);
         CHECK(!easy.hot_set_oversubscribed);
         CHECK(easy.use_persisting_window);
         CHECK_NEAR(easy.hit_ratio, 0.8);
+    }
+}
+
+static void test_quota_admits_whole_layers_instead_of_shaving_every_hit_ratio() {
+    // The regime this policy exists for: a footprint a little larger than the set-aside.
+    // 32 MiB budget, a 2 MiB window per layer, 30 layers = 60 MiB declared hot. Every other
+    // policy answers by asking all 30 layers for a reduced hit ratio; quota keeps 16 of them
+    // whole and declines the rest, because a cache line is resident or it is not.
+    auto plan_at = [](HotSetPolicy policy, int layer) {
+        PlannerConfig cfg = base_config();
+        cfg.hot_set_policy = policy;
+        // additive accounting: 58 MiB declared beside this layer's own 2 MiB window is a
+        // 60 MiB hot set against a 32 MiB budget.
+        return LocalityPlanner(blackwell_like(), cfg)
+                   .plan_for_layer(2 * MiB, true, 58 * MiB, layer);
+    };
+
+    int admitted = 0;
+    for (int layer = 0; layer < 30; ++layer) {
+        const auto plan = plan_at(HotSetPolicy::Quota, layer);
+        if (plan.use_persisting_window) {
+            ++admitted;
+            // An admitted layer gets the FULL hit ratio. That is the whole point: the budget
+            // is spent on fewer layers rather than diluted across all of them.
+            CHECK_NEAR(plan.hit_ratio, 0.8);
+            CHECK(plan.hot_window_bytes == 2 * MiB);
+            CHECK(!plan.hit_ratio_reduced);
+        } else {
+            CHECK(plan.hot_window_bytes == 0);
+            CHECK(plan.hit_ratio_reduced);
+        }
+    }
+    // 32 MiB of budget holds 16 whole 2 MiB windows, and quota admits exactly that many --
+    // never more (which would thrash) and never fewer (which would waste the set-aside).
+    CHECK(admitted == 16);
+
+    // Proportional spends the same budget on every layer at a reduced ratio, so its total
+    // requested residency is the same while no layer is whole. The two are genuinely
+    // different requests, which is what makes this an A/B rather than a retuning.
+    for (int layer = 0; layer < 30; ++layer) {
+        const auto prop = plan_at(HotSetPolicy::Proportional, layer);
+        CHECK(prop.use_persisting_window);
+        CHECK(prop.hit_ratio < 0.8);
+    }
+}
+
+static void test_quota_admits_the_same_layers_on_every_token() {
+    // A window that moved between tokens would evict exactly the state it kept last time,
+    // which is worse than installing none. The choice must be a pure function of the layer
+    // ordinal.
+    PlannerConfig cfg = base_config();
+    cfg.hot_set_policy = HotSetPolicy::Quota;
+    LocalityPlanner planner(blackwell_like(), cfg);
+    for (int layer = 0; layer < 30; ++layer) {
+        const bool first = planner.plan_for_layer(2 * MiB, true, 58 * MiB, layer)
+                               .use_persisting_window;
+        for (int token = 0; token < 4; ++token)
+            CHECK(planner.plan_for_layer(2 * MiB, true, 58 * MiB, layer)
+                      .use_persisting_window == first);
+    }
+}
+
+static void test_quota_spends_a_fixed_budget_however_many_layers_want_it() {
+    // The hot set counts every sequence, so four times the footprint against the same cache
+    // must admit the same NUMBER of windows over four times as many units -- a quarter of the
+    // fraction. A policy that ignored that would install four times the windows the device
+    // can hold and be indistinguishable from `fixed`.
+    auto admitted = [](std::size_t other, int units) {
+        PlannerConfig cfg = base_config();
+        cfg.hot_set_policy = HotSetPolicy::Quota;
+        LocalityPlanner planner(blackwell_like(), cfg);
+        int n = 0;
+        for (int layer = 0; layer < units; ++layer)
+            if (planner.plan_for_layer(2 * MiB, true, other, layer).use_persisting_window)
+                ++n;
+        return n;
+    };
+    const int one_seq  = admitted(58 * MiB, 30);    //  60 MiB hot, 30 units
+    const int four_seq = admitted(238 * MiB, 120);  // 240 MiB hot, 120 units
+    // 32 MiB of set-aside holds 16 whole 2 MiB windows either way.
+    CHECK(one_seq == 16);
+    CHECK(four_seq == 16);
+    // So the admitted fraction fell from 16/30 to 16/120 as the footprint grew.
+    CHECK(four_seq * 30 < one_seq * 120);
+}
+
+static void test_quota_is_inert_when_everything_fits(void) {
+    // Under the budget there is nothing to ration, and quota must not decline a window that
+    // the device could simply hold -- otherwise it would be a regression on every small model.
+    PlannerConfig cfg = base_config();
+    cfg.hot_set_policy = HotSetPolicy::Quota;
+    LocalityPlanner planner(blackwell_like(), cfg);
+    for (int layer = 0; layer < 8; ++layer) {
+        const auto plan = planner.plan_for_layer(2 * MiB, true, 14 * MiB, layer);
+        CHECK(plan.use_persisting_window);
+        CHECK_NEAR(plan.hit_ratio, 0.8);
+        CHECK(!plan.hot_set_oversubscribed);
     }
 }
 
@@ -303,7 +400,7 @@ static void test_min_hit_ratio_is_the_floor() {
 
 static void test_policy_names_round_trip() {
     for (auto p : {HotSetPolicy::Proportional, HotSetPolicy::Fixed,
-                   HotSetPolicy::Sqrt, HotSetPolicy::Cliff})
+                   HotSetPolicy::Sqrt, HotSetPolicy::Cliff, HotSetPolicy::Quota})
         CHECK(parse_hot_set_policy(to_string(p)) == p);
     CHECK(throws_invalid_argument([] { parse_hot_set_policy("greedy"); }));
     CHECK(throws_invalid_argument([] { parse_hot_set_policy(nullptr); }));
@@ -723,6 +820,10 @@ int main() {
     test_prefetch_distance_is_an_open_axis();
     test_pre_touch_strategy_round_trips();
     test_hot_set_policies_differ_under_pressure();
+    test_quota_admits_whole_layers_instead_of_shaving_every_hit_ratio();
+    test_quota_admits_the_same_layers_on_every_token();
+    test_quota_spends_a_fixed_budget_however_many_layers_want_it();
+    test_quota_is_inert_when_everything_fits();
     test_min_hit_ratio_is_the_floor();
     test_policy_names_round_trip();
     test_prefetch_schedules_vary_with_depth();

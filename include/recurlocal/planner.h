@@ -111,7 +111,20 @@ enum class HotSetPolicy {
     Proportional,  // scale the requested hit ratio by the budget share (the v0.1 heuristic)
     Fixed,         // ask for the full hit ratio regardless; the naive control
     Sqrt,          // back off by sqrt(share) - gentler than proportional
-    Cliff          // give up the window entirely rather than thrash a shared cache
+    Cliff,         // give up the window entirely rather than thrash a shared cache
+    // Admit whole layers until the budget is spent, and decline the window for the rest.
+    //
+    // Every policy above answers oversubscription by moving ONE dial - the hit ratio - for
+    // EVERY layer alike. That models the cache as something that can keep 97% of a byte,
+    // which it cannot: a line is resident or it is not. Where the footprint is a small
+    // multiple of the set-aside, asking thirty layers for 97% of a window is a different
+    // request from keeping twenty-nine of them whole, and the second is the one the hardware
+    // can actually honour.
+    //
+    // It is inert where the footprint is many times the budget - admitting a fortieth of the
+    // layers is not obviously better than thrashing all of them - and decisive where it is
+    // close, which is the regime a sparse-MoE hybrid puts this library in.
+    Quota
 };
 
 // A recurrent model carries more than one mutable state per layer, in separate
