@@ -222,8 +222,7 @@ already known. Reordered by what is still genuinely open:
    This is SparkInfer's, not RecurLocal's, and it is stated here because this document promised
    it was worth more than anything the library does. It is: 5.4x of aggregate throughput on the
    runtime's own SOTA speed target, against fractions of a percent for a cache policy.
-   `integrations/sparkinfer/EXPERIMENTS.md` carries the repro and the measured effect of the
-   one-loop fix.
+   `results/rtx5090-moe-matrix.json` carries the counters and the account.
 
    **The dense model's intermittent 32-sequence collapse is a different observation and is
    still unexplained.** There, `prefetch` ratios came in `[0.932, 0.676, 0.925]` — one run of

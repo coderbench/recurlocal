@@ -256,7 +256,7 @@ decode a surface here rather than the dead end it is on the dense model.
 It does **not** rescue concurrency, and on this checkpoint concurrency cannot even be measured:
 above 8 rows the runtime stops batching, packs 127 of 4205 tokens at 32 sequences and decodes
 the rest one row at a time, so aggregate throughput falls *below* the single-sequence rate. That
-turned out to be a one-line omission in SparkInfer's bf16 multi-row GEMV dispatcher and is worth
+turned out to be a missing chunking loop in SparkInfer's bf16 multi-row GEMV dispatcher and is worth
 **5.4×** — see [`docs/MINING.md`](docs/MINING.md). `eval/real_eval.py` now refuses such an arm by
 name rather than scoring it.
 
