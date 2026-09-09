@@ -190,9 +190,56 @@ concurrency. Both are computed, not asserted:
 eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json --bandwidth-gbs 1792
 ```
 
-So the open problem this work hands over is not "why does persist not capture the concurrency
-room". That is answered. It is whether a *different* reuse distance, or a model with less
-weight traffic per token, moves the terms that this bound is made of.
+So the open problem this work handed over was not "why does persist not capture the concurrency
+room". That is answered. It was whether a *different* reuse distance, or a model with less
+weight traffic per token, moves the terms that this bound is made of. Both have now been tested.
+
+### A different reuse distance: bounded, and there is nothing there
+
+Reuse *within* a recurrent layer is a distance L2 serves for free, so the only question was
+whether any bytes sit at it. On the pinned runtime's kernels, almost none do. The Gated-DeltaNet
+kernel holds each state column in registers across both of its passes — one global read, one
+global write — so 98% of the recurrent bytes are touched exactly twice and there is no second
+touch to catch. What remains is the convolution window's shift re-read: `conv × (K−2)/(K−1)` per
+layer, **1.97 MB per token against an 18.5 GB step**. `eval/traffic_budget.py` reports it as
+`within_layer_family` — a **0.011%** ceiling, two orders of magnitude under the floor. That
+surface is closed by arithmetic rather than by effort.
+
+### A model with less weight traffic: this one moves, and it moves a lot
+
+The persist bound is `2 × min(capacity, footprint) / step_traffic`. The capacity is the device's
+and cannot be raised, so the only lever is the denominator — and the tool now prints the
+threshold outright: **a decode step must move at most 6.42 GB** before a persisting window over
+this footprint can reach 2% at all. Qwen3.8-27B moves 18.5 GB.
+
+**Qwen3.6-35B-A3B** is the same architecture family on the same pinned commit, the same hook and
+the same box — a sparse MoE reading 8 of 256 experts per token. The adapter needed no change: it
+reads the state geometry from the runtime's config and brackets a 30-layer 2 MiB state as readily
+as a 48-layer 3 MiB one. Two terms move at once:
+
+| batch 1 | Qwen3.8-27B (dense) | Qwen3.6-35B-A3B (sparse MoE) |
+|---|--:|--:|
+| recurrent footprint | 146.8 MiB | **61.4 MiB** |
+| vs 60 MiB persisting capacity | 2.4× | **1.02×** |
+| resident fraction of the state | 41% | **98%** |
+| decode step traffic | 18.5 GB | **3.56 GB** |
+| traffic ceiling | 1.69% | **3.76%** |
+| persist-family ceiling | 0.68% | **3.67%** |
+| measured `persist` | +0.10% | **+1.26%** |
+
+Three interleaved pairs, control 503.2 tok/s, noise floor 0.078%, paired ratios
+1.0137 / 1.0120 / 1.0126. That is the largest real-model gain this repository has measured, and
+it leaves **2.4 points of headroom** to a ceiling that is above the floor — which is what makes
+batch-1 decode a surface here rather than the dead end it is on the dense model.
+
+It does **not** rescue concurrency, and on this checkpoint concurrency cannot even be measured:
+above 8 rows the runtime stops batching, packs 127 of 4205 tokens at 32 sequences and decodes
+the rest one row at a time, so aggregate throughput falls *below* the single-sequence rate. That
+turned out to be a one-line omission in SparkInfer's bf16 multi-row GEMV dispatcher and is worth
+**5.4×** — see [`docs/MINING.md`](docs/MINING.md). `eval/real_eval.py` now refuses such an arm by
+name rather than scoring it.
+
+Raw data: [`results/rtx5090-moe-matrix.json`](results/rtx5090-moe-matrix.json).
 [`docs/OPTIMIZATION-SURFACES.md`](docs/OPTIMIZATION-SURFACES.md) has the full matrix.
 
 ## First measured result (synthetic)

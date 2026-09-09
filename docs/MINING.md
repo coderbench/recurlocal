@@ -175,13 +175,47 @@ already known. Reordered by what is still genuinely open:
    against a runtime like that the same bound would be four times larger. The reuse was real;
    somebody else already took it, in registers, where it belongs.
 
-3. **The 32-sequence runtime fallback.** Something occasionally drops SparkInfer onto its
-   per-row decode path at 32 sequences. Reproduced on a second box: `prefetch` ratios
-   `[0.932, 0.676, 0.925]` — one run of three collapsed 32%. It is not the locality policy; it
-   has now hit `baseline` (which installs no window and issues no pre-touch) and `prefetch`, on
-   different boxes, while `combined` — which pre-touches identically — stayed clean. Cause
-   unidentified. This is worth more than it looks: it is a 32% cliff in the runtime, not a
-   fraction of a percent in a cache policy.
+3. **The runtime falling off its batched decode path — one instance now IDENTIFIED, and it is
+   worth 5.4x.** On Qwen3.6-35B-A3B the fallback is not intermittent at all, it is
+   deterministic, and the runtime prints its own cause. Measured with the adapter's packing
+   counters, one isolated run per width:
+
+   | concurrency | tokens packed | max rows seen | aggregate |
+   |---|--:|--:|--:|
+   | 4 | 129/138 (93%) | 5 | 907.5 tok/s |
+   | 8 | 133/151 (88%) | 9 | **2456.0 tok/s** |
+   | 16 | **127/2173 (6%)** | 17 | 452.3 tok/s |
+   | 32 | **127/4205 (3%)** | 32 | 456.1 tok/s |
+
+   Above 8 rows the runtime stops batching and decodes one row at a time, so aggregate
+   throughput falls *below* the 503 tok/s single-sequence rate. Its stderr says why:
+
+   ```
+   [dflash-verify] mmvq_rows refused type=12 N=16 n_out=8192 K=2048
+   [dflash-verify] declined at layer=0 (linear_attn=1) N=16
+   ```
+
+   `launch_mmvq_q4k_rows` refuses `M > 8` (`kernels/csrc/cuda/gemm/gemv.cu`), and the bf16
+   `launch_mmvq_rows` dispatcher has no chunking loop — while its own `_f32` sibling, eight
+   lines below, chunks `M` into groups of 8 for exactly this reason. So the first Q4_K
+   projection of a wider batch is refused, `dflash_verify_short_run` declines at layer 0, and
+   `decode_packed` returns false for the whole batch. `type=12` is Q4_K, and `n_out=8192,
+   K=2048` is `attn_qkv.weight` — the linear-attention projection, on every recurrent layer.
+
+   This is SparkInfer's, not RecurLocal's, and it is stated here because this document promised
+   it was worth more than anything the library does. It is: 5.4x of aggregate throughput on the
+   runtime's own SOTA speed target, against fractions of a percent for a cache policy.
+   `integrations/sparkinfer/EXPERIMENTS.md` carries the repro and the measured effect of the
+   one-loop fix.
+
+   **The dense model's intermittent 32-sequence collapse is a different observation and is
+   still unexplained.** There, `prefetch` ratios came in `[0.932, 0.676, 0.925]` — one run of
+   three collapsing 32% — and it hit `baseline`, which installs no window and issues no
+   pre-touch. Same family (the runtime declining to batch), no established common cause: this
+   one is deterministic and quantisation-shaped, that one is intermittent on an NVFP4
+   checkpoint that takes a different projection path. What is new is that it can no longer
+   pass unnoticed: `real_eval.py` refuses a concurrency arm whose telemetry shows the packed
+   path was not used, and names the counters.
 
 4. **Delivering a persisting window under graph decode.** A locality library cannot attach one
    without the runtime's cooperation; the shortcut that avoids that (`capture_node`) is
