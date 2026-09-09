@@ -22,7 +22,27 @@
     "n_experts": 256,
     "experts_used_per_token": 8
   },
-  "arms": {},
-  "active_weight_bytes_per_token": 2626185728,
-  "_active_weight_bytes_note": "Weight bytes one decode step reads, summed from the checkpoint's own tensor table and quantisation types: 1.5975 GB of per-block non-expert weights (attn_qkv Q8_0, attn_gate, ssm_out, the shared expert, the router), 0.4172 GB of output head (Q6_K), and 0.6115 GB for the 8 of 256 experts a token routes to. token_embd is excluded - one row per token. traffic_budget.py adds the recurrent-state traffic it computes and reports the ratio against measured-time x peak bandwidth, which says whether the ceiling above is tight or merely true. Note this assumes every row in a concurrent batch routes to the same experts, which is exactly what qwen3_gguf_cb_bench does - it submits one identical prompt per request. A production batch of DIFFERENT prompts would touch far more of the 256 experts per step, raising the denominator and lowering the recurrent share."
+  "arms": {
+    "batch1": {
+      "sequences": 1,
+      "ms_per_token": 1.9873455112125038,
+      "state_bytes_scale": 1.0,
+      "active_weight_bytes_per_token": 2626185728,
+      "measured_decode_tps": 503.1837666666667,
+      "control_noise_floor_pct": 0.0777541625203081,
+      "source": "results/rtx5090-moe-matrix.json batch1, control arm, mean of 3 interleaved repeats on one box; single-sequence decode keeps the fp32 matrix state"
+    },
+    "concurrency4": {
+      "sequences": 4,
+      "aggregate_tps": 890.1333333333333,
+      "state_bytes_scale": 0.5,
+      "control_noise_floor_pct": 8.310462180261286,
+      "source": "results/rtx5090-moe-matrix.json concurrency4, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the matrix state to bf16"
+    }
+  },
+  "_active_weight_bytes_note": "Declared on the batch1 arm only, and deliberately. At batch 1 the step reads a known set of weights: 1.5975 GB of per-block non-expert weights (attn_qkv Q8_0, attn_gate, ssm_out, the shared expert, the router), 0.4172 GB of output head (Q6_K), and 0.6115 GB for the 8 of 256 experts that ONE token routes to. token_embd is excluded - one row per token. At concurrency it is not knowable this way: concurrent rows sit at different positions in their own sequences, so they route to different experts and a step touches up to min(256, 8 x rows) of them. Declaring a constant there would produce a confident utilisation figure resting on an assumption the workload does not satisfy, so the concurrency arms carry no bandwidth-bound check rather than a guessed one.",
+  "_withheld_arms": {
+    "concurrency16": "measured, but the runtime packed 127 of 2173 tokens and decoded the rest one row at a time; the step time a ceiling would be computed from is not this workload's",
+    "concurrency32": "measured, but the runtime packed 127 of 4205 tokens; same reason"
+  }
 }

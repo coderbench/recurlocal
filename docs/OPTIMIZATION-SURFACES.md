@@ -341,7 +341,7 @@ corrected number should make the *policy* do at each concurrency is still open.
 
 ## Surface: hot-set policy
 
-**`src/planner.cpp` · `--hot-set-policy` · 4 policies · frontier: `cliff`**
+**`src/planner.cpp` · `--hot-set-policy` · 5 policies · frontier: `cliff`, and `quota` is untried here**
 
 At 32 sequences (96 MiB hot against a 48 MiB set-aside):
 
@@ -359,7 +359,16 @@ swing**, and it exactly matches pure `prefetch` at that concurrency, because dec
 window is what lets prefetch work unimpeded.
 
 The shipped heuristic is the *worst* of the backing-off policies, and the policy that simply
-refuses the window when oversubscribed loses 16 points less than it. Backing off the hit ratio
+refuses the window when oversubscribed loses 16 points less than it.
+
+`quota` is a fifth policy and is not in that table, because the table predates it. Every policy
+above answers oversubscription by moving one dial — the hit ratio — for every layer alike, which
+models the cache as something that can keep 97% of a byte. `quota` instead admits whole layers
+at the full hit ratio until the set-aside is spent and declines the window for the rest, spread
+evenly and decided from the layer ordinal alone so the choice cannot move between tokens. It is
+inert where the footprint is many times the budget — which is every regime the table above
+measures, and why it was not worth building until a model existed whose footprint is 1.02x the
+cache rather than 2.4x. Backing off the hit ratio
 does not work; declining to compete does.
 
 The residency bound at the top of this document points the same way: a window over a footprint

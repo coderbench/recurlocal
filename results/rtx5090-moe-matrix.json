@@ -1,0 +1,330 @@
+{
+  "what_this_is": "The MoE thesis, measured. docs/MINING.md's first open surface was 'a model with less weight traffic per token', because the persist ceiling is 2*min(capacity, footprint)/step_traffic and the capacity is fixed by the device. Qwen3.6-35B-A3B is the same architecture family, the same runtime, the same hook and the same box as the dense Qwen3.8-27B matrix in rtx5090-baseline-matrix.json - with a sparse MoE FFN reading 8 of 256 experts per token. Every number here is a control/candidate pair measured minutes apart on one RTX 5090.",
+  "model": {
+    "label": "Qwen3.6-35B-A3B, unsloth UD-Q4_K_M GGUF, 22.1 GB",
+    "architecture": "sparse-MoE hybrid Gated-DeltaNet / full attention",
+    "repository": "unsloth/Qwen3.6-35B-A3B-GGUF",
+    "file": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "_geometry_source": "read from the GGUF's own metadata and tensor shapes, not from the runtime's defaults: block_count 40, full_attention_interval 4 (so 30 recurrent layers, confirmed by which blocks carry ssm_* tensors), ssm.state_size 128, ssm.group_count 16 (linear_q_heads), blk.0.attn_qkv.weight [2048, 8192] so linear_qkvdim 8192 and linear_v_heads (8192 - 2*16*128)/128 = 32, ssm.conv_kernel 4.",
+    "num_hidden_layers": 40,
+    "full_attention_interval": 4,
+    "recurrent_layers": 30,
+    "linear_num_value_heads": 32,
+    "linear_key_head_dim": 128,
+    "linear_conv_kernel_dim": 4,
+    "lin_state_bytes_per_layer": 2097152,
+    "lin_conv_state_bytes_per_layer": 49152,
+    "_state_formulas": "lin_state = linear_v_heads * linear_head_dim^2 * sizeof(float) (qwen35.cpp:560); lin_conv = (linear_conv_kernel-1) * linear_qkvdim * sizeof(bf16) (qwen35.cpp:559). Both formulas reproduce the pinned Qwen3.8-27B numbers exactly.",
+    "n_experts": 256,
+    "experts_used_per_token": 8
+  },
+  "arms": {
+    "batch1": {
+      "workload": "batch 1, ctx 128, 128 tokens",
+      "concurrency": null,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "warmup_runs_discarded": 0,
+      "control_tps": [
+        503.2528,
+        503.3449,
+        502.9536
+      ],
+      "control_mean_tps": 503.1837666666667,
+      "control_noise_floor_pct": 0.0777541625203081,
+      "effective_floor_pct": 0.0777541625203081,
+      "modes": {
+        "baseline": {
+          "gain_pct": 0.05010402550056359,
+          "spread_pct": 0.10762408748276625,
+          "paired_ratios": [
+            1.0009965170586235,
+            0.9999197369437934,
+            1.0005010402550056
+          ]
+        },
+        "persist": {
+          "gain_pct": 1.2580285736099706,
+          "spread_pct": 0.17553561815488783,
+          "paired_ratios": [
+            1.0137338530456264,
+            1.011956413981745,
+            1.0125802857360997
+          ]
+        },
+        "prefetch": {
+          "gain_pct": -3.924965742863229,
+          "spread_pct": 0.03854708583149241,
+          "paired_ratios": [
+            0.9607503425713677,
+            0.9609903666452169,
+            0.9606200253860395
+          ]
+        },
+        "combined": {
+          "gain_pct": -2.560005627390438,
+          "spread_pct": 0.08074234033387628,
+          "paired_ratios": [
+            0.9743999437260956,
+            0.9746986608983225,
+            0.973911907579546
+          ]
+        }
+      },
+      "best": "persist",
+      "resolved": true,
+      "packing": {
+        "concurrency": 1,
+        "tokens": 128,
+        "tokens_packed": null,
+        "aggregate_tps": 503.2,
+        "used_packed_path": null,
+        "note": "single-sequence path; nothing to pack"
+      },
+      "traffic_ceiling_pct": 3.751684046325184,
+      "persist_family_ceiling_pct": 3.6626208247797067,
+      "state_footprint_over_persisting_l2": 1.0234375,
+      "state_footprint_mib": 61.40625,
+      "resident_fraction_of_state": 0.9770992366412213,
+      "step_traffic_gb": 3.561323156092807,
+      "break_even_step_traffic_gb": 6.41728512,
+      "clears_significance_floor": true,
+      "within_layer_ceiling_pct": 0.02761084525482945
+    },
+    "concurrency4": {
+      "workload": "concurrency 4 (aggregate)",
+      "concurrency": 4,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "warmup_runs_discarded": 0,
+      "control_tps": [
+        841.9,
+        910.9,
+        917.6
+      ],
+      "control_mean_tps": 890.1333333333333,
+      "control_noise_floor_pct": 8.310462180261286,
+      "effective_floor_pct": 8.310462180261286,
+      "modes": {
+        "baseline": {
+          "gain_pct": 0.4171698320342587,
+          "spread_pct": 8.22595865337441,
+          "paired_ratios": [
+            1.0805321297066162,
+            1.0041716983203426,
+            0.9979293809938972
+          ]
+        },
+        "persist": {
+          "gain_pct": 0.42814798550883104,
+          "spread_pct": 9.366066230200115,
+          "paired_ratios": [
+            1.0846893930395536,
+            1.0042814798550883,
+            0.9906277244986922
+          ]
+        },
+        "prefetch": {
+          "gain_pct": -2.7884509825447323,
+          "spread_pct": 8.427579100717153,
+          "paired_ratios": [
+            1.0406224017104169,
+            0.9721154901745527,
+            0.9586965998256322
+          ]
+        },
+        "combined": {
+          "gain_pct": -3.029970358985623,
+          "spread_pct": 8.479526988456106,
+          "paired_ratios": [
+            1.048224254662074,
+            0.9697002964101438,
+            0.9659982563208369
+          ]
+        }
+      },
+      "best": null,
+      "resolved": false,
+      "packing": {
+        "concurrency": 4,
+        "tokens": 138,
+        "tokens_packed": 129,
+        "aggregate_tps": 907.5,
+        "max_rows_seen": 5,
+        "used_packed_path": true
+      },
+      "traffic_ceiling_pct": 3.382276779540043,
+      "persist_family_ceiling_pct": 1.5873691684716946,
+      "state_footprint_over_persisting_l2": 2.09375,
+      "state_footprint_mib": 125.625,
+      "resident_fraction_of_state": 0.47761194029850745,
+      "step_traffic_gb": 8.052726183343319,
+      "break_even_step_traffic_gb": 6.41728512,
+      "clears_significance_floor": false,
+      "within_layer_ceiling_pct": 0.04885402693367291
+    },
+    "concurrency16": {
+      "workload": "concurrency 16 (aggregate)",
+      "concurrency": 16,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "warmup_runs_discarded": 0,
+      "control_tps": [
+        452.9,
+        453.1,
+        453.1
+      ],
+      "control_mean_tps": 453.0333333333333,
+      "control_noise_floor_pct": 0.044140366365050865,
+      "effective_floor_pct": 0.044140366365050865,
+      "modes": {
+        "baseline": {
+          "gain_pct": -0.1765614654601677,
+          "spread_pct": 0.5085413397249822,
+          "paired_ratios": [
+            1.0006623978803268,
+            0.9955859633634959,
+            0.9982343853453983
+          ]
+        },
+        "persist": {
+          "gain_pct": -0.33105274773780335,
+          "spread_pct": 0.04444343616894456,
+          "paired_ratios": [
+            0.9964672113049239,
+            0.9969101743544471,
+            0.996689472522622
+          ]
+        },
+        "prefetch": {
+          "gain_pct": -3.908147493928016,
+          "spread_pct": 0.11483899314526361,
+          "paired_ratios": [
+            0.9609185250607198,
+            0.9598322666078127,
+            0.9609357757669388
+          ]
+        },
+        "combined": {
+          "gain_pct": -4.592625303599018,
+          "spread_pct": 0.09253030283140465,
+          "paired_ratios": [
+            0.9540737469640098,
+            0.9534319134848819,
+            0.9543147208121826
+          ]
+        }
+      },
+      "best": "baseline",
+      "resolved": true,
+      "packing": {
+        "concurrency": 16,
+        "tokens": 2173,
+        "tokens_packed": 127,
+        "aggregate_tps": 452.3,
+        "max_rows_seen": 17,
+        "used_packed_path": false
+      },
+      "no_ceiling_because": "the runtime did not batch this width, so the measured step time is one row at a time and a ceiling computed from it would describe a workload that did not run"
+    },
+    "concurrency32": {
+      "workload": "concurrency 32 (aggregate)",
+      "concurrency": 32,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "warmup_runs_discarded": 0,
+      "control_tps": [
+        456.0,
+        455.6,
+        456.5
+      ],
+      "control_mean_tps": 456.0333333333333,
+      "control_noise_floor_pct": 0.19736842105262659,
+      "effective_floor_pct": 0.19736842105262659,
+      "modes": {
+        "baseline": {
+          "gain_pct": -0.021929824561406353,
+          "spread_pct": 0.1972387725621821,
+          "paired_ratios": [
+            0.9997807017543859,
+            1.000219490781387,
+            0.9982475355969331
+          ]
+        },
+        "persist": {
+          "gain_pct": -0.3728070175438525,
+          "spread_pct": 0.32933886988926253,
+          "paired_ratios": [
+            0.9962719298245615,
+            0.997585601404741,
+            0.9943044906900328
+          ]
+        },
+        "prefetch": {
+          "gain_pct": -3.8815789473684137,
+          "spread_pct": 0.17448988342015762,
+          "paired_ratios": [
+            0.9611842105263159,
+            0.9618086040386303,
+            0.96013143483023
+          ]
+        },
+        "combined": {
+          "gain_pct": -4.631255487269536,
+          "spread_pct": 0.15562397701432168,
+          "paired_ratios": [
+            0.9550438596491229,
+            0.9536874451273046,
+            0.9535596933187295
+          ]
+        }
+      },
+      "best": "baseline",
+      "resolved": true,
+      "packing": {
+        "concurrency": 32,
+        "tokens": 4205,
+        "tokens_packed": 127,
+        "aggregate_tps": 456.1,
+        "max_rows_seen": 32,
+        "used_packed_path": false
+      },
+      "no_ceiling_because": "the runtime did not batch this width, so the measured step time is one row at a time and a ceiling computed from it would describe a workload that did not run"
+    }
+  },
+  "ceilings": {
+    "weighted_traffic_ceiling_pct": 3.6284018595866607,
+    "weighted_persist_family_ceiling_pct": 2.9662021202308875,
+    "best_possible_impact": "XS",
+    "reachable_bands": [
+      "XS",
+      "none"
+    ],
+    "weights_covered": 0.6,
+    "coverage_note": "the section 44 weights this ceiling covers. concurrency 16 and 32 are withheld because the runtime does not batch this checkpoint above 8 rows, so there is no concurrent decode at those widths to bound. A weighted figure over the remaining 0.60 would renormalise those weights away and read higher than the matrix can actually pay, which is the same mistake decide.py refuses for a partial result - so the per-arm ceilings below are the answer and the weighted one is not published for this model.",
+    "computed_by": "eval/traffic_budget.py --matrix configs/qwen3.6-35b-a3b-moe-ceiling.json --bandwidth-gbs 1792 --persisting-l2-bytes 62914560"
+  },
+  "how_to_reproduce": {
+    "model": "hf download unsloth/Qwen3.6-35B-A3B-GGUF Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "build": "integrations/sparkinfer/build.sh $WORK   # the same pinned commit; the hook is model-independent, it brackets whatever the runtime marks as a linear attention layer",
+    "sweep": "eval/real_sweep.py --binary $W/qwen3_gguf_bench --model $MODEL.gguf --axis mode --repeats 3 --warmup-runs 1 --fixed RECURLOCAL_STATS=1 RECURLOCAL_WINDOW_ATTACH=capture_node",
+    "why_capture_node": "production decode is a captured CUDA graph and a stream access-policy window is host-side state capture never records, so without it the persist family defers every window and applies no policy at all"
+  },
+  "the_concurrency_arms_are_not_concurrency_measurements": {
+    "what": "On this checkpoint the runtime stops batching above 8 rows. At 16 and 32 sequences it packed 127 of 2173 and 127 of 4205 tokens and decoded the rest one row at a time, which is why aggregate throughput at both is ~455 tok/s - BELOW the 503 tok/s single-sequence rate, and 5.4x below the 2456 tok/s it reaches at 8 rows.",
+    "cause": "launch_mmvq_q4k_rows refuses M > 8 (kernels/csrc/cuda/gemm/gemv.cu) and the bf16 launch_mmvq_rows dispatcher has no chunking loop, unlike its own _f32 sibling which chunks M into groups of 8. So the first Q4_K projection of a wider batch is refused, dflash_verify_short_run declines at layer 0, and decode_packed returns false for the whole batch. The runtime says so itself: '[dflash-verify] mmvq_rows refused type=12 N=16 n_out=8192 K=2048' followed by '[dflash-verify] declined at layer=0'.",
+    "consequence_for_this_matrix": "the concurrency-16 and concurrency-32 rows below are recorded because they were measured, not because they mean what their labels say. eval/real_eval.py now refuses such an arm by name.",
+    "whose_bug": "SparkInfer's, not RecurLocal's. It is the surface docs/MINING.md lists third, and it is worth two orders of magnitude more than anything this library does."
+  },
+  "provenance": {
+    "gpu": "NVIDIA GeForce RTX 5090, sm_120, 32 GB, 170 SMs, 1792 GB/s",
+    "cuda": "13.3",
+    "runtime": "SparkInfer 5347b27c (the pinned commit)",
+    "model": "unsloth/Qwen3.6-35B-A3B-GGUF, Qwen3.6-35B-A3B-UD-Q4_K_M.gguf, 22.13 GB",
+    "note": "One box for every arm. Graphics clocks cannot be pinned in this container, so only same-box interleaved deltas are trustworthy."
+  }
+}
