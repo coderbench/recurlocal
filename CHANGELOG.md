@@ -201,7 +201,9 @@ the state resident and all of it.
   published before it reproduces exactly. The first concurrency-4 control on the MoE checkpoint
   came in at 841.9 aggregate tok/s against 910.9 and 917.6 after it — every candidate in pair 1
   was compared against a slow control, and the arm's own noise floor became 8.3%, which no
-  fraction-of-a-percent difference can resolve against.
+  fraction-of-a-percent difference can resolve against. Re-measured with one run discarded, the
+  same arm's floor is **0.46%** — eighteen times tighter, and it resolves. It also changed the
+  answer: `persist` at 4 sequences read +0.43% unresolved and reads **-0.46%** resolved.
 
 ### Added — a ceiling a reader can calibrate, and a screen for the next model
 
