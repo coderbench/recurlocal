@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "status": "feasibility test COMPLETE and the go/no-go answered: reject on this model. Real end-to-end decode measured on a pinned SparkInfer commit and Qwen3.8-27B across the full section 44 matrix, and the reason is arithmetic - the recurrent-state footprint that a persisting cache would have to hold is 2.4x its capacity at batch 1 and 39.9x at 32 sequences, so the persist family tops out at 0.52% weighted while the traffic ceiling is 5.22%",
   "core": "software-directed CUDA locality for mutable recurrent LLM state, embeddable in an inference runtime, with enumerated optimization surfaces measured against a real model rather than a microbenchmark",
-  "validated": "CPU build, planner and decision tests, 120 device-side controller checks on an RTX 5090, compute-sanitizer clean (memcheck/initcheck/synccheck/racecheck), install + find_package consumption, eval schema and pinned-integration validation, and a measured Qwen3.8-27B/SparkInfer real run with token-exact output",
+  "validated": "CPU build, planner and decision tests, 120 device-side controller checks on an RTX 5090, compute-sanitizer clean (memcheck/initcheck/synccheck/racecheck), install + find_package consumption, eval schema and pinned-integration validation, and a COMPLETE section 44 workload matrix measured on Qwen3.8-27B/SparkInfer with token-exact output and the hook proven active during the gate",
   "files": [
     ".github/workflows/ci.yml",
     ".gitignore",
@@ -42,6 +42,7 @@
     "integrations/sparkinfer/recurlocal-hook.patch",
     "integrations/sparkinfer/recurlocal_sparkinfer.cpp",
     "results/rtx5090-baseline-matrix.json",
+    "results/rtx5090-real-complete.json",
     "results/rtx5090-real.json",
     "results/rtx5090-surfaces.json",
     "results/rtx5090-synthetic.json",

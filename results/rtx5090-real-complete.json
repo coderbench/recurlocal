@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "what_this_is": "The first COMPLETE section 44 workload matrix for this project: batch 1 at three contexts plus concurrency 4, 16 and 32, every arm measured on one box, token-exact output, three interleaved control/candidate pairs each. The candidate is `persist` with window_attach=capture_node - the only mode that measures positive anywhere and the only way the persist family delivers a window at all under graph decode. The verdict is still reject, and that is the honest answer: see docs/MINING.md for why it is arithmetic rather than implementation.",
+  "provenance": {
+    "timestamp_utc": "2026-09-09T22:00:23+00:00",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "driver": "595.84",
+    "model": "/root/models/qwen38-nvfp4",
+    "binary": "/root/rl/hook/sparkinfer/build/runtime/qwen3_gguf_bench",
+    "candidate_env": {
+      "RECURLOCAL": "persist",
+      "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+      "RECURLOCAL_STATS": "1"
+    },
+    "control_env": {},
+    "tokens_per_measurement": 128,
+    "contexts": [
+      128,
+      4096,
+      16384
+    ],
+    "repeats": 3,
+    "label": "persist+capture_node",
+    "note": "complete section 44 matrix on one box; capture_node so the window reaches a kernel",
+    "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+    "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+    "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+    "recurlocal_commit": null
+  },
+  "correctness": {
+    "output_identical": true,
+    "method": "greedy replay, token-exact",
+    "tokens_compared": 64,
+    "prompt_ids": [
+      9707,
+      3837,
+      1879,
+      13,
+      25001,
+      752,
+      911
+    ],
+    "first_divergence": null,
+    "candidate_hook_active": true
+  },
+  "workloads": {
+    "batch1": {
+      "weight": 0.4,
+      "baseline_tps": 95.3692857160361,
+      "candidate_tps": 95.54429357758661
+    },
+    "concurrency4": {
+      "weight": 0.2,
+      "baseline_tps": 334.1,
+      "candidate_tps": 334.3999999999999
+    },
+    "concurrency16": {
+      "weight": 0.2,
+      "baseline_tps": 790.5,
+      "candidate_tps": 790.5
+    },
+    "concurrency32": {
+      "weight": 0.2,
+      "baseline_tps": 1286.8,
+      "candidate_tps": 1284.7006525792417
+    }
+  },
+  "workload_coverage": {
+    "measured": [
+      "batch1",
+      "concurrency4",
+      "concurrency16",
+      "concurrency32"
+    ],
+    "unmeasured": [],
+    "why": "Section 44 weights batch 1 at 0.40 and concurrency at 0.60. An arm that was not run is left out of the matrix rather than filled in, and the weights that remain are renormalised by decide.py - so a partial run is reported as a partial verdict instead of a full one with invented halves."
+  },
+  "per_context": {
+    "128": {
+      "baseline_tps": 96.4985,
+      "candidate_tps": 96.5625,
+      "baseline_runs": [
+        96.4772,
+        96.4985,
+        96.5106
+      ],
+      "candidate_runs": [
+        96.5625,
+        96.5713,
+        96.5546
+      ],
+      "paired_ratios": [
+        1.000884146720676,
+        1.0007544158717492,
+        1.0004559084701576
+      ],
+      "gain_pct": 0.07544158717491811,
+      "baseline_spread_pct": 0.0346119369731139,
+      "candidate_spread_pct": 0.017294498381877188,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.04279154243304169,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      }
+    },
+    "4096": {
+      "baseline_tps": 94.7062,
+      "candidate_tps": 94.9315,
+      "baseline_runs": [
+        94.7062,
+        94.7157,
+        94.7051
+      ],
+      "candidate_runs": [
+        94.9312,
+        94.9315,
+        94.943
+      ],
+      "paired_ratios": [
+        1.0023757684290997,
+        1.002278397351231,
+        1.0025120083290129
+      ],
+      "gain_pct": 0.23757684290997005,
+      "baseline_spread_pct": 0.011192509043754911,
+      "candidate_spread_pct": 0.012430015326834418,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.023305728763571416,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      }
+    },
+    "16384": {
+      "baseline_tps": 94.9132,
+      "candidate_tps": 95.1345,
+      "baseline_runs": [
+        94.9134,
+        94.9132,
+        94.8884
+      ],
+      "candidate_runs": [
+        95.1278,
+        95.1387,
+        95.1345
+      ],
+      "paired_ratios": [
+        1.002258901272107,
+        1.0023758549917188,
+        1.002593573081641
+      ],
+      "gain_pct": 0.23758549917187732,
+      "baseline_spread_pct": 0.026339855784012628,
+      "candidate_spread_pct": 0.011457462855227673,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.03338785624847522,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      }
+    }
+  },
+  "per_concurrency": {
+    "concurrency4": {
+      "baseline_runs": [
+        333.7,
+        334.1,
+        334.4
+      ],
+      "candidate_runs": [
+        334.7,
+        334.4,
+        334.1
+      ],
+      "paired_ratios": [
+        1.0029967036260115,
+        1.0008979347500746,
+        0.9991028708133972
+      ],
+      "gain_pct": 0.08979347500746027,
+      "baseline_spread_pct": 0.20951810835078974,
+      "candidate_spread_pct": 0.17942583732056397,
+      "resolution": {
+        "resolved": false,
+        "floor_pct": 0.3890339541550292,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      },
+      "sequences_seen_by_adapter": 1,
+      "tokens_packed": 129,
+      "tokens_total": 138,
+      "max_rows_seen": 5
+    },
+    "concurrency16": {
+      "baseline_runs": [
+        791.4,
+        790.5,
+        789.9
+      ],
+      "candidate_runs": [
+        790.7,
+        790.5,
+        798.1
+      ],
+      "paired_ratios": [
+        0.9991154915339905,
+        1.0,
+        1.010381060893784
+      ],
+      "gain_pct": 0.0,
+      "baseline_spread_pct": 0.18975332068311196,
+      "candidate_spread_pct": 0.9611736436069335,
+      "resolution": {
+        "resolved": false,
+        "floor_pct": 1.1265569359793504,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      },
+      "sequences_seen_by_adapter": 16,
+      "tokens_packed": 127,
+      "tokens_total": 134,
+      "max_rows_seen": 17
+    },
+    "concurrency32": {
+      "baseline_runs": [
+        1287.2,
+        1286.8,
+        1283.0
+      ],
+      "candidate_runs": [
+        1285.1,
+        1286.4,
+        1278.2
+      ],
+      "paired_ratios": [
+        0.9983685518955873,
+        0.9996891513832764,
+        0.9962587685113017
+      ],
+      "gain_pct": -0.1631448104412736,
+      "baseline_spread_pct": 0.32639104755984194,
+      "candidate_spread_pct": 0.6380826394833122,
+      "resolution": {
+        "resolved": false,
+        "floor_pct": 0.6380826394833122,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      },
+      "sequences_seen_by_adapter": 1,
+      "tokens_packed": 127,
+      "tokens_total": 142,
+      "max_rows_seen": 32
+    }
+  },
+  "measurement": {
+    "noise_floor_pct": 0.0346119369731139,
+    "gain_pct": 0.1835054758317023,
+    "resolved": true,
+    "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
+    "unresolved_workloads": [
+      "concurrency16",
+      "concurrency32",
+      "concurrency4"
+    ]
+  },
+  "adapter": {
+    "adapter": "recurlocal-sparkinfer",
+    "mode": "persist",
+    "initialised": false,
+    "ever_initialised": true,
+    "broken": false,
+    "config_error": null,
+    "config": {
+      "pre_touch": "vec4",
+      "pre_touch_coverage": "both",
+      "prefetch_distance": 1,
+      "prefetch_schedule": "uniform",
+      "prefetch_join": "per_layer",
+      "window_attach": "capture_node",
+      "hot_set_model": "token_footprint",
+      "hot_set_policy": "proportional",
+      "window_scope": "layer",
+      "window_target": "matrix",
+      "hit_ratio": 0.7,
+      "budget_fraction": 0.75
+    },
+    "geometry": {
+      "recurrent_layers": 48,
+      "bytes_per_layer": 3207168,
+      "sequences": 1,
+      "streamed_bytes_per_token": 0
+    },
+    "l2_set_aside_bytes": 50331648,
+    "stats": {
+      "tokens": 32,
+      "tokens_packed": 0,
+      "layers": 192,
+      "layers_packed": 0,
+      "max_rows_seen": 0,
+      "windows_applied": 0,
+      "windows_deferred_to_caller": 192,
+      "windows_attached_to_node": 192,
+      "window_attach_failures": 0,
+      "capture_invalidations": 0,
+      "released_during_capture": 0,
+      "hit_ratio_reduced": 192,
+      "hot_set_oversubscribed": 192,
+      "pre_touch_launches": 0,
+      "pre_touch_segments": 0,
+      "pre_touch_bytes": 0,
+      "pre_touch_skipped": 0,
+      "compute_stream_priority": 0,
+      "prefetch_stream_priority": 0
+    }
+  },
+  "verdict": {
+    "schema_version": 1,
+    "track": "real",
+    "provenance": {
+      "timestamp_utc": "2026-09-09T22:00:23+00:00",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "driver": "595.84",
+      "model": "/root/models/qwen38-nvfp4",
+      "binary": "/root/rl/hook/sparkinfer/build/runtime/qwen3_gguf_bench",
+      "candidate_env": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+        "RECURLOCAL_STATS": "1"
+      },
+      "control_env": {},
+      "tokens_per_measurement": 128,
+      "contexts": [
+        128,
+        4096,
+        16384
+      ],
+      "repeats": 3,
+      "label": "persist+capture_node",
+      "note": "complete section 44 matrix on one box; capture_node so the window reaches a kernel",
+      "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+      "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+      "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+      "recurlocal_commit": null
+    },
+    "correctness_method": "greedy replay, token-exact",
+    "workloads": {
+      "batch1": {
+        "weight": 0.4,
+        "baseline_tps": 95.3692857160361,
+        "candidate_tps": 95.54429357758661,
+        "ratio": 1.001835054758317,
+        "gain_pct": 0.1835054758317023
+      },
+      "concurrency16": {
+        "weight": 0.2,
+        "baseline_tps": 790.5,
+        "candidate_tps": 790.5,
+        "ratio": 1.0,
+        "gain_pct": 0.0
+      },
+      "concurrency32": {
+        "weight": 0.2,
+        "baseline_tps": 1286.8,
+        "candidate_tps": 1284.7006525792417,
+        "ratio": 0.9983685518955873,
+        "gain_pct": -0.1631448104412736
+      },
+      "concurrency4": {
+        "weight": 0.2,
+        "baseline_tps": 334.1,
+        "candidate_tps": 334.3999999999999,
+        "ratio": 1.0008979347500746,
+        "gain_pct": 0.08979347500746027
+      }
+    },
+    "weighted_gain_pct": 0.05864714446428554,
+    "weighted_ratio": 1.0005864714446429,
+    "unresolved_workloads": [
+      "concurrency16",
+      "concurrency32",
+      "concurrency4"
+    ],
+    "scored": true,
+    "impact": "none",
+    "verdict": "reject",
+    "go_no_go": "reject the core hypothesis",
+    "partial": false,
+    "significant": false,
+    "reason": "weighted gain 0.06% is below the 2% significance floor; concurrency16, concurrency32, concurrency4 did not resolve outside its own run-to-run spread \u2014 take more repeats"
+  }
+}

@@ -152,6 +152,30 @@ while nothing in the repo ran it.
   rather than guessed. Inputs live in `configs/rtx5090-section44-ceiling.json`, every one of
   them a baseline measurement from `results/rtx5090-real.json`.
 
+### Measured — the first complete section 44 matrix, and it is still a rejection
+
+- **`results/rtx5090-real-complete.json`.** Every arm of the matrix for the first time: batch 1
+  at contexts 128/4096/16384 plus concurrency 4, 16 and 32, three interleaved pairs each, one
+  box, token-exact output with `candidate_hook_active: true`. Candidate is `persist` with
+  `window_attach=capture_node`, the only mode that measures positive anywhere.
+
+  ```
+  verdict: reject   weighted gain +0.059%   impact none   significant false
+    batch1          +0.184%  (w=0.40)
+    concurrency16   +0.000%  (w=0.20)
+    concurrency32   -0.163%  (w=0.20)
+    concurrency4    +0.090%  (w=0.20)
+    unresolved: ['concurrency16', 'concurrency32', 'concurrency4']
+  ```
+
+  Batch 1 is the only arm that resolves: **+0.184%** against a 0.014% noise floor — a real
+  gain, and about a quarter of the 0.68% a persisting cache can reach there. Every concurrency
+  arm is inside its own spread. The weighted result is +0.059%, and the verdict is reject.
+
+  The previous published result had no concurrency-32 arm, which the coverage guard above now
+  reports. Both files are kept: the partial one still carries the axis sweeps and the capture
+  probe that explain the mechanism.
+
 ### Fixed — a correctness record that understated what the gate proved
 
 - **`candidate_hook_active` was false on every run that worked.** The token-exact gate reads

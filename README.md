@@ -103,32 +103,35 @@ like any other work.
 
 ### The scored result
 
-The candidate is `prefetch` with `token_end` joins and the `ptx_l2` walk — the best
-configuration that applies a real policy without mutating a graph mid-capture. 3 interleaved
-pairs, batch 1 at three contexts plus concurrency 4 and 16, token-exact output. The pre-touch
-really ran (188 launches at batch 1) and the concurrency arms really went through
-`decode_packed` (129/138 tokens packed at c=4):
+The candidate is `persist` with `window_attach=capture_node` — the only mode that measures
+positive anywhere, and the only way the persist family delivers a window at all under graph
+decode. The **complete** section 44 matrix: batch 1 at three contexts plus concurrency 4, 16
+and 32, three interleaved pairs each, one box, token-exact output with the hook proven active
+during the gate.
 
 ```
-$ python3 eval/decide.py --real results/rtx5090-real.json   # JSON on stdout, this on stderr
+$ python3 eval/decide.py --real results/rtx5090-real-complete.json   # JSON on stdout, this on stderr
 
-verdict: reject   weighted gain -0.488%   impact none   significant false
-  batch1          +0.016%  (w=0.40)
-  concurrency16   -1.311%  (w=0.20)
-  concurrency4    -0.667%  (w=0.20)
-  unresolved: ['batch1/ctx16384']
-  NOT MEASURED: concurrency32 (20% of the weight)
+verdict: reject   weighted gain +0.059%   impact none   significant false
+  batch1          +0.184%  (w=0.40)
+  concurrency16   +0.000%  (w=0.20)
+  concurrency32   -0.163%  (w=0.20)
+  concurrency4    +0.090%  (w=0.20)
+  unresolved: ['concurrency16', 'concurrency32', 'concurrency4']
 ```
 
-That last line matters more than the verdict above it. A workload left out of the matrix is
-not averaged in as a zero — the weights that remain are renormalised, so omitting an arm
-removes it from the mean. This result has no concurrency-32 arm, and concurrency 32 is where
-the room is, so the scorer says so and refuses to call the run significant on its own.
+Batch 1 is the only arm that resolves, at +0.184% against a 0.01% noise floor — a real gain,
+and roughly a quarter of the 0.68% a persisting cache can reach there. Every concurrency arm
+sits inside its own run-to-run spread, and the verdict is **reject**: +0.059% weighted, far
+below the 2% floor.
 
-It costs more than it saves, and the cost grows with concurrency exactly as the axis sweeps
-predicted. An earlier scored run reported +0.053% for `persist` with safe window delivery;
-that was a **null candidate** which applied no policy at all — 192 windows computed, none
-attached — and `eval/real_eval.py` now refuses such a run by name.
+Two earlier runs are kept in `results/` because each is the reason a guard exists.
+`rtx5090-real.json` has **no concurrency-32 arm** — and a missing workload is renormalised
+away rather than averaged in as a zero, so omitting the arm with the most room *improves* a
+score; `decide.py` now names what is absent and refuses to call such a matrix significant.
+Before that, a scored run reported +0.053% for `persist` with safe window delivery, which was
+a **null candidate** that applied no policy at all — 192 windows computed, none attached —
+and `real_eval.py` now refuses that by name too.
 
 **That is a rejection under the project's own gate**, and the reason is arithmetic rather
 than implementation:

@@ -83,17 +83,20 @@ jobs:
           # The committed real result is the input to the go/no-go gate, so it has to keep
           # matching the schema that pins it - and it has to keep scoring.
           import pathlib, subprocess, sys
-          real = pathlib.Path("results/rtx5090-real.json")
-          if real.exists():
+          schema = jsonschema.Draft202012Validator(json.load(open("eval/real_result_schema.json")))
+          for name in ("results/rtx5090-real.json", "results/rtx5090-real-complete.json"):
+              real = pathlib.Path(name)
+              if not real.exists():
+                  continue
               doc = json.load(real.open())
-              scored = doc.get("scored_result")
-              if scored:
-                  jsonschema.Draft202012Validator(
-                      json.load(open("eval/real_result_schema.json"))).validate(scored)
-                  json.dump(scored, open("/tmp/real.json", "w"))
-                  r = subprocess.run([sys.executable, "eval/decide.py", "--real", "/tmp/real.json"],
-                                     capture_output=True, text=True)
-                  print(r.stdout.strip()[:400])
+              scored = doc.get("scored_result", doc)
+              if "workloads" not in scored:
+                  continue
+              schema.validate(scored)
+              json.dump(scored, open("/tmp/real.json", "w"))
+              r = subprocess.run([sys.executable, "eval/decide.py", "--real", "/tmp/real.json"],
+                                 capture_output=True, text=True)
+              print(f"-- {name}"); print(r.stderr.strip()[:500])
           print("json assets ok")
           PY
       - name: the ceiling still computes
