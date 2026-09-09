@@ -203,7 +203,10 @@ global write — so 98% of the recurrent bytes are touched exactly twice and the
 touch to catch. What remains is the convolution window's shift re-read: `conv × (K−2)/(K−1)` per
 layer, **1.97 MB per token against an 18.5 GB step**. `eval/traffic_budget.py` reports it as
 `within_layer_family` — a **0.011%** ceiling, two orders of magnitude under the floor. That
-surface is closed by arithmetic rather than by effort.
+surface is closed by arithmetic rather than by effort. It is a property of this runtime, not of
+Gated DeltaNet: the naive kernel SparkInfer replaced touched the state twice each way, which
+would have put 288 MiB per token at that distance — 153× as much, and a 1.66% ceiling. The reuse
+was real and large; somebody else already took it, in registers.
 
 ### A model with less weight traffic: this one moves, and it moves a lot
 

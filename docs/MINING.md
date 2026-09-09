@@ -171,9 +171,11 @@ already known. Reordered by what is still genuinely open:
    leave a register in the first place.
 
    Worth knowing what this does *not* say: it is a property of this runtime, not of Gated
-   DeltaNet. The naive kernel SparkInfer replaced read the state twice and wrote it twice, and
-   against a runtime like that the same bound would be four times larger. The reuse was real;
-   somebody else already took it, in registers, where it belongs.
+   DeltaNet. The naive kernel SparkInfer replaced read the state twice and wrote it twice, so
+   against a runtime like that the within-layer reusable bytes would be one extra read plus one
+   extra write of the whole matrix state — **288 MiB per token**, 153x the conv-shift figure and
+   a 1.66% ceiling, which is essentially the entire traffic ceiling. The reuse was real and it
+   was large. Somebody else already took it, in registers, where it belongs.
 
 3. **The runtime falling off its batched decode path — one instance now IDENTIFIED, and it is
    worth 5.4x.** On Qwen3.6-35B-A3B the fallback is not intermittent at all, it is

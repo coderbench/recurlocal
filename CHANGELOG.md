@@ -92,8 +92,10 @@ now reports the bound as `within_layer_family`:
 A **0.011%** ceiling on the dense model and 0.028% on the MoE — two to three orders of magnitude
 under the floor, and the bound is generous because each thread reads its own window entries and
 most of those re-reads never leave a register. It is a property of this runtime, not of Gated
-DeltaNet: the naive kernel SparkInfer replaced read the state twice and wrote it twice, and the
-same bound would be four times larger against a runtime like that. The reuse was real; somebody
+DeltaNet: the naive kernel SparkInfer replaced read the state twice and wrote it twice, so
+against a runtime like that the within-layer reusable bytes would be an extra read and an extra
+write of the whole matrix state — **288 MiB per token**, 153x the conv-shift figure and a 1.66%
+ceiling, essentially the entire traffic ceiling. The reuse was real and it was large; somebody
 else already took it, in registers, where it belongs.
 
 ### Added — a hot-set policy that admits whole layers
