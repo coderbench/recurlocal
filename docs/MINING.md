@@ -2,12 +2,22 @@
 
 What is scored, why it is scored there, and what does not count.
 
-This document exists because the obvious answers are the wrong ones. RecurLocal's headline
-workload has always been batch-1 decode, and **batch-1 decode is a dead surface** — there is
-not enough of it to win. Concurrent decode has four to seven times the room, which is where
-this document used to point. But the policy family the library ships cannot reach that room
-either, for a reason that is arithmetic rather than implementation, and the section below
-states it before asking anyone to spend time here.
+This document exists because the obvious answers are the wrong ones, and they have changed
+twice.
+
+On the scored model — Qwen3.8-27B, a **dense** hybrid — batch-1 decode is a dead surface: there
+is not enough recurrent traffic in a step to win. Concurrent decode has four to seven times the
+room, which is where this document used to point, but the policy family the library ships cannot
+reach that room either, for a reason that is arithmetic rather than implementation.
+
+On a **sparse-MoE** hybrid it inverts. A decode step that moves 3.56 GB instead of 18.5 GB puts
+the recurrent footprint at 1.02x the persisting cache instead of 2.4x, and batch-1 `persist`
+measures **+1.53%** there against +0.10% on the dense model. Concurrency is the arm that cannot
+be measured on that checkpoint, because the runtime stops batching above 8 rows.
+
+Both are below the 2% floor as weighted matrices. The difference is that one is bounded out by
+arithmetic and the other has 2.1 points of headroom to a ceiling above the floor. Read the
+section for the model you intend to work on.
 
 ---
 
@@ -65,7 +75,7 @@ exactly as the arithmetic says it must.
 Do not send a persist-family submission expecting it to clear the floor. The room at
 concurrency is real, but a persisting L2 window is not the instrument that reaches it.
 
-## What batch 1 is for
+## What batch 1 is for — on the dense model
 
 A regression guard. Do not make it worse; you cannot meaningfully make it better. The
 arithmetic:
@@ -79,6 +89,11 @@ throughput ceiling          f/(1-f)                                  1.69%
 
 Qwen3.8-27B is a *dense* hybrid: every weight is read every token. Making recurrent state free
 would be worth 1.69%, below the floor `eval/decide.py` rejects at, before any policy is chosen.
+
+**On the MoE checkpoint the same arithmetic says the opposite**, which is why surface 1 below is
+the one to read first: 30 recurrent layers x (2 MiB + 48 KiB) x 2 = 123 MiB against a 3.56 GB
+step is 3.62%, a 3.76% throughput ceiling, and the footprint fits the cache. Batch 1 is the live
+surface there and the only one that can currently be measured.
 
 ## Reproducing the measurement
 
