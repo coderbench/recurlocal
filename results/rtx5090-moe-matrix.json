@@ -297,13 +297,8 @@
     }
   },
   "ceilings": {
-    "weighted_traffic_ceiling_pct": 3.6284018595866607,
-    "weighted_persist_family_ceiling_pct": 2.9662021202308875,
-    "best_possible_impact": "XS",
-    "reachable_bands": [
-      "XS",
-      "none"
-    ],
+    "weighted_traffic_ceiling_pct": null,
+    "weighted_persist_family_ceiling_pct": null,
     "weights_covered": 0.6,
     "coverage_note": "the section 44 weights this ceiling covers. concurrency 16 and 32 are withheld because the runtime does not batch this checkpoint above 8 rows, so there is no concurrent decode at those widths to bound. A weighted figure over the remaining 0.60 would renormalise those weights away and read higher than the matrix can actually pay, which is the same mistake decide.py refuses for a partial result - so the per-arm ceilings below are the answer and the weighted one is not published for this model.",
     "computed_by": "eval/traffic_budget.py --matrix configs/qwen3.6-35b-a3b-moe-ceiling.json --bandwidth-gbs 1792 --persisting-l2-bytes 62914560"
