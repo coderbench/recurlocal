@@ -48,6 +48,35 @@ batch-1 decode a surface here rather than the dead end it is on the dense model.
 It does **not** rescue concurrency, and on this checkpoint concurrency cannot be measured at
 all — see the runtime defect below.
 
+### Measured — the set-aside is the dial, and the shipped default was not it
+
+`--axis budget-fraction`, batch 1 on the MoE checkpoint, 3 interleaved pairs with the opening
+run discarded, control 503.2 tok/s, noise floor 0.097%:
+
+| `budget_fraction` | set-aside | gain |
+|---|--:|--:|
+| 0.25 | 15 MiB | +0.68% |
+| 0.50 | 30 MiB | +0.96% |
+| 0.75 (the shipped default) | 45 MiB | +1.28% |
+| **1.00** | 60 MiB | **+1.53%** |
+
+Span 0.85% against a 0.10% floor — resolved, monotonic, and no interior optimum: every extra
+MiB of set-aside is another MiB of a 61.4 MiB footprint that stays resident, and nothing in the
+range is yet costing the weight stream more than it returns. The residency model predicting its
+own measurement, on an axis that spans 0.02% on the dense model where the footprint is 2.4x the
+cache and no fraction of it can help.
+
+Capture efficiency against the residency-scaled ceiling falls from 76% at 0.25 to 43% at 1.00,
+which is the deliberately generous bound showing itself: it assumes every resident byte hits and
+that the set-aside costs its neighbours nothing, and neither is quite true.
+
+**`cliff` cannot be measured on this model, and the guard is right about that.** Sweeping the
+hot-set-policy axis aborted on it: at batch 1 the footprint is oversubscribed, so `cliff`
+declines every window, applies no policy at all, and `real_eval.py` refuses it as a null
+candidate by name — `windows_applied=0, windows_attached_to_node=0, pre_touch_launches=0`. A
+policy whose response to pressure is to do nothing *is* `baseline`, and scoring it would report
+the hook's overhead as a locality result. The axis is swept without it.
+
 ### Found — why the runtime falls off its batched decode path, worth 5.4x
 
 `docs/MINING.md` said this surface was worth two orders of magnitude more than anything the
