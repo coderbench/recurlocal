@@ -10,6 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import real_eval
+import inspect
+import real_sweep
 import traffic_budget
 import decide as label  # noqa: E402
 
@@ -659,6 +661,40 @@ class PackedPathGuard(unittest.TestCase):
     def test_a_zero_token_run_does_not_divide_by_zero(self):
         with self.assertRaises(SystemExit):
             real_eval.require_packed_path(self._stats(0, 0, 0), 32, "c=32")
+
+
+class WarmupDiscard(unittest.TestCase):
+    """The opening measurement of a run can be slow, and it lands entirely in pair 1.
+
+    Measured on the sparse-MoE checkpoint: the first concurrency-4 control came in at 841.9
+    aggregate tok/s against 910.9 and 917.6 for the two after it. Every candidate in that pair
+    was compared against the slow control, so pair 1's ratios all read about 8% high, the
+    control's own spread became 8.3%, and an arm whose real differences are a fraction of a
+    percent could not resolve. Discarding leading runs is the fix; defaulting it to zero is
+    what keeps every result published before it reproducible.
+    """
+
+    def test_both_runners_take_the_flag_and_default_to_discarding_nothing(self):
+        for mod in (real_eval, real_sweep):
+            with self.subTest(runner=mod.__name__):
+                src = inspect.getsource(mod)
+                self.assertIn("--warmup-runs", src)
+                self.assertIn('ap.add_argument("--warmup-runs", type=int, default=0', src)
+
+    def test_the_count_is_recorded_in_the_artifact(self):
+        # A result whose noise floor was helped by discarding runs has to say so, or the floor
+        # is not comparable with one measured without it.
+        for mod in (real_eval, real_sweep):
+            with self.subTest(runner=mod.__name__):
+                self.assertIn("warmup_runs_discarded", inspect.getsource(mod))
+
+    def test_warm_up_runs_are_not_counted_as_repeats(self):
+        # The discarded runs must not reach control_runs/ctrl_runs, or they would be exactly
+        # the outlier the flag exists to remove.
+        src = inspect.getsource(real_sweep)
+        i = src.index("for w in range(a.warmup_runs):")
+        j = src.index("for rep in range(a.repeats):", i)
+        self.assertNotIn("append", src[i:j])
 
 
 class BreakEvenScreen(unittest.TestCase):

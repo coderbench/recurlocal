@@ -388,6 +388,12 @@ def main():
                     help="environment that turns the hook on, e.g. RECURLOCAL=combined")
     ap.add_argument("--control", nargs="*", default=[], metavar="KEY=VALUE",
                     help="environment for the control arm; empty means the unhooked runtime")
+    ap.add_argument("--warmup-runs", type=int, default=0, metavar="N",
+                    help="discard this many control measurements before the first counted "
+                         "pair. The first process of a run can be measurably slower than the "
+                         "ones after it, which lands entirely in the first pair and inflates "
+                         "the noise floor the arm is judged against. Defaults to 0 so every "
+                         "result published before this flag existed reproduces exactly.")
     ap.add_argument("--cb-binary", help="qwen3_gguf_cb_bench, for the concurrency arms")
     ap.add_argument("--concurrency", default="",
                     help="comma-separated concurrencies to measure, e.g. 4,16,32; needs --cb-binary")
@@ -428,6 +434,7 @@ def main():
         "tokens_per_measurement": a.tokens,
         "contexts": ctxs,
         "repeats": a.repeats,
+        "warmup_runs_discarded": a.warmup_runs,
         "label": a.label,
         "note": a.note,
     }
@@ -486,6 +493,18 @@ def main():
     cb_cand = {n: [] for n in concurrencies}
     adapter_stats = None
     cb_adapter_stats = {}
+    # Discard the opening measurements before any pair is counted. The first process of a run
+    # can be measurably slower than the ones after it, and because control always runs first
+    # that slowness lands entirely in pair 1 -- inflating the noise floor the arm is judged
+    # against, and with it the chance the arm cannot resolve at all.
+    for w in range(a.warmup_runs):
+        if verbose:
+            print(f">> warm-up {w + 1}/{a.warmup_runs} (discarded)", flush=True)
+        measure(a.binary, a.model, a.tokens, ctxs, ctrl_env, "warm-up", verbose)
+        for n in concurrencies:
+            measure_concurrent(a.cb_binary, a.model, n, a.cb_prompt_len, a.cb_max_new,
+                               a.cb_long_prefill, ctrl_env, f"warm-up c={n}", verbose)
+
     for i in range(a.repeats):
         if verbose:
             print(f">> pair {i + 1}/{a.repeats}", flush=True)

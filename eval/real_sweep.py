@@ -66,6 +66,14 @@ def main():
     ap.add_argument("--cb-prompt-len", type=int, default=128)
     ap.add_argument("--cb-max-new", type=int, default=64)
     ap.add_argument("--cb-long-prefill", type=int, default=4096)
+    ap.add_argument("--warmup-runs", type=int, default=0, metavar="N",
+                    help="discard this many measurements before the first counted pair. The "
+                         "first process in a sweep can run measurably slow -- on the MoE "
+                         "checkpoint the opening concurrency-4 control came in 8%% under the "
+                         "two after it, which is a 8.3%% noise floor on an arm whose real "
+                         "spread is a fraction of that, and an arm that cannot resolve. "
+                         "Defaults to 0 so every result published before this flag existed "
+                         "reproduces exactly.")
     ap.add_argument("--output", type=Path)
     a = ap.parse_args()
 
@@ -97,6 +105,9 @@ def main():
 
     control_runs = []
     rows = {v: [] for v in values}
+    for w in range(a.warmup_runs):
+        print(f"warm-up {w + 1}/{a.warmup_runs} (discarded)", flush=True)
+        one({}, "warm-up")
     for rep in range(a.repeats):
         print(f"pair {rep + 1}/{a.repeats}", flush=True)
         control_runs.append(one({}, "control"))
@@ -108,7 +119,7 @@ def main():
     floor = rel_spread_pct(control_runs)
     result = {"axis": a.axis, "variable": var, "workload": workload,
               "concurrency": a.concurrency, "context": a.context, "tokens": a.tokens,
-              "repeats": a.repeats, "fixed": {k: v for k, v in fixed.items() if k != var},
+              "repeats": a.repeats, "warmup_runs_discarded": a.warmup_runs, "fixed": {k: v for k, v in fixed.items() if k != var},
               "control_tps": control_runs, "control_noise_floor_pct": floor, "values": {}}
     print(f"\ncontrol {['%.2f' % t for t in control_runs]} tok/s"
           f"   noise floor {'unknown' if floor is None else f'{floor:.2f}%'}\n")
