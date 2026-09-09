@@ -219,10 +219,28 @@ already known. Reordered by what is still genuinely open:
    `decode_packed` returns false for the whole batch. `type=12` is Q4_K, and `n_out=8192,
    K=2048` is `attn_qkv.weight` — the linear-attention projection, on every recurrent layer.
 
+   **The diagnosis is proven, and it needed no patch.** The engine already splits a batch wider
+   than its packed-row cap into chunks of that cap, and the cap is an environment variable. Set
+   it to the width the GEMV accepts and nothing else changes:
+
+   | | default cap (32) | `SPARKINFER_PACKED_MAX_ROWS=8` |
+   |---|--:|--:|
+   | c=16 | 5.8% packed, 452.8 tok/s | **94.4% packed, 1204.4 tok/s** |
+   | c=32 | 3.0% packed, 455.6 tok/s | **97.3% packed, 1226.8 tok/s** |
+
+   The only variable is the row width handed to the GEMV, and packing goes from 3% to 97%. That
+   settles it.
+
+   Two numbers, and they are different questions. **The cliff is 5.4x**: crossing from 8 rows
+   (2456 tok/s) to 16 (452) at the default cap. **The workaround recovers 2.7x** and not the
+   whole cliff, because chunking re-reads the weights once per chunk — four chunks of 8 at 32
+   sequences is four weight passes where one 32-row kernel would be one. So the cap is a
+   usable workaround and a wider-row kernel is still the fix.
+
    This is SparkInfer's, not RecurLocal's, and it is stated here because this document promised
-   it was worth more than anything the library does. It is: 5.4x of aggregate throughput on the
-   runtime's own SOTA speed target, against fractions of a percent for a cache policy.
-   `results/rtx5090-moe-matrix.json` carries the counters and the account.
+   the surface was worth more than anything the library does. It is: 5.4x of aggregate
+   throughput on the runtime's own SOTA speed target, against fractions of a percent for a
+   cache policy. `results/rtx5090-moe-matrix.json` carries the counters and the account.
 
    **The dense model's intermittent 32-sequence collapse is a different observation and is
    still unexplained.** There, `prefetch` ratios came in `[0.932, 0.676, 0.925]` — one run of
