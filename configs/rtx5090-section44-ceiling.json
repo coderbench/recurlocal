@@ -9,7 +9,7 @@
       "sequences": 1,
       "ms_per_token": 10.344706303443338,
       "state_bytes_scale": 1.0,
-      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; single-sequence decode keeps the fp32 matrix state",
+      "source": "results/rtx5090-baseline-matrix.json, control arm, mean of 3 interleaved repeats on one box; single-sequence decode keeps the fp32 matrix state",
       "measured_decode_tps": 96.6678,
       "control_noise_floor_pct": 0.038685039646984526
     },
@@ -17,21 +17,21 @@
       "sequences": 4,
       "aggregate_tps": 334.1666666666667,
       "state_bytes_scale": 0.5,
-      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
+      "source": "results/rtx5090-baseline-matrix.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
       "control_noise_floor_pct": 0.08976660682226553
     },
     "concurrency16": {
       "sequences": 16,
       "aggregate_tps": 790.6,
       "state_bytes_scale": 0.5,
-      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
+      "source": "results/rtx5090-baseline-matrix.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
       "control_noise_floor_pct": 0.12648621300278268
     },
     "concurrency32": {
       "sequences": 32,
       "aggregate_tps": 1287.5666666666666,
       "state_bytes_scale": 0.5,
-      "source": "results/rtx5090-baseline-concurrency.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
+      "source": "results/rtx5090-baseline-matrix.json, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the state to bf16",
       "control_noise_floor_pct": 0.3415883859948832
     }
   }
