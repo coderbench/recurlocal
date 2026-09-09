@@ -251,9 +251,16 @@ nearly fits predicts: nowhere on this model is asking for less persistence bette
 for more. On the dense model the same axes span 0.02%, because no fraction of a 2.4×
 oversubscribed footprint can be held.
 
-The shipped defaults (0.75, 0.70) were leaving a quarter of a point on the floor, and even at
-the far end there are **2.1 points of headroom** to the ceiling — which is what makes batch-1
+The two dials compound: together they give **+1.63%**, the best measured configuration on either
+model. The shipped defaults (0.75, 0.70) were leaving a third of a point on the floor, and even
+at the far end there are **2.0 points of headroom** to the ceiling — which is what makes batch-1
 decode a surface here rather than the dead end it is on the dense model.
+
+The new `quota` hot-set policy — admit whole layers at the full hit ratio rather than shave
+every layer's — ties the best figure there (+1.631%) but the axis spans 0.075% inside a 0.190%
+floor, so it is **open, not solved**. That fits: at 1.02× oversubscription there is almost
+nothing for a policy to ration. The regime where it should differ is concurrency, where the
+footprint is 8–16× the set-aside, and that is unmeasured.
 
 ### And a 5.4× cliff in the runtime, found on the way
 

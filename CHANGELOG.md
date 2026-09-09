@@ -164,7 +164,19 @@ moved would evict exactly the state it kept last time.
 
 It is inert where the footprint is many times the budget, which is every regime the dense model
 offers, and that is why it was not worth building until a model existed whose footprint is 1.02x
-the cache rather than 2.4x. Registered on `eval/sweep.py` and `eval/real_sweep.py`, which also
+the cache rather than 2.4x.
+
+**Measured, and the axis does not resolve.** At `budget_fraction=1.00, hit_ratio=1.00`: `quota`
++1.631%, `fixed` +1.631%, `proportional` +1.583%, `sqrt` +1.557% — span 0.075% inside a 0.190%
+floor. `quota` ties the best and beats the shipped heuristic by 0.048 points, which is inside
+the noise and therefore not a result. OPEN, not solved, and the reading that fits is that at
+1.02x oversubscription there is nothing to ration. The regime where admitting whole layers
+should differ from shaving every hit ratio is concurrency, where the footprint is 8 to 16x the
+set-aside; that is the most concrete open item this work leaves. What the sweep does show is
+that the two dials **compound**: +1.63% together against +1.53% and +1.50% alone, the best
+measured configuration on either model.
+
+Registered on `eval/sweep.py` and `eval/real_sweep.py`, which also
 gain `budget-fraction` and `hit-ratio` axes: on a model whose footprint is close to the cache,
 the difference between reserving 45 MiB and 60 MiB is the difference between three quarters of
 the state resident and all of it.
