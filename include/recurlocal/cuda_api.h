@@ -119,6 +119,12 @@ public:
 
     // The two streams must differ: a pre-touch issued on the compute stream is not a
     // prefetch, it is extra work on the critical path.
+    //
+    // Both streams are BORROWED: this class never destroys them and must never touch one
+    // after the owner has destroyed it. Call reset() (or destroy the controller) BEFORE
+    // destroying the streams you handed over — reset() drops the handles, after which the
+    // controller touches neither. Getting this wrong is not a leak, it is a segfault inside
+    // libcuda at whatever point the controller next probes the stream.
     cudaError_t bind_streams(cudaStream_t compute_stream, cudaStream_t prefetch_stream) noexcept;
 
     cudaError_t before_layer(void* current_state, std::size_t current_state_bytes,

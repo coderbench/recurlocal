@@ -601,6 +601,15 @@ cudaError_t CudaLocalityController::reset() noexcept {
         l2_set_aside_owned_ = false;
         l2_set_aside_bytes_ = 0;
     }
+    // Let go of the caller's streams. They are BORROWED - the runtime owns them and is free
+    // to destroy them the moment it has told us it is done, which is what reset() means.
+    // Holding them past that point is how the destructor came to call cudaStreamIsCapturing
+    // on a destroyed stream and segfault inside libcuda at process exit. After reset() the
+    // controller holds nothing of the caller's; initialize() and bind_streams() revive it.
+    compute_stream_ = prefetch_stream_ = nullptr;
+    window_active_ = false;
+    prefetch_fork_outstanding_ = false;
+    window_pending_node_attach_ = false;
     return e;
 }
 

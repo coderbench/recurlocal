@@ -110,6 +110,13 @@ while nothing in the repo ran it.
 - **`stats().hot_set_oversubscribed` counted the wrong thing** — it keyed off
   `hit_ratio_reduced`, which `HotSetPolicy::Fixed` never sets, so it read zero under exactly
   the policy that ignores oversubscription hardest. The two are now separate counters.
+- **The controller held the caller's streams past `reset()` and segfaulted at exit.** The
+  streams are *borrowed*; a runtime that did the correct thing — call `shutdown()`, then
+  destroy its own streams — left the controller's destructor probing a dangling handle.
+  Backtrace: `cudaStreamIsCapturing <- release() <- ~Adapter <- __run_exit_handlers`, SIGSEGV
+  inside libcuda. Found by the concurrent arm of the eval harness, which reported
+  `cb bench exited -11` rather than a number. `reset()` now drops the handles, and the
+  borrowing contract is stated on `bind_streams()`.
 - **`release()` during an active capture poisoned the caller's context.** `cudaMalloc`,
   `cudaFree` and `cudaDeviceSetLimit` are all illegal while a stream is capturing;
   compute-sanitizer counted 14 such errors when a controller was destroyed mid-capture. It

@@ -441,6 +441,36 @@ void test_release_during_active_capture_does_not_poison_the_context() {
     CHECK(cudaGetLastError() == cudaSuccess);   // the caller's context is still usable
 }
 
+// REGRESSION: the controller borrows the caller's streams. It held them past reset(), so a
+// runtime that did the correct thing - tell us it is done, then destroy its own streams - left
+// the destructor probing a dangling handle. Backtrace: cudaStreamIsCapturing <- release() <-
+// ~Adapter <- __run_exit_handlers, SIGSEGV inside libcuda.
+void test_controller_outliving_the_caller_streams_does_not_crash() {
+    float* state = nullptr;
+    if (cudaMalloc(&state, kSliceBytes) != cudaSuccess) return;
+    cudaStream_t compute{}, prefetch{};
+    CHECK_CUDA(cudaStreamCreateWithFlags(&compute, cudaStreamNonBlocking));
+    CHECK_CUDA(cudaStreamCreateWithFlags(&prefetch, cudaStreamNonBlocking));
+
+    CudaLocalityController c;
+    if (c.initialize(0, base_config(LocalityMode::Combined)) != cudaSuccess) { cudaFree(state); return; }
+    if (c.bind_streams(compute, prefetch) != cudaSuccess) { cudaFree(state); return; }
+
+    StateSegment seg;
+    seg.ptr = state; seg.bytes = kSliceBytes; seg.base = state; seg.base_bytes = kSliceBytes;
+    seg.kind = StateKind::Matrix;
+    c.begin_sequence();
+    const StateSegment* no_next = nullptr;   // typed: nullptr alone is ambiguous
+    c.before_layer(&seg, 1, no_next, 0, false, geometry(), nullptr);
+    c.after_layer();
+
+    CHECK_CUDA(c.reset());                       // "I am done" ...
+    CHECK_CUDA(cudaStreamDestroy(compute));      // ...so the owner destroys its streams
+    CHECK_CUDA(cudaStreamDestroy(prefetch));
+    cudaFree(state);
+    // c now destructs with both handles dangling. It must not touch them.
+}
+
 void test_uninitialised_controller_is_inert_not_crashy() {
     CudaLocalityController c;
     CHECK(c.status() != cudaSuccess);
@@ -474,6 +504,7 @@ int main() {
     test_oversubscription_is_counted_under_every_policy();
     test_capture_survives_a_stale_error_at_the_fork();
     test_release_during_active_capture_does_not_poison_the_context();
+    test_controller_outliving_the_caller_streams_does_not_crash();
     test_uninitialised_controller_is_inert_not_crashy();
 
     if (g_failures) { std::printf("%d/%d controller check(s) failed\n", g_failures, g_checks); return 1; }
