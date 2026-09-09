@@ -290,6 +290,96 @@ number.
 
 ---
 
+# Second model: Qwen3.6-35B-A3B, sparse-MoE hybrid, same runtime and same box
+
+`configs/qwen3.6-35b-a3b-moe-ceiling.json` · unsloth `UD-Q4_K_M` GGUF, 22.13 GB · 40 blocks, 30
+of them Gated-DeltaNet · 256 experts, 8 used per token · the same pinned SparkInfer commit, the
+same hook, the same RTX 5090 · raw data in
+[`results/rtx5090-moe-matrix.json`](../results/rtx5090-moe-matrix.json).
+
+This is `docs/MINING.md`'s first open surface, tested. The persist ceiling is
+`2 x min(capacity, footprint) / step_traffic`; the capacity is the device's 60 MiB and cannot be
+raised, so the only lever is the denominator, and `eval/traffic_budget.py` now prints the
+threshold: **a decode step must move at most 6.42 GB** for a persisting window over this
+footprint to reach the 2% floor at all. Qwen3.8-27B moves 18.5 GB. This model moves 3.56 GB.
+
+**Nothing about the integration changed.** The adapter reads the state geometry from the
+runtime's own config, so the same binary brackets a 30-layer 2 MiB state as readily as a
+48-layer 3 MiB one: `recurrent_layers: 30, bytes_per_layer: 2146304` in its telemetry, which is
+`32 x 128 x 128 x 4 + 3 x 8192 x 2` exactly. Both formulas reproduce the pinned model's numbers,
+and the geometry was read from the checkpoint's own metadata and tensor shapes rather than from
+the runtime's defaults.
+
+## Two terms move at once, which the residency ratios alone do not show
+
+| batch 1 | Qwen3.8-27B (dense) | Qwen3.6-35B-A3B (sparse MoE) |
+|---|--:|--:|
+| recurrent layers | 48 | 30 |
+| state per layer | 3 MiB + 60 KiB | 2 MiB + 48 KiB |
+| recurrent footprint | 146.8 MiB | **61.4 MiB** |
+| vs 60 MiB persisting capacity | 2.4x | **1.02x** |
+| resident fraction of the state | 41% | **98%** |
+| decode step traffic | 18.5 GB | **3.56 GB** |
+| traffic ceiling | 1.69% | **3.76%** |
+| persist-family ceiling | 0.68% | **3.67%** |
+
+The step shrinks 5.2x *and* the footprint shrinks below the cache. Either alone would help; both
+together are what takes the persist family from bounded-out to a live surface.
+
+**How tight is that ceiling?** `traffic_budget.py` now answers rather than leaving it implied.
+The checkpoint's own tensor table says a batch-1 step reads 2.63 GB of weights — 1.60 GB of
+per-block non-expert weights, 0.42 GB of output head, 0.61 GB for the 8 experts one token
+routes to — and with the recurrent traffic that is 2.75 GB against the 3.56 GB peak bandwidth
+would allow in the measured time. **77% utilisation**, which the tool reports as `loose`: the
+step is mostly but not entirely memory-bound, so a real policy lands below the ceiling for
+reasons the arithmetic does not carry.
+
+## Modes
+
+3 interleaved pairs, control **503.18 tok/s** at ctx 128, noise floor **0.078%**.
+
+| mode | gain | vs the dense model |
+|---|--:|---|
+| `baseline` (hook on, no policy) | +0.05% | the integration still costs nothing |
+| `persist` | **+1.26%** | +0.10% there — **12x** |
+| `prefetch` | -3.93% | -1.27% there |
+| `combined` | -2.56% | -1.18% there |
+
+Paired ratios for `persist`: 1.0137 / 1.0120 / 1.0126. Resolved, and the largest real-model gain
+this repository has measured. It is a third of the 3.67% ceiling, and about 43% of what the
+*configured* set-aside allows — the default `budget_fraction` 0.75 reserves 48 MiB of the 60 MiB
+the device offers, which is 78% of the footprint rather than 98%.
+
+`prefetch` costs three times what it costs on the dense model, and that is arithmetic too: the
+pre-touch adds one extra read of the recurrent state, 64 MB against a 3.56 GB step is 1.8% of
+the traffic where the same read was 0.35% of an 18.5 GB one, and the graph-node cost is charged
+against a step 5.2x shorter.
+
+## The concurrency arms of this matrix are not concurrency measurements
+
+Aggregate throughput at 16 and 32 sequences came in at 453 and 456 tok/s — *below* the 503 tok/s
+single-sequence rate. The adapter's packing counters say why, one isolated run per width:
+
+| concurrency | tokens packed | max rows seen | aggregate |
+|---|--:|--:|--:|
+| 4 | 129/138 (93%) | 5 | 907.5 tok/s |
+| 8 | 133/151 (88%) | 9 | **2456.0 tok/s** |
+| 16 | **127/2173 (6%)** | 17 | 452.3 tok/s |
+| 32 | **127/4205 (3%)** | 32 | 456.1 tok/s |
+
+Above 8 rows the runtime stops batching and decodes one row at a time. Its own stderr names the
+cause — `mmvq_rows refused type=12 N=16 n_out=8192 K=2048`, then `declined at layer=0` — and the
+code confirms it: `launch_mmvq_q4k_rows` refuses `M > 8`, and the bf16 `launch_mmvq_rows`
+dispatcher has no chunking loop where its `_f32` sibling has one. See
+[`MINING.md`](MINING.md) for the full account; it is a runtime defect worth 5.4x, not a locality
+result.
+
+So this model's ceiling is published per arm and **not weighted**: 40% of the section 44 weight
+sits on workloads that cannot currently be run here, and renormalising them away would read
+higher than the matrix can pay — the same mistake `decide.py` refuses for a partial result.
+
+---
+
 # Synthetic benchmark
 
 All numbers below: one RTX 5090, CUDA 13.3, 48 layers x 3 MiB, 32 timed tokens after 4
