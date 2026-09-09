@@ -39,11 +39,22 @@ Before optimizing for a model, check what the best possible result would be wort
 ```bash
 eval/traffic_budget.py --ms-per-token <measured> --bandwidth-gbs <device> --sequences <N>
 eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json --bandwidth-gbs 1792
+# and the tighter bound the persist family is actually held to:
+eval/traffic_budget.py --matrix configs/qwen3.6-35b-a3b-moe-ceiling.json                        --bandwidth-gbs 1792 --persisting-l2-bytes 62914560
 ```
 
 The first gives one workload's ceiling; the second gives the highest weighted score the whole
 section 44 matrix can physically return, so you can see which bands are reachable at all
 before choosing what to work on.
+
+**Which model you pick decides more than which policy you pick.** The persist-family bound is
+`2 × min(persisting_capacity, footprint) / step_traffic`, and the capacity is the device's, so
+the only lever is the step. `--persisting-l2-bytes` prints `break_even_step_traffic_bytes` —
+the step traffic a model has to come in under before a persisting window is worth anything at
+all. On an RTX 5090 that is 6.42 GB: the dense Qwen3.8-27B moves 18.5 GB and cannot clear it,
+the sparse-MoE Qwen3.6-35B-A3B moves 3.56 GB and does. Two configs ship so the difference can
+be read side by side, and a matrix spec may carry its own `model` geometry so a second model's
+decode rates cannot be scored against the first model's state shape.
 
 ## Adding a mechanism
 
