@@ -29,7 +29,7 @@ Usage:
                       --model /path/to/checkpoint --output real-result.json \\
                       --candidate RECURLOCAL=combined RECURLOCAL_PREFETCH_DISTANCE=1
 """
-import argparse, json, os, re, statistics, subprocess, sys, time
+import argparse, fcntl, json, os, re, statistics, subprocess, sys, time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,12 +46,50 @@ DEFAULT_WEIGHTS = {"batch1": 0.40, "concurrency4": 0.20,
 # next process asks for it, so a back-to-back arm can fail to load for a reason that has
 # nothing to do with what is being measured. Settle, then retry once; a second failure is
 # real and is reported.
-SETTLE_SECONDS = 3.0
+SETTLE_SECONDS = 0.0 if os.environ.get('RECURLOCAL_EVAL_FAST') else 3.0
+# Two eval processes on one GPU do not merely go slower: the second fails to load 21 GB of
+# weights, the harness retries into the same contention, and what comes out is a number for a
+# run that never happened. That is not hypothetical - it happened twice while this harness was
+# being built, and both times the failure looked like a result. An advisory lock is cheap and
+# turns a corrupt measurement into a wait.
+GPU_LOCK_PATH = os.environ.get("RECURLOCAL_EVAL_LOCK", "/tmp/recurlocal-eval.lock")
+
+
+class GpuLock:
+    def __init__(self, path=GPU_LOCK_PATH, verbose=True):
+        self.path, self.verbose, self.fh = path, verbose, None
+
+    def __enter__(self):
+        self.fh = open(self.path, "w")
+        try:
+            fcntl.flock(self.fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            if self.verbose:
+                print(f">> another eval holds {self.path}; waiting rather than racing it for VRAM",
+                      flush=True)
+            fcntl.flock(self.fh, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        if self.fh:
+            fcntl.flock(self.fh, fcntl.LOCK_UN)
+            self.fh.close()
+        return False
 LOAD_FAILURE_MARKERS = ("[FAIL] load", "out of memory", "cudaErrorMemoryAllocation")
 
 
-def run(cmd, env_extra, timeout=1800):
+# Every RECURLOCAL_* name the adapter reads. The control arm must have all of them scrubbed
+# from the inherited environment, not merely left unset by the caller: an operator with
+# `export RECURLOCAL=combined` in their shell would otherwise run a hooked "control", and the
+# harness would report ~0% for a comparison of the candidate against itself.
+ADAPTER_ENV_PREFIX = "RECURLOCAL"
+
+
+def run(cmd, env_extra, timeout=1800, scrub_adapter_env=False):
     env = dict(os.environ)
+    if scrub_adapter_env:
+        for k in [k for k in env if k.startswith(ADAPTER_ENV_PREFIX)]:
+            del env[k]
     env.update(env_extra)
     t0 = time.time()
     time.sleep(SETTLE_SECONDS)
@@ -79,6 +117,26 @@ def parse_adapter_stats(text):
     return json.loads(m.group(1)) if m else None
 
 
+def is_control(env_extra):
+    return env_extra.get("RECURLOCAL", "off") in ("off", "0")
+
+
+def policy_applied(stats):
+    """Did this run actually DO anything, or merely load?
+
+    A window that is computed and handed back is not a window that reached the kernel. Under
+    CUDA-Graph decode with the safe WindowAttach::Stream, `persist` defers every window to a
+    runtime that does not attach it: windows_applied 0, windows_attached_to_node 0,
+    pre_touch_launches 0, and 192 windows_deferred_to_caller. That configuration is a null
+    candidate — it measures the hook's overhead against the control and nothing else — and
+    the first version of this harness scored exactly that as a go/no-go verdict because the
+    guard only checked that the hook had initialised.
+    """
+    st = stats.get("stats", {}) if stats else {}
+    return (st.get("windows_applied", 0) + st.get("windows_attached_to_node", 0)
+            + st.get("pre_touch_launches", 0)) > 0
+
+
 def require_hook_engaged(text, env_extra, label):
     """A candidate run that produced no telemetry ran the control.
 
@@ -86,7 +144,7 @@ def require_hook_engaged(text, env_extra, label):
     behaviour for a runtime and the wrong one for a measurement: the run would complete,
     the number would look fine, and it would be a number for the unhooked binary carrying
     the candidate's label. Every arm that asked for a mode has to prove it got one."""
-    if env_extra.get("RECURLOCAL", "off") in ("off", "0"):
+    if is_control(env_extra):
         return None
     stats = parse_adapter_stats(text)
     if stats is None:
@@ -101,6 +159,18 @@ def require_hook_engaged(text, env_extra, label):
     if stats.get("stats", {}).get("layers", 0) == 0:
         raise SystemExit(f"{label}: the hook initialised but bracketed no recurrent layer. "
                          "Either the model is not hybrid or the hook site was not reached.")
+    if env_extra.get("RECURLOCAL") != "baseline" and not policy_applied(stats):
+        st = stats.get("stats", {})
+        raise SystemExit(
+            f"{label}: NULL CANDIDATE. The hook loaded and bracketed "
+            f"{st.get('layers')} layers but applied no policy at all — "
+            f"windows_applied={st.get('windows_applied')}, "
+            f"windows_attached_to_node={st.get('windows_attached_to_node')}, "
+            f"pre_touch_launches={st.get('pre_touch_launches')}, "
+            f"windows_deferred_to_caller={st.get('windows_deferred_to_caller')}.\n"
+            "Deferred windows are computed and handed back; unless the runtime attaches them "
+            "they never reach a kernel. Scoring this would report the hook's overhead as a "
+            "locality result. Use RECURLOCAL=baseline if measuring overhead is the intent.")
     return stats
 
 
@@ -179,7 +249,8 @@ def rel_spread_pct(xs):
 def measure(binary, model, tokens, ctxs, env_extra, label, verbose):
     env = dict(env_extra)
     env["SPARKINFER_BENCH_SWEEP_CTXS"] = ",".join(str(c) for c in ctxs)
-    code, out, secs = run([binary, model, str(tokens), "sweep"], env)
+    code, out, secs = run([binary, model, str(tokens), "sweep"], env,
+                          scrub_adapter_env=is_control(env_extra))
     if code != 0:
         raise SystemExit(f"{label}: benchmark exited {code}\n{out[-4000:]}")
     sweep = parse_sweep(out)
@@ -200,7 +271,8 @@ def measure_concurrent(binary, model, concurrency, prompt_len, max_new, long_pre
     flight, so the recurrent share of decode traffic grows with concurrency while the weight
     share does not."""
     code, out, secs = run([binary, model, str(concurrency), str(prompt_len), str(max_new),
-                           str(long_prefill)], env_extra)
+                           str(long_prefill)], env_extra,
+                          scrub_adapter_env=is_control(env_extra))
     if code != 0:
         raise SystemExit(f"{label}: cb bench exited {code}\n{out[-4000:]}")
     m = re.search(r"agg_tok_s=([0-9.]+)", out)
@@ -215,7 +287,8 @@ def measure_concurrent(binary, model, concurrency, prompt_len, max_new, long_pre
 
 
 def greedy_replay(generate, model, prompt_ids, max_new, env_extra, label):
-    code, out, _ = run([generate, model, str(max_new), *[str(t) for t in prompt_ids]], env_extra)
+    code, out, _ = run([generate, model, str(max_new), *[str(t) for t in prompt_ids]], env_extra,
+                       scrub_adapter_env=is_control(env_extra))
     if code != 0:
         raise SystemExit(f"{label}: generate exited {code}\n{out[-4000:]}")
     ids = parse_output_ids(out)
@@ -305,6 +378,8 @@ def main():
     except Exception:
         pass
 
+    lock = GpuLock(verbose=verbose)
+    lock.__enter__()
     # ---- correctness gate first: a candidate that changes the output is not scored, and
     # there is no reason to spend an hour timing it.
     correctness = {"output_identical": None, "method": "greedy replay, token-exact"}
@@ -458,6 +533,7 @@ def main():
         },
         "adapter": adapter_stats,
     }
+    lock.__exit__()
     a.output.write_text(json.dumps(doc, indent=2) + "\n")
     if verbose:
         print(f"\nbatch-1 decode: {gain_pct:+.2f}%  (noise floor "

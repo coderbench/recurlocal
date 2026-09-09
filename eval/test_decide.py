@@ -226,5 +226,52 @@ class RealEvalEstimator(unittest.TestCase):
         per = {"128": {"baseline_tps": 0.0, "candidate_tps": 0.0, "paired_ratios": []}}
         self.assertEqual(real_eval.batch1_arm(per, [128]), (1.0, 0.0))
 
+
+class HarnessIntegrity(unittest.TestCase):
+    """The harness is meant to arbitrate. These cover the ways it could quietly not."""
+
+    def test_a_run_whose_arms_did_not_resolve_is_not_significant(self):
+        doc = real_doc({"batch1": {"weight": 1.0, "baseline_tps": 100.0, "candidate_tps": 108.0}})
+        self.assertTrue(label.score_real(doc)["significant"])          # resolved: a real result
+        doc["measurement"] = {"unresolved_workloads": ["batch1/ctx128"]}
+        out = label.score_real(doc)
+        self.assertFalse(out["significant"])                           # same number, no evidence
+        self.assertEqual(out["unresolved_workloads"], ["batch1/ctx128"])
+        self.assertIn("did not resolve", out["reason"])
+
+    def test_a_candidate_that_applied_no_policy_is_a_null_candidate(self):
+        # Deferred windows are computed and handed back; unless the runtime attaches them they
+        # never reach a kernel. Scoring that reports hook overhead as a locality result.
+        null = {"stats": {"windows_applied": 0, "windows_attached_to_node": 0,
+                          "pre_touch_launches": 0, "windows_deferred_to_caller": 192}}
+        self.assertFalse(real_eval.policy_applied(null))
+        for live in ({"windows_applied": 1}, {"windows_attached_to_node": 1},
+                     {"pre_touch_launches": 1}):
+            self.assertTrue(real_eval.policy_applied({"stats": live}))
+
+    def test_control_is_identified_by_asking_for_no_mode(self):
+        self.assertTrue(real_eval.is_control({}))
+        self.assertTrue(real_eval.is_control({"RECURLOCAL": "off"}))
+        self.assertTrue(real_eval.is_control({"RECURLOCAL": "0"}))
+        self.assertFalse(real_eval.is_control({"RECURLOCAL": "persist"}))
+        self.assertFalse(real_eval.is_control({"RECURLOCAL": "baseline"}))
+
+    def test_control_arm_scrubs_an_ambient_adapter_env(self):
+        # An operator with RECURLOCAL exported in their shell would otherwise run a hooked
+        # "control" and the harness would report ~0% for the candidate against itself.
+        import os
+        os.environ["RECURLOCAL"] = "combined"
+        os.environ["RECURLOCAL_PREFETCH_DISTANCE"] = "6"
+        try:
+            code, out, _ = real_eval.run([sys.executable, "-c",
+                                          "import os;print(os.environ.get('RECURLOCAL','<unset>'),"
+                                          "os.environ.get('RECURLOCAL_PREFETCH_DISTANCE','<unset>'))"],
+                                         {}, scrub_adapter_env=True)
+            self.assertIn("<unset> <unset>", out)
+        finally:
+            os.environ.pop("RECURLOCAL", None)
+            os.environ.pop("RECURLOCAL_PREFETCH_DISTANCE", None)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

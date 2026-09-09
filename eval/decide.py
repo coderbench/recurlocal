@@ -118,11 +118,22 @@ def score_real(doc, allow_regression=False):
         out["regressed_workloads"] = regressions
         out["regression_waived"] = True
 
+    # An arm whose gain sits inside its own run-to-run spread is not evidence. real_eval.py
+    # computes that per workload; until now decide.py never read it, so a "significant"
+    # verdict could rest entirely on arms that did not resolve.
+    unresolved = sorted((doc.get("measurement") or {}).get("unresolved_workloads") or [])
+    if unresolved:
+        out["unresolved_workloads"] = unresolved
+
     _, decision, decision_text = band(gain_pct, GO_NO_GO)
     _, impact = band(gain_pct, IMPACT)
     out.update(scored=True, impact=impact, verdict=decision, go_no_go=decision_text,
-               significant=gain_pct >= SIGNIFICANCE_PCT)
-    if not out["significant"]:
+               significant=gain_pct >= SIGNIFICANCE_PCT and not unresolved)
+    if unresolved and gain_pct >= SIGNIFICANCE_PCT:
+        out["reason"] = (f"weighted gain {gain_pct:.2f}% clears the significance floor, but "
+                         f"{', '.join(unresolved)} did not resolve outside its own run-to-run "
+                         "spread — take more repeats before treating this as a result")
+    elif not out["significant"]:
         out["reason"] = (f"weighted gain {gain_pct:.2f}% is below the {SIGNIFICANCE_PCT:.0f}% "
                          "significance floor — not a verified improvement")
     return out

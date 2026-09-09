@@ -131,6 +131,31 @@ while nothing in the repo ran it.
   was recomputed from its stored paired ratios: **+0.049% → +0.053%**, verdict unchanged
   (`reject`) — this data was tight enough that the bug did not bite.
 
+### Fixed — the evaluator was not fit to arbitrate
+
+The harness is meant to decide whether a contribution is accepted. Three ways it could quietly
+fail to:
+
+- **A candidate that applied no policy was scored as a result.** `require_hook_engaged` proved
+  the hook had *loaded*, not that anything reached a kernel. Under graph decode with the safe
+  `WindowAttach::Stream`, `persist` defers every window to a runtime that does not attach
+  them — `windows_applied 0, windows_attached_to_node 0, pre_touch_launches 0`, and 192
+  deferred. The first scored run in this repository was exactly that configuration, so its
+  verdict measured the hook's overhead against the control and nothing else. `real_eval.py`
+  now refuses a null candidate outright and names the counters that make it null.
+- **The control arm inherited an ambient `RECURLOCAL`.** `run()` copied `os.environ` and only
+  the *caller's* dict was checked for a mode, so an operator with `export RECURLOCAL=combined`
+  in their shell would run a hooked "control" and the harness would report ~0% for a
+  comparison of the candidate against itself. The control now scrubs every `RECURLOCAL*` name
+  from the inherited environment.
+- **`decide.py` never read whether the arms resolved.** `real_eval.py` computes a per-workload
+  resolution against each arm's own run-to-run spread; the scorer ignored it and could return
+  `significant: true` on a matrix where nothing resolved. It now refuses.
+- **Nothing interlocked concurrent eval processes.** Two runs on one GPU do not go slower,
+  they produce a number for a run that never happened — twice in this project's own history a
+  VRAM race turned into a plausible-looking result. `real_eval.py` now takes an advisory
+  `flock` and waits.
+
 ### Added — the CUDA code is now tested
 
 - `tests/test_cuda_controller.cu`: 115 device-side checks over the controller, the
