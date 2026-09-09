@@ -76,7 +76,8 @@ jobs:
           python3 - <<'PY'
           import json, jsonschema
           for f in ("repo-manifest.json", "configs/qwen3.8-27b-feasibility.json",
-                    "configs/rtx5090-section44-ceiling.json"):
+                    "configs/rtx5090-section44-ceiling.json",
+                    "configs/qwen3.6-35b-a3b-moe-ceiling.json"):
               json.load(open(f))
           for schema in ("eval/result_schema.json", "eval/real_result_schema.json"):
               jsonschema.Draft202012Validator.check_schema(json.load(open(schema)))
@@ -106,6 +107,12 @@ jobs:
         run: |
           python3 eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json \
                                          --bandwidth-gbs 1792 > /dev/null
+          # The second model's ceiling is what says the persist family is not bounded out
+          # everywhere, so it has to keep computing too - including the per-arm persist bound,
+          # which is the number that differs between the two models.
+          python3 eval/traffic_budget.py --matrix configs/qwen3.6-35b-a3b-moe-ceiling.json \
+                                         --bandwidth-gbs 1792 \
+                                         --persisting-l2-bytes 62914560 > /dev/null
 
   cuda-build:
     # Device-less compile gate. Untrusted performance PRs must not reach a GPU host
