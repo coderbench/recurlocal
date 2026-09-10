@@ -128,7 +128,11 @@ one kernel node is pending, and counts the declines in `window_attach_ambiguous`
 modes stay opt-in and counted (`stats().capture_invalidations`), and node attachment
 self-disables after a first detected invalidation.
 
-The 32-sequence collapse is real, is a runtime fallback, and its cause is UNKNOWN.
+The 32-sequence collapse is real, and its cause is **identified**: per-request device-memory
+allocation fails (`[qwen35] malloc: out of memory`), the runtime reports it as a per-request
+warning and continues, and the collapsed runs decoded 320 and 384 tokens where a healthy run
+decodes 2056. It is a failure reported as a slowdown. `real_eval.py` now refuses such an arm
+by name. See the changelog.
 
 An earlier version of this document blamed it on `capture_node` mutating the graph. **That
 attribution was wrong, and the code proves it.** The two arms that collapsed were `baseline`

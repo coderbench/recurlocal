@@ -332,6 +332,46 @@ def measure(binary, model, tokens, ctxs, env_extra, label, verbose):
     return sweep, require_hook_engaged(out, env_extra, label), out
 
 
+# Below this share of the tokens a concurrency arm was asked for, the run did not measure the
+# workload -- it measured whatever survived. 0.90 rather than 1.00 because the harness cannot
+# know the long-prefill request's exact contribution, and a legitimate run has been seen to
+# come in a few tokens under.
+MIN_COMPLETED_TOKEN_SHARE = 0.90
+
+
+def require_requests_completed(out, concurrency, max_new, label):
+    """A concurrency arm that lost requests did not run slower; it ran less.
+
+    Measured on the dense checkpoint at 32 sequences: two of six identical isolated runs
+    printed `[qwen35] malloc: out of memory` and `[warn] request error: device out of memory`
+    for most of their requests, completed 320 and 384 decode tokens instead of 2056, and
+    reported 142.9 and 164.8 tok/s against a healthy 925. Per-token latency was UNCHANGED
+    through it -- 20.77 and 24.26 ms against 19.29 -- so nothing about the decode path was
+    slow. The aggregate rate is tokens over wall time, so an arm that dropped four fifths of
+    its requests reports a collapse that is really a failure, and averaging it into a
+    control/candidate ratio corrupts the ratio.
+
+    This is the cause of the intermittent 32-sequence collapse this repository has carried as
+    unexplained for three releases, and it was invisible to every guard here: the hook ran,
+    the packed path was used, `agg_tok_s` parsed fine. The token count is what says so.
+    """
+    tokens = re.search(r"decode_tokens=(\d+)", out)
+    if not tokens:
+        return None                      # older bench build; nothing to check against
+    got = int(tokens.group(1))
+    want = concurrency * max_new
+    oom = out.count("out of memory")
+    if got >= want * MIN_COMPLETED_TOKEN_SHARE:
+        return {"decode_tokens": got, "expected_tokens": want, "out_of_memory_warnings": oom}
+    raise SystemExit(
+        f"{label}: REQUESTS DID NOT COMPLETE. The bench decoded {got} tokens where this "
+        f"workload asks for about {want} ({got / want * 100:.0f}%), and the runtime printed "
+        f"{oom} out-of-memory message(s). An arm that lost requests did not run slower, it "
+        f"ran less: aggregate tok/s is tokens over wall time, so the number is a failure "
+        f"reported as a slowdown. Re-run the arm in isolation, and give the device time to "
+        f"release the previous arm's memory before it starts.")
+
+
 def measure_concurrent(binary, model, concurrency, prompt_len, max_new, long_prefill,
                        env_extra, label, verbose):
     """Aggregate decode throughput under continuous batching.
@@ -350,6 +390,7 @@ def measure_concurrent(binary, model, concurrency, prompt_len, max_new, long_pre
     if not m:
         raise SystemExit(f"{label}: no agg_tok_s in output\n{out[-4000:]}")
     tps = float(m.group(1))
+    require_requests_completed(out, concurrency, max_new, label)
     stats = require_hook_engaged(out, env_extra, label)
     packing = require_packed_path(stats, concurrency, label)
     if verbose:

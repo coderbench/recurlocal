@@ -295,7 +295,42 @@ adjacent statements. Attaching to an already-instantiated graph is **not** avail
 CUDA 13.3 has no exec-level attribute setter and `cudaGraphExecUpdate` rejects attribute
 changes outright.
 
-### Measured — the dense concurrency-32 collapse, reproduced, and it is not what it was called
+### Solved — the dense concurrency-32 collapse. It is device memory, and it was a failure reported as a slowdown
+
+The runtime says so itself, once the output is not filtered:
+
+```
+[qwen35] malloc: out of memory
+[warn] request error: device out of memory (not a capacity/queue condition -- requires operator attention)
+```
+
+Six identical isolated runs of `qwen3_gguf_cb_bench` on the dense checkpoint at 32 sequences,
+nothing between them, full output captured:
+
+| rep | decode tokens | aggregate | mean ITL | out-of-memory messages |
+|--:|--:|--:|--:|--:|
+| 1 | **320** | 142.9 tok/s | 20.77 ms | many |
+| 2 | **384** | 164.8 tok/s | 24.26 ms | many |
+| 3 | 2056 | 925.5 tok/s | 19.29 ms | 0 |
+| 4 | 2056 | 924.7 tok/s | 19.31 ms | 0 |
+| 5 | 2056 | 927.5 tok/s | 19.25 ms | 0 |
+
+**The collapsed runs did not run slower. They ran less.** Per-request device-memory allocation
+fails, the runtime reports it as a per-request warning and carries on, and `agg_tok_s` is
+tokens over wall time — so an arm that lost four fifths of its requests reports a collapse
+that is really a failure. That is why per-token latency was unchanged through it, why it hit
+`baseline` (nothing to do with a locality policy), why it is intermittent, and why every guard
+in this harness passed it: the hook ran, the packed path was used, `agg_tok_s` parsed. The
+prior session's named candidate — accumulated device state across arms — was right, and the
+runtime's own error message says so.
+
+**`real_eval.py` now refuses such an arm by name.** `require_requests_completed` compares the
+decoded token count against what the workload asked for and refuses below 90%, quoting the
+count and the number of out-of-memory messages. The lesson generalises past this bug: a
+throughput harness that reads only a rate cannot tell a slow run from a short one, and this
+repository had been averaging short runs into control/candidate ratios for three releases.
+
+### Measured — the collapse is not a decode-path fallback, and the obvious candidate was falsified
 
 `docs/OPTIMIZATION-SURFACES.md` has said for two releases that the dense model's intermittent
 32-sequence collapse is "the runtime falling off its batched decode path". It reproduces, and

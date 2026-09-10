@@ -713,6 +713,61 @@ class ControlReproducibility(unittest.TestCase):
                       src)
 
 
+class CompletedRequestsGuard(unittest.TestCase):
+    """The 32-sequence collapse, identified and turned into a refusal.
+
+    Two of six identical isolated runs of the dense checkpoint at 32 sequences printed
+    `[qwen35] malloc: out of memory` for most of their requests, decoded 320 and 384 tokens
+    instead of 2056, and reported 142.9 and 164.8 tok/s against a healthy 925 -- with mean
+    inter-token latency UNCHANGED at 20.77 and 24.26 ms against 19.29. Nothing about the
+    decode path was slow. The arm lost four fifths of its requests, and aggregate tok/s is
+    tokens over wall time, so a failure was reported as a slowdown. Every existing guard
+    passed it: the hook ran, the packed path was used, agg_tok_s parsed.
+    """
+
+    def _out(self, tokens, oom=0, tps=925.0):
+        warn = "\n".join(["[qwen35] malloc: out of memory",
+                           "[warn] request error: device out of memory "
+                           "(not a capacity/queue condition -- requires operator attention)"]
+                          * oom)
+        return (f"{warn}\nwall_s=2.22 decode_tokens={tokens} agg_tok_s={tps} "
+                f"mean_itl_ms=19.29 max_itl_ms=660.78\n")
+
+    def test_a_healthy_arm_passes_and_is_recorded(self):
+        rec = real_eval.require_requests_completed(self._out(2056), 32, 64, "control c=32")
+        self.assertEqual(rec["decode_tokens"], 2056)
+        self.assertEqual(rec["expected_tokens"], 2048)
+        self.assertEqual(rec["out_of_memory_warnings"], 0)
+
+    def test_an_arm_that_lost_its_requests_is_refused_by_name(self):
+        with self.assertRaises(SystemExit) as e:
+            real_eval.require_requests_completed(self._out(320, oom=20, tps=142.9),
+                                                 32, 64, "control c=32")
+        msg = str(e.exception)
+        self.assertIn("REQUESTS DID NOT COMPLETE", msg)
+        self.assertIn("320 tokens", msg)
+        self.assertIn("out-of-memory", msg)
+        self.assertIn("failure reported as a slowdown", msg)
+
+    def test_a_few_tokens_short_is_not_a_failure(self):
+        # The harness cannot know the long-prefill request's exact contribution, and a
+        # legitimate run has come in slightly under. The guard must not fire on that.
+        self.assertIsNotNone(
+            real_eval.require_requests_completed(self._out(2000), 32, 64, "control c=32"))
+
+    def test_an_older_bench_without_the_counter_is_not_refused(self):
+        # A build that does not print decode_tokens leaves the question unanswerable, and an
+        # unanswerable question is not an accusation.
+        self.assertIsNone(real_eval.require_requests_completed(
+            "wall_s=2.2 agg_tok_s=925.0\n", 32, 64, "control c=32"))
+
+    def test_the_guard_runs_before_the_number_is_used(self):
+        src = inspect.getsource(real_eval.measure_concurrent)
+        self.assertLess(src.index("require_requests_completed"),
+                        src.index("require_packed_path"),
+                        "a lost-request arm must be refused before anything else reads it")
+
+
 class PackedPathGuard(unittest.TestCase):
     """The 32-sequence cliff, turned from an invisible number into a named refusal.
 
