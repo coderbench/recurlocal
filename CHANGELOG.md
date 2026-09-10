@@ -122,6 +122,42 @@ candidate by name — `windows_applied=0, windows_attached_to_node=0, pre_touch_
 policy whose response to pressure is to do nothing *is* `baseline`, and scoring it would report
 the hook's overhead as a locality result. The axis is swept without it.
 
+### Found — the exact-locality gate cannot run on the MoE checkpoint, and the harness misread it
+
+The scored MoE matrix came back `REJECT` with the reason *"exact-locality track requires
+bit-identical model output"*. That reason was wrong, and finding out why produced two results.
+
+**The checkpoint is not reproducible.** Two **unhooked** control runs of the same binary on the
+same prompt diverge at token 2:
+
+```
+control A: 13 271 760 1879 369 264 1103 314 4947 ...
+control B: 13 271 760 2614 369 264 1103 314  279 ...
+```
+
+The runtime documents the mechanism in `kernels/include/sparkinfer/kernels/deterministic.h`: a
+few ULP of difference in the prefill feed *discrete* top-k expert routing and int8 requant, so
+over 40 layers one flips an expert and that moves the argmax. `SPARKINFER_DETERMINISTIC=1` does
+not cover this checkpoint's Q4_K expert path — two controls still diverge with it set.
+
+**RecurLocal is not the cause, and that is checkable.** On the dense Qwen3.8-27B the same binary
+and the same policy at the same settings give control, control and candidate bit-identical over
+every token compared. So the MoE throughput numbers stand as throughput and the result is **not
+scorable** under sections 15 and 35 — the gate cannot answer the question it exists to answer.
+
+**The harness defect is the part worth fixing.** A gate that compares one control run to one
+candidate run cannot distinguish "the policy changed the output" from "this runtime is not
+reproducible on this model", and it reported the second as the first — an accusation against a
+candidate that had changed nothing. `real_eval.py` now replays the control **against itself**
+before the candidate is compared to anything, records `runtime_reproducible` and
+`control_first_divergence`, and leaves `output_identical` as `None` rather than `False` where
+the question is unanswerable. `decide.py` still refuses to score either case — that part was
+right — but now says which one it is, and says explicitly that an irreproducible control is
+*not the candidate's fault*.
+
+That distinction matters beyond this model: on a repository that scores outside submissions, a
+gate that blames the contributor for the runtime's nondeterminism is worse than no gate.
+
 ### Found — why the runtime falls off its batched decode path, worth 5.4x
 
 `docs/MINING.md` said this surface was worth two orders of magnitude more than anything the
