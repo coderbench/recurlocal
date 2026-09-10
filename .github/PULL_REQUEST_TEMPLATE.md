@@ -20,10 +20,11 @@ should keep, what it should stop keeping to make room, and what reads it again. 
 ## Is this evidence about a planner, or about a speedup?
 
 <!-- `tensortransit plan` and `tensortransit compare` print PREDICTED figures from a cost
-model whose assumptions are in docs/evaluation.md. They are evidence about a planner. Only
-`eval/decide.py --real` is evidence about a speedup. A PR that improves a predicted figure has
-improved a model, which is a legitimate contribution -- say so plainly and do not present the
-number as a gain. -->
+model whose assumptions are in docs/evaluation.md. They are evidence about a planner, and the
+cost model's own ranking of admission rules is currently CONTRADICTED by measurement
+(docs/VERDICT.md section 3.3). Only `tools/tt-frontier` and `eval/decide.py --real` are
+evidence about a speedup. A PR that improves a predicted figure has improved a model, which is
+a legitimate contribution -- say so plainly and do not present the number as a gain. -->
 
 ## Correctness
 
@@ -41,11 +42,22 @@ harness reports `inconclusive` and that is not your fault -- include it anyway. 
 
 ## Real-model result
 
-<!-- `eval/decide.py --real <result.json>` output, verbatim, stderr included. Do not retype
-benchmark numbers by hand; paste what the tool printed.
+<!-- The Frontier Receipt, rendered by the tool rather than retyped:
 
-Include the noise floor. A gain smaller than its own run-to-run spread is an open axis, not a
-result, and the sweep tools exit non-zero rather than name a winner in that case. -->
+    tools/tt-frontier report <receipt.json> --format comment
+
+Every figure in that output is generated from the receipt, and the receipt from the raw
+measurements. Do not type a benchmark number into this box.
+
+Read what the receipt says about itself before pasting it:
+  - `coverage.partial` -- a matrix that did not score every cell credits nothing, whatever it
+    measured, and names the cells responsible in `frontier.credit_withheld`.
+  - `coverage.unservable_cells` -- cells the evaluator's own probe could not serve with no
+    policy running. Not your regression, and not scored.
+  - `aggregation.cells_at_floor` -- a cell whose ratio was set by the generation's floor rather
+    than by a measurement. One of these can move dF by a large multiple.
+  - `resolved` and the noise floor. A gain smaller than its own run-to-run spread is an open
+    axis, not a result, and both gates have to pass. -->
 
 ## Supporting hardware counters
 
@@ -59,8 +71,12 @@ Counters explain WHY a change works; they never replace the throughput number. -
 
 ## Regression notes
 
-<!-- No important case may regress more than 2%. If one does, say which and why the trade is
-worth taking; a tradeoff track has to be argued for, not assumed. -->
+<!-- The generation names its protected cells and its own regression limit, and the receipt
+reports `regression_guard` against them; a violation is a REGRESSION_GUARD_FAIL and not a
+judgement call. For anything outside that set, say which cell regressed and why the trade is
+worth taking -- a tradeoff track has to be argued for, not assumed. Both objectives count: a
+policy that raises goodput while tripling p99 inter-token latency has moved along the frontier,
+not expanded it. -->
 
 ## Guards
 
