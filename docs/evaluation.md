@@ -244,7 +244,12 @@ Rules the harness enforces, each because the failure happened:
   against itself and measure ~0%.
 - **Null candidates are refused by name.** A run whose telemetry reads `windows_applied 0,
   windows_attached_to_node 0, pre_touch_launches 0` applied no policy. The first scored run in
-  this repository was exactly that.
+  this repository was exactly that. The frontier runner keeps that as an ABORT rather than
+  turning it into a cell failure, because it is a *configuration* failure and not a serving
+  one: the runtime served fine, and the number would be the hook's overhead wearing a policy's
+  name. A configuration that declares no policy — the control, and the `baseline` arm that
+  measures the hook's own cost — is exempt, and the exemption reads the environment rather
+  than the result.
 - **Arms that lost requests to a device OOM are refused.** An arm that lost requests did not
   run slower, it ran less: aggregate tok/s is tokens over wall time. Under the frontier runner
   that becomes a *failure status* rather than an abort, because a lost operating region is

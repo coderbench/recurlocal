@@ -108,6 +108,28 @@ def measure_cell(cb_binary, model, cell_id, env, label, *, max_new, long_prefill
     except SystemExit as exc:
         message = str(exc)
         status = classify_guard(message)
+        # A SERVING failure and a CONFIGURATION failure are different things and must be
+        # treated differently.
+        #
+        #   OOM, TIMEOUT, UNBATCHED   the runtime tried and could not serve this workload.
+        #                             That is territory lost, it is real information about the
+        #                             candidate, and the frontier is built to price it -- so it
+        #                             is recorded and the matrix continues.
+        #
+        #   NULL_POLICY, UNHOOKED     the candidate ASKED for a policy and its own telemetry
+        #                             says none reached a kernel. Nothing is wrong with the
+        #                             serving; what is wrong is that the harness is about to
+        #                             measure something other than what was asked for. Scoring
+        #                             it would report the hook's overhead as a locality result,
+        #                             which is what the first scored run in this repository
+        #                             did. That aborts, as `eval/real_eval.py` aborts.
+        if status in ("NULL_POLICY", "UNHOOKED") and expect_policy:
+            raise RunnerError(
+                f"{label}: the configuration asked for a policy and applied none. This is a "
+                f"configuration failure, not a serving one -- the runtime served fine and the "
+                f"number would be the hook's overhead wearing a policy's name. Check "
+                f"TENSORTRANSIT_WINDOW_ATTACH: without capture_node the windows are all "
+                f"deferred to a runtime that never attaches them.\n{message.strip()[:600]}")
         if status == "NULL_POLICY" and not expect_policy:
             # A configuration that declares no policy is SUPPOSED to apply none. Refusing it
             # would make the true control unmeasurable, which is the one arm every comparison
