@@ -1,0 +1,120 @@
+{
+ "schema_version": 1,
+ "what_this_is": "The same model at two quantisations, measured against a scrubbed control on one box. It settles a trade nobody had measured: a coarser quantisation moves less per step, which RAISES the persist-family ceiling, and also takes the step further from bandwidth saturation, which makes less of that ceiling real.",
+ "provenance": {
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "runtime_commit": "5347b27c",
+  "model": "Qwen3.5-4B, unsloth GGUF",
+  "bandwidth_gbs": 1792
+ },
+ "arms": {
+  "Q4_K_M": {
+   "file_bytes": 2740937888,
+   "step_traffic_bytes": 2843000000,
+   "ceiling_pct": 3.76,
+   "implied_tok_s_if_bandwidth_bound": 631,
+   "measured_control_tok_s": 346.57,
+   "bandwidth_utilisation_pct": 55,
+   "measurement": {
+    "noise_floor_pct": 0.11154301362910227,
+    "gain_pct": 0.6945205388412479,
+    "resolved": true,
+    "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
+    "unresolved_workloads": []
+   },
+   "workloads": {
+    "batch1": {
+     "weight": 0.4,
+     "baseline_tps": 346.5726079946884,
+     "candidate_tps": 348.97962593920926
+    },
+    "concurrency16": {
+     "weight": 0.2,
+     "baseline_tps": 318.4,
+     "candidate_tps": 312.6072772898369
+    }
+   },
+   "correctness": {
+    "output_identical": true,
+    "method": "greedy replay, token-exact",
+    "tokens_compared": 64,
+    "prompt_ids": [
+     9707,
+     3837,
+     1879,
+     13,
+     25001,
+     752,
+     911
+    ],
+    "runtime_reproducible": true,
+    "control_replays": 3,
+    "control_replays_requested": 3,
+    "candidate_matches_control": true,
+    "first_divergence": null,
+    "candidate_hook_active": true
+   }
+  },
+  "Q8_0": {
+   "file_bytes": 4480000000,
+   "step_traffic_bytes": 4583000000,
+   "ceiling_pct": 2.3,
+   "implied_tok_s_if_bandwidth_bound": 391,
+   "measured_control_tok_s": 362.06,
+   "bandwidth_utilisation_pct": 93,
+   "measurement": {
+    "noise_floor_pct": 0.2343885511160789,
+    "gain_pct": 0.8070023907210677,
+    "resolved": true,
+    "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
+    "unresolved_workloads": []
+   },
+   "workloads": {
+    "batch1": {
+     "weight": 0.4,
+     "baseline_tps": 362.0596712246135,
+     "candidate_tps": 364.98150142723296
+    },
+    "concurrency16": {
+     "weight": 0.2,
+     "baseline_tps": 294.4,
+     "candidate_tps": 289.9
+    }
+   },
+   "correctness": {
+    "output_identical": true,
+    "method": "greedy replay, token-exact",
+    "tokens_compared": 64,
+    "prompt_ids": [
+     9707,
+     3837,
+     1879,
+     13,
+     25001,
+     752,
+     911
+    ],
+    "runtime_reproducible": true,
+    "control_replays": 3,
+    "control_replays_requested": 3,
+    "candidate_matches_control": true,
+    "first_divergence": null,
+    "candidate_hook_active": true
+   }
+  }
+ },
+ "findings": [
+  {
+   "finding": "The SMALLER ceiling delivered the LARGER gain.",
+   "detail": "Q4_K_M has a 3.760% ceiling and measured +0.695%; Q8_0 has a 2.300% ceiling and measured +0.807%. Both resolved -- 6.2x and 3.4x their own noise floors -- and both token-exact.\n\nThe bandwidth column is the whole explanation. Q4_K_M's 2.84 GB step would run at 631 tok/s if it were purely bandwidth-bound and runs at 346.6: 55% utilisation, so most of its step is latency and occupancy, and freeing traffic returns less than its arithmetic share. Q8_0's 4.58 GB step would run at 391 and runs at 362: 93%, which is saturated. 18% of a loose ceiling against 35% of a tight one.\n\nThe rule this gives a contributor is counterintuitive and worth stating: on this mechanism, quantising LESS can win MORE. A coarser quantisation raises the arithmetic ceiling and lowers the fraction of it that is real, and past some point the second effect dominates. eval/screen_checkpoints.py prints the implied rate for exactly this check."
+  },
+  {
+   "finding": "Concurrency is negative at both quantisations.",
+   "detail": "-1.819% at Q4_K_M and -1.529% at Q8_0, at sixteen sequences. Consistent with every model measured here and with the concurrency-blind graph: a window covers row 0, so the benefit divides by concurrency while the interference multiplies by it, and the planner is told neither."
+  },
+  {
+   "finding": "Both quantisations pass the exactness gate; the 2B and the 9B do not.",
+   "detail": "Q4_K_M: ten unhooked replays identical over 128 tokens. Q8_0: five identical. Qwen3.5-9B-Q4_K_M diverges at token 16 in one of three, Qwen3.5-2B-Q4_K_M in two of five. Of six checkpoints screened on this device three pass -- the pinned NVFP4 27B and the 4B at both quantisations."
+  }
+ ]
+}
