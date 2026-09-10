@@ -60,6 +60,51 @@ std::vector<Candidate> build_candidates(const PlanInput& input, RoleMask roles,
 // will grant and to what the runtime says is already spent.
 std::size_t resolve_budget(const TransitPlannerConfig& config, const PlanInput& input);
 
+// What a plan is asking the persisting partition to hold, and what else is flowing through
+// it. Everything the residency cost model needs that is not a property of one candidate --
+// which is the whole point of that model: the terms couple.
+struct CostContext {
+    CostModel model = CostModel::Residency;
+    std::size_t budget_bytes = 0;      // C: what the driver granted
+    std::size_t resident_bytes = 0;    // what the whole plan asks to keep resident
+    std::size_t stream_relieved_bytes = 0;  // interference a Stream action takes out of D
+    std::size_t l2_bytes = 0;          // the whole cache the reservation is carved from
+    std::size_t step_traffic_bytes = 0;
+    double beta = 0.1100;
+    double reservation_cost = 0.001;
+    double stream_relief = 1.0;
+    std::size_t cache_line_bytes = 128;
+
+    static CostContext from(const TransitPlannerConfig& config, std::size_t budget,
+                            const PlanInput& input) noexcept {
+        CostContext out;
+        out.model = config.cost_model;
+        out.budget_bytes = budget;
+        out.beta = config.residency_beta;
+        out.reservation_cost = config.reservation_cost;
+        out.stream_relief = config.stream_relief;
+        out.cache_line_bytes = config.cache_line_bytes;
+        out.l2_bytes = input.device.l2_bytes;
+        out.step_traffic_bytes = input.graph ? input.graph->step_traffic_bytes() : 0;
+        return out;
+    }
+};
+
+// What the reservation costs the traffic it displaces, in the same byte currency as the
+// saving. Zero under the linear model, which is why that model could never say a policy was
+// not worth its set-aside.
+std::size_t reservation_cost_bytes(const CostContext& context) noexcept;
+
+// Bytes of `t` the hardware is actually being asked to keep, quantised to whole cache lines.
+// A grant that cannot hold one line holds nothing -- there is no 30% of a byte, and pricing
+// one is how the linear model came to flatten AdmissionRule::Quota to a thousandth of a point.
+std::size_t resident_bytes(std::size_t granted, std::size_t tensor_bytes, double hit_ratio,
+                           const CostContext& context) noexcept;
+
+// The share of this candidate's admitted lines that survive to their next use, in [0,1].
+// Exactly 1.0 under CostModel::Linear, which is what makes that model separable.
+double survival(const Candidate& candidate, const CostContext& context) noexcept;
+
 // Bytes the cost model says a tensor saves when `granted` bytes of budget hold it at
 // `hit_ratio`.
 //
@@ -69,6 +114,10 @@ std::size_t resolve_budget(const TransitPlannerConfig& config, const PlanInput& 
 // UPPER bound -- the same assumption every ceiling in this repository is quoted under, and
 // the reason none of them may be reported as an expected gain.
 std::size_t modelled_saving(const Candidate& candidate, std::size_t granted, double hit_ratio);
+// The same, under an explicit cost model. The two-argument form above is the linear model and
+// stays for callers that have no context to give.
+std::size_t modelled_saving(const Candidate& candidate, std::size_t granted, double hit_ratio,
+                            const CostContext& context);
 
 // Emits Persist/ClearPolicy for an admitted candidate, and accumulates the cost model.
 // `binding` decides whether the window is bound per consumer or once for the whole window.
@@ -83,8 +132,10 @@ void emit_prefetch(TransitPlan* plan, const std::vector<Candidate>& candidates,
 // Emits Stream hints for large tensors that have no reuse -- the other half of a shared
 // cache budget. A weight stream that displaces the state a policy just paid to keep is the
 // failure this exists to prevent.
+// `budget` is what a persisting policy has to work with, which is what decides whether a
+// reused tensor could ever be kept -- and therefore whether telling it to stream is free.
 void emit_stream_hints(TransitPlan* plan, const PlanInput& input,
-                       const TransitPlannerConfig& config);
+                       const TransitPlannerConfig& config, std::size_t budget);
 
 // Fills in the graph-derived parts of the cost model and finalizes the plan.
 // `scope` is the roles the planner was allowed to act on, so the ceiling recorded next to

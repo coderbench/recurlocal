@@ -46,6 +46,14 @@ int usage(const char* program) {
         "  --window-binding BINDING      per_consumer|sticky\n"
         "  --budget-fraction F           share of persisting capacity to ask for\n"
         "  --hit-ratio F                 requested hit ratio\n"
+        "  --cost-model M                linear | residency (default residency)\n"
+        "                                linear is the CONTROL: under it greedy-on-density is\n"
+        "                                provably optimal, so NO admission rule can beat it\n"
+        "  --residency-beta F            survival exponent; fitted 0.1100. 0 = linear\n"
+        "  --reservation-cost F          what the set-aside costs the traffic it displaces\n"
+        "  --stream-relief F             share of a Stream hint's bytes that stop interfering\n"
+        "  --window-preference P         densest | widest | narrowest | soonest_reuse\n"
+        "  --max-windows-per-kernel N    0 = unbounded; 1 is what the hardware delivers\n"
         "  --role-floor-share F          role_floor only: share reserved per role\n"
         "  --max-reuse-budgets F         decline reuse further than F budgets away\n"
         "  --requests N                  active requests to plan for\n"
@@ -97,7 +105,25 @@ bool parse_options(int argc, char** argv, int start, Options* out) {
                 std::fprintf(stderr, "unknown window binding: %s\n", value);
                 return false;
             }
-        } else if (std::strcmp(arg, "--budget-fraction") == 0 && next(&value))
+        } else if (std::strcmp(arg, "--cost-model") == 0 && next(&value)) {
+            if (!parse_cost_model(value, &out->config.cost_model)) {
+                std::fprintf(stderr, "unknown cost model: %s\n", value);
+                return false;
+            }
+        } else if (std::strcmp(arg, "--window-preference") == 0 && next(&value)) {
+            if (!parse_window_preference(value, &out->config.window_preference)) {
+                std::fprintf(stderr, "unknown window preference: %s\n", value);
+                return false;
+            }
+        } else if (std::strcmp(arg, "--max-windows-per-kernel") == 0 && next(&value))
+            out->config.max_windows_per_kernel = std::atoi(value);
+        else if (std::strcmp(arg, "--residency-beta") == 0 && next(&value))
+            out->config.residency_beta = std::atof(value);
+        else if (std::strcmp(arg, "--reservation-cost") == 0 && next(&value))
+            out->config.reservation_cost = std::atof(value);
+        else if (std::strcmp(arg, "--stream-relief") == 0 && next(&value))
+            out->config.stream_relief = std::atof(value);
+        else if (std::strcmp(arg, "--budget-fraction") == 0 && next(&value))
             out->config.budget_fraction = std::atof(value);
         else if (std::strcmp(arg, "--hit-ratio") == 0 && next(&value))
             out->config.hit_ratio = std::atof(value);
@@ -347,10 +373,15 @@ int cmd_compare(int argc, char** argv) {
         std::printf("]}\n");
     } else {
         std::printf(
-            "\n`predicted` is a COST-MODEL output, not a measurement. It assumes perfect\n"
-            "replacement within the budget and that saving scales linearly with residency.\n"
-            "The claim that the global arm beats the independent ones is only established\n"
-            "by measuring it: eval/real_eval.py, and docs/evaluation.md for what that takes.\n");
+            "\n`predicted` is a COST-MODEL output, not a measurement -- every artifact\n"
+            "carrying one declares \"basis\": \"model\", and eval/test_schemas.py fails if it\n"
+            "does not. Under `residency` (the default) saving goes as resident^(1+beta) with\n"
+            "beta fitted to the paired hardware arms in results/, and the reservation is\n"
+            "charged what it costs the traffic it displaces; under `linear` saving is\n"
+            "proportional to residency, which makes greedy-on-density provably optimal and\n"
+            "the whole admission axis unmeasurable. Compare the two with --cost-model.\n"
+            "Whether the global arm beats the independent ones is settled by MEASURING it:\n"
+            "TENSORTRANSIT_PRESET on the adapter, eval/real_eval.py, tools/tt-frontier.\n");
     }
     return 0;
 }

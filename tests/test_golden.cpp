@@ -57,7 +57,11 @@ static TransitPlannerConfig base() {
     // file is asserting.
     TransitPlannerConfig config{};
     config.persist_roles = RoleMask::of(TensorRole::RecurrentState, TensorRole::KVCache);
-    config.stream_roles = RoleMask::of(TensorRole::ModelWeight, TensorRole::ExpertWeight);
+    // NOT stream_roles. `preset_config` gives those to the GLOBAL arm alone, because telling
+    // the weight stream to get out of the way is a coordination action and an arm that could
+    // take it would not be the independent policy it is supposed to be. Setting it in the
+    // base handed it to every arm, which was invisible only while Stream was unreachable
+    // under a cyclic decode graph -- so the harness and the design agreed by accident.
     config.prefetch_roles = RoleMask::none();
     config.prefetch_enabled = false;
     config.budget_fraction = 0.75;
@@ -67,6 +71,11 @@ static TransitPlannerConfig base() {
     config.reuse_metric = ReuseMetric::Bytes;
     config.admission = AdmissionRule::Density;
     config.window_binding = WindowBinding::PerConsumer;
+    // Pinned for the same reason as everything else here: the cost model decides what a plan
+    // is predicted to be worth, and one admission rule -- Survival -- decides USING that
+    // price, so an unpinned default would move these digests for a reason this file is not
+    // about.
+    config.cost_model = CostModel::Residency;
     return config;
 }
 

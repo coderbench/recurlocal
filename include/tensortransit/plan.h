@@ -85,6 +85,56 @@ struct TransitDecline {
     std::size_t forgone_saved_bytes = 0;  // what the cost model says the decline cost
 };
 
+// How a plan's predicted saving is computed. This is the single most consequential choice in
+// the planner, and until 0.2.1 there was only one option and it was making the whole
+// admission axis meaningless.
+enum class CostModel : int {
+    // saved(t) = reused_bytes(t) x (granted/bytes) x hit_ratio.
+    //
+    // Linear in the resident share, so total saving is `sum_i granted_i x density_i` subject
+    // to `sum_i granted_i <= budget`. That is a fractional knapsack, greedy-on-density is
+    // optimal for it, and therefore NO admission rule can beat Density under this model --
+    // `role_floor` is monotonically worse as its floor grows, by construction rather than by
+    // accident. Kept as the CONTROL: every predicted figure this repository published before
+    // 0.2.1 was computed under it, and a model that cannot beat it has not earned its place.
+    Linear = 0,
+    // Linear, times a SURVIVAL factor carrying the three terms docs/evaluation.md named as
+    // missing, in the functional form the hardware measurements in results/ actually support:
+    //
+    //     resident(t) = whole cache lines of  min(granted, bytes) x hit_ratio
+    //     survival(t) = min(1, (resident(t) / reuse_distance_bytes(t)) ^ beta)
+    //     saved(t)    = reused_bytes(t) x (resident(t)/bytes) x survival(t)
+    //                   -  eta x (resident_total / L2) x step_traffic
+    //
+    //   whole-line residency  a line is resident or it is not, so a grant is quantised to
+    //                         cache lines and a sub-line grant is worth nothing;
+    //   survival              capacity against reuse distance, as a POWER LAW -- the classic
+    //                         shape of a cache miss-ratio curve, and the one the data picks:
+    //                         an exponential cannot fit a batch-1 dense arm and a batch-1 MoE
+    //                         arm at once (it needs sigma to differ by 3.4x between them),
+    //                         while beta = 0.1108 predicts both to within 0.006 points;
+    //   interference          the reservation is taken from the same L2 the weight and KV
+    //                         streams use, so it COSTS. This is the term that gets the SIGN
+    //                         right on the concurrency arms, where the persist family
+    //                         measures negative, and the only term under which a Stream
+    //                         action -- which lowers the reuse distance -- is worth anything.
+    //
+    // The consequence is the whole point. `saved` goes as resident^(1+beta), which is
+    // SUPERLINEAR: the objective is convex in the grant, its optimum is at a vertex, and
+    // concentrating the budget on fewer tensors beats spreading it. Under the linear model
+    // the same objective is a fractional knapsack whose optimum is greedy-on-density, so no
+    // admission rule could beat Density and the whole axis measured nothing. Under this one
+    // Density is not optimal, and `AdmissionRule::Survival` is the rule that exploits it.
+    //
+    // beta and eta are fitted, once, against every paired hardware measurement of the persist
+    // arm in results/ -- two parameters against eight arms on two architectures, with the
+    // residuals published. See eval/cost_model_fit.py.
+    Residency = 1,
+};
+
+const char* to_string(CostModel model) noexcept;
+bool parse_cost_model(const char* text, CostModel* out) noexcept;
+
 // What the planner believes the plan is worth, and against what. Kept next to the plan
 // because a prediction that is not recorded cannot later be compared with a measurement,
 // and comparing them is the only way a cost model ever improves.
@@ -104,6 +154,19 @@ struct PlanCostModel {
     std::size_t budget_bytes = 0;           // locality budget the plan was allowed
     std::size_t committed_bytes = 0;        // budget the plan actually spent
     std::size_t peak_live_bytes = 0;        // what would have to be resident to save it all
+    // Bytes the plan asks the persisting partition to hold, quantised to cache lines and
+    // charged once per tensor. NOT `committed_bytes`: per-consumer binding commits the same
+    // region several times, and the hit ratio means a committed region is not wholly
+    // resident. This is the quantity the residency model's self-eviction term is about.
+    std::size_t resident_bytes = 0;
+    // Interference a Stream action takes out of the picture. Zero under the linear model,
+    // which is the whole reason a Stream action was priced at zero there.
+    std::size_t stream_relieved_bytes = 0;
+    // The saving BEFORE the reservation's own cost is charged, and that cost. Kept apart so a
+    // reader can see a plan whose policy works and whose set-aside is not worth it -- which
+    // is what the concurrency arms measure, and a single net figure cannot say.
+    std::size_t predicted_gross_saved_bytes = 0;
+    std::size_t reservation_cost_bytes = 0;
 
     // Share of the step's traffic this plan is modelled to remove, in [0,1].
     double predicted_traffic_share() const noexcept;
@@ -116,6 +179,11 @@ struct PlanCostModel {
     // predicted gain approaches it is done; one far below it has room. Uses
     // `bounded_removable_bytes`; falls back to `removable_bytes` only when nobody set it.
     double ceiling_throughput_ratio() const noexcept;
+    // Which model produced `predicted_saved_bytes`. Recorded next to the number because the
+    // two models can differ by an order of magnitude on the same plan, and a prediction whose
+    // model is not on the page is exactly the failure this project keeps having.
+    CostModel cost_model = CostModel::Residency;
+
     // True when the unlimited-cache figure has saturated, which over a cyclic window it
     // always does. Printing "+0.000%" there -- which is what 1/(1-f) at f=1 collapses to --
     // reads as "there is nothing here", and the honest answer is the opposite.

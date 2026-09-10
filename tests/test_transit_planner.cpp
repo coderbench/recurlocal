@@ -2,6 +2,7 @@
 // that makes the migration claim checkable -- that RecurrentV0Planner really is the 0.1
 // policy and not a lookalike.
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <iostream>
 #include <vector>
@@ -491,6 +492,213 @@ static void test_a_device_with_no_persisting_l2_plans_nothing_and_says_why() {
     CHECK(unsupported);
 }
 
+// --- the cost model -----------------------------------------------------------------
+//
+// The linear model made greedy-on-density PROVABLY optimal, which is why the whole admission
+// axis measured nothing. These checks pin the properties the residency model was built to
+// have, so that a change to it that quietly removed one is a build failure rather than a
+// silently different verdict on every future submission.
+
+static void test_the_linear_model_is_still_available_and_still_linear() {
+    // Doubling the resident share doubles the saving. That IS the fractional knapsack, and
+    // it is why no rule could beat Density under it -- so it has to stay checkable.
+    Hybrid workload(8, 4 * MiB, 1, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig half{};
+    half.cost_model = CostModel::Linear;
+    half.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+    half.budget_fraction = 0.25;
+    TransitPlannerConfig full = half;
+    full.budget_fraction = 0.50;
+
+    const auto a = make_budgeted_planner(half)->build_plan(input);
+    const auto b = make_budgeted_planner(full)->build_plan(input);
+    const double ratio = static_cast<double>(b.cost().predicted_saved_bytes) /
+                         static_cast<double>(a.cost().predicted_saved_bytes ? a.cost().predicted_saved_bytes : 1);
+    CHECK(a.cost().cost_model == CostModel::Linear);
+    CHECK(a.cost().reservation_cost_bytes == 0);   // the linear model has no cost term at all
+    CHECK(ratio > 1.9 && ratio < 2.1);
+}
+
+static void test_the_residency_model_is_superlinear_in_residency() {
+    // The property the whole change rests on: saving goes as resident^(1+beta), so doubling
+    // the budget MORE than doubles the saving. Under the linear model it exactly doubles,
+    // and that difference is what makes concentrating beat spreading.
+    Hybrid workload(8, 4 * MiB, 1, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig half{};
+    half.cost_model = CostModel::Residency;
+    half.reservation_cost = 0.0;   // isolate the survival term from the reservation's cost
+    half.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+    half.budget_fraction = 0.25;
+    TransitPlannerConfig full = half;
+    full.budget_fraction = 0.50;
+
+    const auto a = make_budgeted_planner(half)->build_plan(input);
+    const auto b = make_budgeted_planner(full)->build_plan(input);
+    const double ratio = static_cast<double>(b.cost().predicted_saved_bytes) /
+                         static_cast<double>(a.cost().predicted_saved_bytes ? a.cost().predicted_saved_bytes : 1);
+    CHECK(a.cost().cost_model == CostModel::Residency);
+    CHECK(ratio > 2.0);
+}
+
+static void test_beta_zero_collapses_the_residency_model_onto_the_linear_one() {
+    // The escape hatch a contributor needs: if a result only appears under beta > 0, it is
+    // about the model and not about the policy, and this is how they find that out.
+    Hybrid workload(8, 4 * MiB, 1, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig linear{};
+    linear.cost_model = CostModel::Linear;
+    linear.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+    TransitPlannerConfig collapsed = linear;
+    collapsed.cost_model = CostModel::Residency;
+    collapsed.residency_beta = 0.0;
+    collapsed.reservation_cost = 0.0;
+    collapsed.cache_line_bytes = 1;   // no quantisation, so only the exponent is under test
+
+    const auto a = make_budgeted_planner(linear)->build_plan(input);
+    const auto b = make_budgeted_planner(collapsed)->build_plan(input);
+    const double delta = static_cast<double>(a.cost().predicted_saved_bytes) -
+                         static_cast<double>(b.cost().predicted_saved_bytes);
+    CHECK(std::abs(delta) <= static_cast<double>(a.cost().predicted_saved_bytes) * 0.001 + 8.0);
+}
+
+static void test_spreading_the_budget_is_worse_than_concentrating_it() {
+    // Proportional asks every tensor for a shaved hit ratio; Quota keeps a few of them whole.
+    // Under the linear model those are nearly the same number. Under the residency model the
+    // gap widens, because the exponent charges for the division. The SHIPPED recurrent policy
+    // spreads, so this is a prediction about a real configuration and not about a toy.
+    Hybrid workload(16, 4 * MiB, 1, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    auto gap = [&](CostModel model) {
+        TransitPlannerConfig config{};
+        config.cost_model = model;
+        config.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+        config.admission = AdmissionRule::Quota;
+        const auto quota = make_budgeted_planner(config)->build_plan(input);
+        config.admission = AdmissionRule::Proportional;
+        const auto proportional = make_budgeted_planner(config)->build_plan(input);
+        const double spread = static_cast<double>(proportional.cost().predicted_saved_bytes);
+        return static_cast<double>(quota.cost().predicted_saved_bytes) / (spread ? spread : 1.0);
+    };
+    CHECK(gap(CostModel::Residency) > gap(CostModel::Linear));
+}
+
+static void test_survival_is_exactly_density_under_the_linear_model() {
+    // The new rule has to REDUCE to the old optimum on the model the old optimum was optimal
+    // for. Otherwise every comparison against Density is a comparison against a moving target.
+    Hybrid workload(8, 4 * MiB, 2, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig config{};
+    config.cost_model = CostModel::Linear;
+    config.persist_roles = RoleMask::of(TensorRole::RecurrentState, TensorRole::KVCache);
+    config.admission = AdmissionRule::Density;
+    const auto density = make_budgeted_planner(config)->build_plan(input);
+    config.admission = AdmissionRule::Survival;
+    const auto survival = make_budgeted_planner(config)->build_plan(input);
+    CHECK(density.digest() == survival.digest());
+}
+
+// A decode token whose weight traffic is PER LAYER, as a real model's is: each layer reads
+// its own slice, so a slice's next read is a whole token away. The shared-weight fixture
+// above cannot exercise this -- one buffer re-read by every layer has a reuse distance of one
+// layer, which a cache this size genuinely can serve, so declining to stream it is right.
+struct StreamedWeights {
+    TensorRegistry registry;
+    TransitGraph graph;
+    DeviceProfile device{};
+
+    StreamedWeights(int layers, std::size_t state_bytes, std::size_t weight_bytes_per_layer) {
+        device_profile_by_name("rtx5090", &device);
+        std::uintptr_t next = 1;
+        for (int i = 0; i < layers; ++i) {
+            TensorDesc state{};
+            state.ptr = fake(next++);
+            state.bytes = state_bytes;
+            state.role = TensorRole::RecurrentState;
+            state.mutable_data = true;
+            const TensorId s = registry.register_tensor(state).id;
+
+            TensorDesc weight{};
+            weight.ptr = fake(next++);
+            weight.bytes = weight_bytes_per_layer;
+            weight.role = TensorRole::ModelWeight;
+            weight.model_global = true;
+            const TensorId w = registry.register_tensor(weight).id;
+
+            KernelEvent kernel{};
+            kernel.id = static_cast<KernelId>(i + 1);
+            kernel.order = static_cast<std::uint64_t>(i);
+            graph.record_kernel(kernel);
+            TensorUse use_state{};
+            use_state.tensor = s;
+            use_state.kernel = kernel.id;
+            use_state.access = AccessKind::ReadWrite;
+            graph.record_use(use_state);
+            TensorUse use_weight{};
+            use_weight.tensor = w;
+            use_weight.kernel = kernel.id;
+            use_weight.access = AccessKind::Read;
+            graph.record_use(use_weight);
+        }
+        graph.set_cyclic(true);
+        graph.build(registry);
+    }
+
+    PlanInput input() {
+        PlanInput in{};
+        in.graph = &graph;
+        in.registry = &registry;
+        in.device = device;
+        in.runtime = RuntimeState{};
+        return in;
+    }
+};
+
+static void test_a_stream_hint_is_worth_something_under_residency_and_nothing_under_linear() {
+    // The linear model has no interference term, so telling the weight stream to get out of
+    // the way is priced at exactly zero -- which is why only the global arm was allowed one
+    // and why its value there was zero. Under the residency model it lowers the reuse
+    // distance and therefore raises survival.
+    StreamedWeights workload(8, 4 * MiB, 256 * MiB);
+    PlanInput input = workload.input();
+
+    auto saved = [&](CostModel model, bool stream) {
+        TransitPlannerConfig config{};
+        config.cost_model = model;
+        config.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+        if (stream) config.stream_roles = RoleMask::of(TensorRole::ModelWeight);
+        return make_budgeted_planner(config)->build_plan(input).cost().predicted_saved_bytes;
+    };
+    // The linear model has no interference term at all, so the hint changes nothing there --
+    // which is exactly why a Stream action was priced at zero and why only one arm was ever
+    // allowed to emit one.
+    CHECK(saved(CostModel::Linear, true) == saved(CostModel::Linear, false));
+    CHECK(saved(CostModel::Residency, true) > saved(CostModel::Residency, false));
+}
+
+static void test_the_reservation_has_a_cost_and_the_plan_says_so() {
+    // The term that gets the SIGN right on the concurrency arms. A model with only a benefit
+    // term cannot describe a policy that measures negative, and the persist family does.
+    Hybrid workload(8, 4 * MiB, 1, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig config{};
+    config.cost_model = CostModel::Residency;
+    config.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+    const auto plan = make_budgeted_planner(config)->build_plan(input);
+    CHECK(plan.cost().reservation_cost_bytes > 0);
+    CHECK(plan.cost().predicted_gross_saved_bytes >= plan.cost().predicted_saved_bytes);
+    CHECK(plan.cost().predicted_gross_saved_bytes - plan.cost().predicted_saved_bytes ==
+          plan.cost().reservation_cost_bytes ||
+          plan.cost().predicted_saved_bytes == 0);
+}
+
 int main() {
     test_every_planner_emits_a_valid_plan();
     test_baseline_emits_nothing_at_all();
@@ -515,6 +723,14 @@ int main() {
     test_a_config_that_would_decline_everything_is_refused();
     test_every_enum_round_trips_through_its_names();
     test_a_device_with_no_persisting_l2_plans_nothing_and_says_why();
+
+    test_the_linear_model_is_still_available_and_still_linear();
+    test_the_residency_model_is_superlinear_in_residency();
+    test_beta_zero_collapses_the_residency_model_onto_the_linear_one();
+    test_spreading_the_budget_is_worse_than_concentrating_it();
+    test_survival_is_exactly_density_under_the_linear_model();
+    test_a_stream_hint_is_worth_something_under_residency_and_nothing_under_linear();
+    test_the_reservation_has_a_cost_and_the_plan_says_so();
 
     if (g_failures) { std::cout << g_failures << " transit-planner check(s) failed\n"; return 1; }
     std::cout << "transit planner tests passed\n";

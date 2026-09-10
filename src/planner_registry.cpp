@@ -12,6 +12,12 @@ constexpr RuleName kRules[] = {
     {AdmissionRule::Proportional, "proportional"},
     {AdmissionRule::ReuseOrder, "reuse_order"},
     {AdmissionRule::RoleFloor, "role_floor"},
+    {AdmissionRule::Survival, "survival"},
+};
+struct CostModelName { CostModel model; const char* name; };
+constexpr CostModelName kCostModels[] = {
+    {CostModel::Linear, "linear"},
+    {CostModel::Residency, "residency"},
 };
 struct TimingName { PrefetchTiming timing; const char* name; };
 constexpr TimingName kTimings[] = {
@@ -80,6 +86,17 @@ bool parse_window_binding(const char* text, WindowBinding* out) noexcept {
         if (std::strcmp(text, entry.name) == 0) { *out = entry.binding; return true; }
     return false;
 }
+const char* to_string(CostModel model) noexcept {
+    for (const auto& entry : kCostModels)
+        if (entry.model == model) return entry.name;
+    return "residency";
+}
+bool parse_cost_model(const char* text, CostModel* out) noexcept {
+    if (!text || !out) return false;
+    for (const auto& entry : kCostModels)
+        if (std::strcmp(text, entry.name) == 0) { *out = entry.model; return true; }
+    return false;
+}
 const char* to_string(WindowPreference preference) noexcept {
     for (const auto& entry : kPreferences)
         if (entry.preference == preference) return entry.name;
@@ -121,6 +138,16 @@ const char* validate(const TransitPlannerConfig& config) noexcept {
     if (config.max_actions == 0) return "max_actions must be non-zero";
     if (config.max_windows_per_kernel < 0)
         return "max_windows_per_kernel must be >= 0 (0 means unbounded)";
+    if (!(config.stream_relief >= 0.0 && config.stream_relief <= 1.0))
+        return "stream_relief must be in [0,1]";
+    if (config.cache_line_bytes == 0)
+        return "cache_line_bytes must be non-zero";
+    if (!(config.residency_beta >= 0.0 && config.residency_beta <= 1.0))
+        return "residency_beta must be in [0,1]: it is the curvature of a miss-ratio curve, "
+               "and above 1 the model would say a cache helps more the less of it you have";
+    if (!(config.reservation_cost >= 0.0))
+        return "reservation_cost must be >= 0: a negative one would say that taking L2 away "
+               "from the streaming traffic makes the streaming traffic faster";
     return nullptr;
 }
 

@@ -40,13 +40,13 @@ public:
                                                       ? DeclineReason::BudgetExhausted
                                                       : DeclineReason::NotSupported,
                                                   candidate.bytes, candidate.saved_bytes});
-            detail::emit_stream_hints(&plan, input, config_);
+            detail::emit_stream_hints(&plan, input, config_, budget);
             detail::finish_plan(&plan, input, budget, declined, config_.persist_roles, config_);
             return plan;
         }
 
         candidates = screen(std::move(candidates), input, budget, &declined);
-        const std::vector<Grant> grants = admit(candidates, budget, &declined);
+        const std::vector<Grant> grants = admit(candidates, budget, input, &declined);
 
         // Sticky binding is singular in hardware, so at most one grant gets it: the first,
         // which every rule orders as its best. Handing it to two tensors would be a plan the
@@ -60,7 +60,7 @@ public:
         }
 
         detail::emit_prefetch(&plan, candidates, config_, input);
-        detail::emit_stream_hints(&plan, input, config_);
+        detail::emit_stream_hints(&plan, input, config_, budget);
         detail::finish_plan(&plan, input, budget, declined, config_.persist_roles, config_);
         return plan;
     }
@@ -109,6 +109,7 @@ private:
     }
 
     std::vector<Grant> admit(std::vector<detail::Candidate>& candidates, std::size_t budget,
+                             const PlanInput& input,
                              std::vector<TransitDecline>* declined) const {
         switch (config_.admission) {
             case AdmissionRule::Density:      return admit_ordered(candidates, budget, declined, by_density);
@@ -116,6 +117,7 @@ private:
             case AdmissionRule::Quota:        return admit_quota(candidates, budget, declined);
             case AdmissionRule::Proportional: return admit_proportional(candidates, budget, declined);
             case AdmissionRule::RoleFloor:    return admit_role_floor(candidates, budget, declined);
+            case AdmissionRule::Survival:     return admit_survival(candidates, budget, input, declined);
         }
         return admit_ordered(candidates, budget, declined, by_density);
     }
@@ -228,6 +230,82 @@ private:
                 static_cast<std::size_t>(static_cast<double>(candidate.bytes) * share);
             grants.push_back(Grant{i, granted ? granted : 1, hit});
         }
+        return grants;
+    }
+
+    // Greedy on MARGINAL saving under the cost model, stopping when the next admission
+    // would make the plan worse.
+    //
+    // Under CostModel::Linear this is exactly Density: the marginal value of a byte of budget
+    // is that candidate's density, it never depends on what else was admitted, so ordering by
+    // it and filling greedily is the fractional-knapsack optimum and nothing ever stops
+    // early. A test asserts that equivalence, because a rule that quietly became something
+    // else on the model it reduces to would make every comparison against Density a
+    // comparison against a moving target.
+    //
+    // Under CostModel::Residency it is not Density, and the reason is the whole point of that
+    // model: survival depends on what the WHOLE admitted set is asking the partition to hold,
+    // so admitting one more tensor lowers every already-admitted tensor's saving. Past a
+    // point the total falls, and the right move is to stop -- which is a thing a fractional
+    // knapsack can never say.
+    std::vector<Grant> admit_survival(std::vector<detail::Candidate>& candidates,
+                                      std::size_t budget, const PlanInput& input,
+                                      std::vector<TransitDecline>* declined) const {
+        std::vector<std::size_t> order(candidates.size());
+        for (std::size_t i = 0; i < order.size(); ++i) order[i] = i;
+        // Seed the search with the linear ordering. It is the right first guess -- density is
+        // optimal in the limit where survival is flat -- and it makes this rule's difference
+        // from Density attributable to the stopping rule rather than to a reordering.
+        std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
+            return by_density(candidates[a], candidates[b]);
+        });
+
+        detail::CostContext context = detail::CostContext::from(config_, budget, input);
+        std::vector<Grant> grants;
+        std::vector<char> admitted(candidates.size(), 0);
+        std::size_t remaining = budget;
+        double best_total = 0.0;   // an empty plan saves nothing and costs nothing
+
+        auto total_saving = [&](const std::vector<Grant>& set, const detail::CostContext& ctx) {
+            double total = 0.0;
+            for (const Grant& grant : set)
+                total += static_cast<double>(detail::modelled_saving(
+                    candidates[grant.index], grant.bytes, grant.hit_ratio, ctx));
+            return total;
+        };
+
+        for (const std::size_t i : order) {
+            const detail::Candidate& candidate = candidates[i];
+            const std::size_t granted = std::min(remaining, candidate.bytes);
+            if (!granted) break;
+            const double share = static_cast<double>(granted) / static_cast<double>(candidate.bytes);
+            if (config_.hit_ratio * share < config_.min_hit_ratio) continue;
+
+            // Price the WHOLE set with this candidate added, not the candidate alone: what it
+            // takes from everything already admitted is the term that decides.
+            std::vector<Grant> trial = grants;
+            trial.push_back(Grant{i, granted, config_.hit_ratio});
+            detail::CostContext trial_context = context;
+            trial_context.resident_bytes += detail::resident_bytes(
+                granted, candidate.bytes, config_.hit_ratio, context);
+            const double trial_total = total_saving(trial, trial_context) -
+                static_cast<double>(detail::reservation_cost_bytes(trial_context));
+            if (trial_total <= best_total) break;   // the next admission is not worth its cost
+
+            grants.swap(trial);
+            context = trial_context;
+            best_total = trial_total;
+            admitted[i] = 1;
+            remaining -= granted;
+        }
+
+        for (std::size_t i = 0; i < candidates.size(); ++i)
+            if (!admitted[i])
+                declined->push_back(TransitDecline{candidates[i].tensor, candidates[i].role,
+                                                   remaining ? DeclineReason::BelowMinHitRatio
+                                                             : DeclineReason::BudgetExhausted,
+                                                   candidates[i].bytes,
+                                                   candidates[i].saved_bytes});
         return grants;
     }
 

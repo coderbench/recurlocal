@@ -1,6 +1,7 @@
 #include "planners/common.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "tensortransit/ceiling.h"
@@ -96,6 +97,78 @@ std::size_t modelled_saving(const Candidate& candidate, std::size_t granted, dou
     double share = static_cast<double>(granted) / static_cast<double>(candidate.bytes);
     if (share > 1.0) share = 1.0;
     const double saved = static_cast<double>(candidate.saved_bytes) * share * hit_ratio;
+    return saved <= 0.0 ? 0 : static_cast<std::size_t>(saved);
+}
+
+std::size_t resident_bytes(std::size_t granted, std::size_t tensor_bytes, double hit_ratio,
+                           const CostContext& context) noexcept {
+    if (!tensor_bytes || !granted || hit_ratio <= 0.0) return 0;
+    const std::size_t covered = granted < tensor_bytes ? granted : tensor_bytes;
+    double kept = static_cast<double>(covered) * hit_ratio;
+    if (kept <= 0.0) return 0;
+    if (context.model == CostModel::Linear) return static_cast<std::size_t>(kept);
+    // Whole lines only. A grant below one line is not a small amount of residency, it is
+    // none: the hardware cannot keep part of a line, and a model that says otherwise is
+    // exactly the model that made every admission rule look identical.
+    const std::size_t line = context.cache_line_bytes ? context.cache_line_bytes : 1;
+    const std::size_t lines = static_cast<std::size_t>(kept) / line;
+    return lines * line;
+}
+
+double survival(const Candidate& candidate, const CostContext& context) noexcept {
+    if (context.model == CostModel::Linear) return 1.0;
+    if (!context.budget_bytes) return 0.0;
+
+    // Interference: everything else that flows through the cache between two uses of this
+    // tensor. `reuse_bytes` is exactly that -- the bytes of OTHER traffic in between -- which
+    // is why the graph precomputes reuse distance in three currencies rather than one. A
+    // Stream hint on part of that traffic takes it out of the picture, and that is the only
+    // way a Stream action is worth anything at all.
+    double interfering = static_cast<double>(candidate.reuse_bytes);
+    const double relieved = static_cast<double>(context.stream_relieved_bytes) *
+                            context.stream_relief;
+    interfering = interfering > relieved ? interfering - relieved : 0.0;
+    if (interfering <= 0.0) return 1.0;
+
+    // Capacity against reuse distance, as a POWER LAW: the classic shape of a cache
+    // miss-ratio curve, and the shape the measurements pick. An exponential cannot fit the
+    // dense and the MoE batch-1 arms at once -- it needs its coefficient to differ by 3.4x
+    // between them -- while this one predicts both to within 0.006 points at beta = 0.11.
+    //
+    // `resident_here` is what THIS tensor holds, not what the plan holds in total, and that
+    // is where the coupling lives: a budget spread over more tensors gives each of them less,
+    // and the exponent makes the loss superlinear.
+    const double resident_here = static_cast<double>(context.resident_bytes);
+    if (resident_here <= 0.0) return 0.0;
+    const double ratio = resident_here / interfering;
+    if (ratio >= 1.0) return 1.0;
+    if (context.beta <= 0.0) return 1.0;
+    return std::pow(ratio, context.beta);
+}
+
+std::size_t reservation_cost_bytes(const CostContext& context) noexcept {
+    if (context.model == CostModel::Linear) return 0;
+    if (!context.l2_bytes || !context.step_traffic_bytes) return 0;
+    const double share = static_cast<double>(context.resident_bytes) /
+                         static_cast<double>(context.l2_bytes);
+    const double cost = context.reservation_cost * share *
+                        static_cast<double>(context.step_traffic_bytes);
+    return cost <= 0.0 ? 0 : static_cast<std::size_t>(cost);
+}
+
+std::size_t modelled_saving(const Candidate& candidate, std::size_t granted, double hit_ratio,
+                            const CostContext& context) {
+    if (context.model == CostModel::Linear)
+        return modelled_saving(candidate, granted, hit_ratio);
+    if (!candidate.bytes || !granted) return 0;
+    const std::size_t kept = resident_bytes(granted, candidate.bytes, hit_ratio, context);
+    if (!kept) return 0;
+    // This tensor's own residency drives its own survival, so the context is narrowed to it.
+    CostContext mine = context;
+    mine.resident_bytes = kept;
+    const double share = static_cast<double>(kept) / static_cast<double>(candidate.bytes);
+    const double saved = static_cast<double>(candidate.saved_bytes) * share *
+                         survival(candidate, mine);
     return saved <= 0.0 ? 0 : static_cast<std::size_t>(saved);
 }
 
@@ -248,17 +321,53 @@ void emit_prefetch(TransitPlan* plan, const std::vector<Candidate>& candidates,
 }
 
 void emit_stream_hints(TransitPlan* plan, const PlanInput& input,
-                       const TransitPlannerConfig& config) {
+                       const TransitPlannerConfig& config, std::size_t budget) {
     if (config.stream_roles.empty()) return;
     const TransitGraph& graph = *input.graph;
     const TensorRegistry& registry = *input.registry;
 
+    // Tensors this plan is already keeping. Telling one of them to stream would evict exactly
+    // what the plan just paid to hold.
+    std::vector<TensorId> persisted;
+    for (const TransitAction& action : plan->actions())
+        if (action.kind == TransitActionKind::Persist)
+            persisted.push_back(action.tensor);
+
     for (const TensorProfile& profile : graph.profiles()) {
         if (!config.stream_roles.has(profile.role)) continue;
-        // Only tensors with nothing to gain from residency. Marking a reused tensor as
-        // streaming would actively evict the thing a policy just paid to keep.
-        if (profile.has_reuse()) continue;
+        if (std::find(persisted.begin(), persisted.end(), profile.tensor) != persisted.end())
+            continue;
         if (profile.bytes < config.stream_min_bytes) continue;
+
+        // "Has nothing to gain from residency" is the right rule, and `has_reuse()` is the
+        // wrong test for it over a DECODE window.
+        //
+        // A decode token is one iteration of a loop, so the graph is cyclic and EVERY tensor
+        // is read again next iteration -- including the weight stream. Under `has_reuse()`
+        // alone, nothing in a decode graph is ever streamable, and the Stream action was
+        // therefore dead code in the one regime this project exists for. It is not that the
+        // weights are not re-read; it is that no cache this size can still be holding them
+        // when they are.
+        //
+        // So the test is survival, not reuse: a tensor that could not be kept even if it were
+        // given the WHOLE budget is one that will be re-fetched whatever anybody does, and
+        // saying so is free. Under the linear model there is no survival term, so the old
+        // rule is what remains -- which keeps every plan that model ever produced unchanged.
+        if (profile.has_reuse()) {
+            if (config.cost_model == CostModel::Linear) continue;
+            // More traffic runs between two uses than the whole budget could hold, so the
+            // line is gone before it comes back whatever anybody does. This is the same
+            // criterion `screen()` declines a candidate on -- DeclineReason::ReuseTooFar --
+            // read from the other side: a tensor that cannot be kept is one that can be told
+            // to get out of the way for free.
+            //
+            // Parameter-free on purpose. A threshold on survival would need a constant, and
+            // the power law is flat enough that any constant small enough to be defensible
+            // would never fire.
+            if (!budget) continue;
+            if (profile.min_reuse_bytes == static_cast<std::size_t>(-1)) continue;
+            if (profile.min_reuse_bytes <= budget) continue;
+        }
         const TensorDesc* desc = registry.find(profile.tensor);
         if (!desc) continue;
 
@@ -435,6 +544,74 @@ void finish_plan(TransitPlan* plan, const PlanInput& input, std::size_t budget,
     }
     cost.committed_bytes = committed;
     cost.predicted_saved_bytes = predicted;
+
+    // Re-price the finished plan under the configured cost model.
+    //
+    // Deliberately AFTER admission and in one place, because the residency model is not
+    // separable: a candidate's survival depends on how much the WHOLE plan is asking the
+    // partition to hold, which is not known while the admission rule is still deciding. An
+    // admission rule that wants to decide using this price asks for it explicitly -- see
+    // AdmissionRule::Survival -- and the difference between deciding with it and merely
+    // reporting it is the difference between a rule and a label.
+    //
+    // Plan DIGESTS are unaffected: the digest covers actions, and this changes only what they
+    // are predicted to be worth.
+    if (config.cost_model != CostModel::Linear) {
+        CostContext context = CostContext::from(config, budget, input);
+        // What the plan asks to keep resident, charged ONCE per tensor: per-consumer binding
+        // emits a Persist per consumer over the same region, and summing them would report a
+        // partition several times oversubscribed by a plan that fits.
+        std::vector<TensorId> seen;
+        for (const TransitAction& action : plan->actions()) {
+            if (action.kind != TransitActionKind::Persist) continue;
+            if (std::find(seen.begin(), seen.end(), action.tensor) != seen.end()) continue;
+            seen.push_back(action.tensor);
+            const TensorProfile* profile = input.graph->profile(action.tensor);
+            const std::size_t tensor_bytes = profile ? profile->bytes : action.bytes;
+            context.resident_bytes += resident_bytes(action.bytes, tensor_bytes,
+                                                     action.hit_ratio, context);
+        }
+        // A Stream hint is the only way the streaming half of the cache stops evicting the
+        // persisting half, and under the linear model it was worth exactly nothing.
+        for (const TransitAction& action : plan->actions())
+            if (action.kind == TransitActionKind::Stream)
+                context.stream_relieved_bytes += action.bytes;
+
+        std::size_t repriced = 0;
+        seen.clear();
+        for (TransitAction& action : plan->actions()) {
+            if (action.kind != TransitActionKind::Persist) continue;
+            const TensorProfile* profile = input.graph->profile(action.tensor);
+            if (!profile) continue;
+            Candidate candidate{};
+            candidate.tensor = action.tensor;
+            candidate.role = action.role;
+            candidate.profile = profile;
+            candidate.bytes = profile->bytes;
+            candidate.saved_bytes = profile->reused_bytes;
+            candidate.reuse_bytes = profile->min_reuse_bytes == static_cast<std::size_t>(-1)
+                                        ? 0
+                                        : profile->min_reuse_bytes;
+            action.expected_saved_bytes =
+                modelled_saving(candidate, action.bytes, action.hit_ratio, context);
+            if (std::find(seen.begin(), seen.end(), action.tensor) != seen.end()) continue;
+            seen.push_back(action.tensor);
+            repriced += action.expected_saved_bytes;
+        }
+        // What the reservation costs the traffic it displaces. Subtracted, not ignored: the
+        // persist family measures NEGATIVE on the concurrency arms, and a model with only a
+        // benefit term cannot express that -- which is why every prediction this repository
+        // made before 0.2.1 had the wrong sign there.
+        const std::size_t reservation = reservation_cost_bytes(context);
+        cost.predicted_saved_bytes = repriced > reservation ? repriced - reservation : 0;
+        cost.predicted_gross_saved_bytes = repriced;
+        cost.reservation_cost_bytes = reservation;
+        cost.resident_bytes = context.resident_bytes;
+        cost.stream_relieved_bytes = context.stream_relieved_bytes;
+    } else {
+        cost.resident_bytes = committed;
+    }
+    cost.cost_model = config.cost_model;
 
     plan->finalize();
 }

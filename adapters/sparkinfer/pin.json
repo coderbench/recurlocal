@@ -6,6 +6,7 @@
   "commit_subject": "perf(muse): let the NVFP4 prefill GEMMs run above 128 tokens (#1010)",
   "patch": "tensortransit-hook.patch",
   "patch_shape": "insertions only; no SparkInfer line is modified or removed",
+  "_percentile_itl_note": "The cb bench's percentile ITL is an INSTRUMENT addition, not a hook: it collects the per-token gaps the bench already timed into a request-local vector and prints p50/p95/p99 beside the mean and max it already printed. Request-local so the hot path takes no lock -- a mutex per decoded token across N threads would perturb the very latency being measured. The existing mean_itl_ms and max_itl_ms are untouched, so every command in results/ still means what it meant. TTF-1 scores p99_itl_ms as its tail objective, and a tail cannot be stood in for by a mean: a policy that halves the median while doubling the 99th makes serving worse and the mean better.",
   "model": {
     "repository": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
     "label": "Qwen3.8-27B, uniform NVFP4, 17.9 GB",
@@ -20,6 +21,10 @@
     "lin_conv_state_bytes_per_layer": 61440
   },
   "hook_sites": [
+    "runtime/examples/qwen3_gguf_cb_bench.cpp: per-request ITL collection and p50/p95/p99 print",
+    "runtime/src/models/qwen35.cpp: declare_kv_cache beside begin_token",
+    "runtime/src/models/qwen35.cpp: before_attention_layer / after_attention_layer around the full-attention block",
+    "runtime/src/models/qwen35.cpp: after_launch(Attention) after the flash-decode launches",
     "runtime/src/models/qwen35.cpp: begin_token before cudaStreamBeginCapture",
     "runtime/src/models/qwen35.cpp: before_layer at the top of the w.linear_attn block",
     "runtime/src/models/qwen35.cpp: after_launch(Conv) after launch_qwen36_conv_split*",

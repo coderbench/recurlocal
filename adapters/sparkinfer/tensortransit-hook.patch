@@ -15,6 +15,102 @@ index b0babf5..70f685f 100644
  # GPU observability (heat/power/clock) uses NVML when available; VRAM works without it. NVML ships
  # with the CUDA toolkit as CUDA::nvml — link + flag it when present so the build degrades cleanly
  # on boxes/toolkits without the NVML stub.
+diff --git a/runtime/examples/qwen3_gguf_cb_bench.cpp b/runtime/examples/qwen3_gguf_cb_bench.cpp
+index 6b37ad9..23db65f 100644
+--- a/runtime/examples/qwen3_gguf_cb_bench.cpp
++++ b/runtime/examples/qwen3_gguf_cb_bench.cpp
+@@ -22,8 +22,10 @@
+ #include "qwen_checkpoint.h"
+ 
+ #include <cuda_runtime.h>
++#include <algorithm>
+ #include <atomic>
+ #include <chrono>
++#include <mutex>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+@@ -142,6 +144,17 @@ int main(int argc, char** argv) {
+     std::atomic<int64_t> sum_decode_gap_us{0};
+     std::atomic<int64_t> max_decode_gap_us{0};
+     std::atomic<int> n_decode_gaps{0};
++    // Per-token decode gaps, so the bench can report PERCENTILE inter-token latency and not
++    // only a mean and a max. The tail is the objective a serving frontier is scored on, and a
++    // mean cannot stand in for it: a policy that halves the median while doubling the 99th
++    // makes serving worse and the mean better.
++    //
++    // Collected into a REQUEST-LOCAL vector and merged once when the request finishes, so the
++    // hot path takes no lock. A mutex per decoded token across N threads would perturb the
++    // very latency being measured. The atomics above are untouched, so mean_itl_ms and
++    // max_itl_ms still mean exactly what they meant before.
++    std::mutex itl_mutex;
++    std::vector<int64_t> itl_gaps_us;
+     std::atomic<int64_t> long_ttft_us{-1};   // submit -> first long-request token (prefill done)
+     std::atomic<int64_t> long_done_us{-1};   // submit -> long request complete
+ 
+@@ -152,6 +165,7 @@ int main(int argc, char** argv) {
+         req.max_new_tokens = n_new;
+         clock::time_point prev{};
+         bool have_prev = false;
++        std::vector<int64_t> local_gaps;
+         const auto t_submit = clock::now();
+         auto on_tok = [&](int) -> bool {
+             decode_tokens.fetch_add(1, std::memory_order_relaxed);
+@@ -173,6 +187,7 @@ int main(int argc, char** argv) {
+                        !max_decode_gap_us.compare_exchange_weak(prev_max, us,
+                                                                 std::memory_order_relaxed)) {
+                 }
++                local_gaps.push_back(us);
+                 if (long_started.load(std::memory_order_relaxed))
+                     first_decode_tokens.fetch_add(1, std::memory_order_relaxed);
+             }
+@@ -188,6 +203,10 @@ int main(int argc, char** argv) {
+             long_done_us.store(us, std::memory_order_relaxed);
+         }
+         if (!r.error.empty()) fprintf(stderr, "[warn] request error: %s\n", r.error.c_str());
++        if (track_itl && !local_gaps.empty()) {
++            std::lock_guard<std::mutex> lock(itl_mutex);
++            itl_gaps_us.insert(itl_gaps_us.end(), local_gaps.begin(), local_gaps.end());
++        }
+     };
+ 
+     // Warm one short request so weights/caches are resident.
+@@ -196,6 +215,7 @@ int main(int argc, char** argv) {
+     sum_decode_gap_us.store(0);
+     max_decode_gap_us.store(0);
+     n_decode_gaps.store(0);
++    itl_gaps_us.clear();
+     first_decode_tokens.store(0);
+     long_ttft_us.store(-1);
+     long_done_us.store(-1);
+@@ -223,6 +243,18 @@ int main(int argc, char** argv) {
+     const double itl_ms =
+         gaps > 0 ? (1e-3 * (double)sum_decode_gap_us.load() / (double)gaps) : 0.0;
+     const double max_itl_ms = 1e-3 * (double)max_decode_gap_us.load();
++    // Nearest-rank percentiles over the collected gaps. Deterministic, no interpolation
++    // choice to argue about, and reproducible from the same run.
++    std::sort(itl_gaps_us.begin(), itl_gaps_us.end());
++    auto pctl_ms = [&](double q) -> double {
++        if (itl_gaps_us.empty()) return 0.0;
++        size_t i = (size_t)(q * (double)itl_gaps_us.size());
++        if (i >= itl_gaps_us.size()) i = itl_gaps_us.size() - 1;
++        return 1e-3 * (double)itl_gaps_us[i];
++    };
++    const double p50_itl_ms = pctl_ms(0.50);
++    const double p95_itl_ms = pctl_ms(0.95);
++    const double p99_itl_ms = pctl_ms(0.99);
+     const double long_ttft_s =
+         long_ttft_us.load() > 0 ? 1e-6 * (double)long_ttft_us.load() : 0.0;
+     const double long_pp =
+@@ -231,6 +263,8 @@ int main(int argc, char** argv) {
+            policy_name(policy), concurrency, prompt_len, max_new, long_prefill);
+     printf("wall_s=%.3f decode_tokens=%d agg_tok_s=%.1f mean_itl_ms=%.2f max_itl_ms=%.2f\n",
+            wall_s, toks, wall_s > 0 ? toks / wall_s : 0.0, itl_ms, max_itl_ms);
++    printf("p50_itl_ms=%.3f p95_itl_ms=%.3f p99_itl_ms=%.3f itl_samples=%zu\n",
++           p50_itl_ms, p95_itl_ms, p99_itl_ms, itl_gaps_us.size());
+     printf("long_ttft_s=%.3f long_prefill_pp=%.1f tokens_while_long_active=%d\n", long_ttft_s,
+            long_pp, first_decode_tokens.load());
+     (void)t0;
 diff --git a/runtime/src/models/qwen35.cpp b/runtime/src/models/qwen35.cpp
 index 8646140..382d0c7 100644
 --- a/runtime/src/models/qwen35.cpp

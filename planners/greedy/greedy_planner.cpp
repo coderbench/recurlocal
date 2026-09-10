@@ -56,7 +56,7 @@ public:
         }
 
         detail::emit_prefetch(&plan, candidates, config_, input);
-        detail::emit_stream_hints(&plan, input, config_);
+        detail::emit_stream_hints(&plan, input, config_, budget);
         detail::finish_plan(&plan, input, budget, declined, config_.persist_roles, config_);
         return plan;
     }

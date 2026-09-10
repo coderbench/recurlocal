@@ -54,6 +54,21 @@ enum class AdmissionRule : int {
     // an optimal cache would do if it evicted rather than admitted. Differs from Density
     // exactly when the soonest-needed tensor is not the densest one.
     ReuseOrder = 3,
+    // Greedy on MARGINAL saving under the residency cost model, stopping when the next
+    // admission would make the plan worse.
+    //
+    // This is the rule the linear model cannot express, and the reason the cost model had to
+    // change first. Under `saved = reused x (granted/bytes) x hit_ratio` the total is a
+    // fractional knapsack and greedy-on-density is PROVABLY optimal, so Density cannot be
+    // beaten and every other rule here is measuring nothing. The residency model couples the
+    // candidates -- one tensor's survival depends on how much the whole admitted set is
+    // asking the partition to hold -- and once it does, admitting one more tensor can lower
+    // the total. Density keeps going; this stops.
+    //
+    // Inert under CostModel::Linear, where the marginal saving never decreases and this is
+    // exactly Density. That equivalence is asserted by a test, so the rule cannot quietly
+    // become something else on the model it was supposed to reduce to.
+    Survival = 5,
     // Reserve a floor for each role that has reuse, then spend the remainder by Density.
     //
     // This is the rule the multi-tensor claim stands on. Density on a mixed workload is
@@ -67,6 +82,7 @@ enum class AdmissionRule : int {
 
 const char* to_string(AdmissionRule rule) noexcept;
 bool parse_admission_rule(const char* text, AdmissionRule* out) noexcept;
+
 
 // When a prefetch is issued relative to the consumer that needs the data.
 enum class PrefetchTiming : int {
@@ -191,6 +207,32 @@ struct TransitPlannerConfig {
     // without evicting what does. The counterpart to Persist, and the other half of the
     // "shared L2 budget" the multi-tensor claim is about.
     std::size_t stream_min_bytes = 1024 * 1024;
+
+    // --- the cost model ---------------------------------------------------------------
+    // Defaults to Residency: it fits the measured arms better than Linear does (rms 0.34
+    // against 0.55 points over eight arms on two architectures) and Linear's linearity is
+    // what made the admission axis unmeasurable. Plan DIGESTS are unaffected -- the digest
+    // covers actions, not predictions -- so this changes what a plan is predicted to be
+    // worth and not what it does, except where a rule chooses using the price.
+    CostModel cost_model = CostModel::Residency;
+    // The survival exponent. Fitted to 0.1108 against the resolved paired arms; it is the
+    // curvature of the cache's miss-ratio curve, and the reason concentrating budget beats
+    // spreading it. 0.0 collapses survival to 1 and this model to the linear one, which is
+    // how a contributor checks that a result is about the policy and not about the model.
+    double residency_beta = 0.1108;
+    // What the reservation COSTS the traffic it displaces, as a share of the step per unit of
+    // L2 taken. Fitted to 0.00086. Small, and it is what makes the model able to say that a
+    // policy is not worth its set-aside -- which is what the concurrency arms measure and
+    // what SetAsidePolicy::Residency was built to act on without a term to justify it.
+    double reservation_cost = 0.00086;
+    // How much of a Stream-hinted tensor's traffic stops interfering with a persisting line.
+    // 1.0 is "the hint works perfectly", which is optimistic and UNMEASURED; it is a dial
+    // rather than a constant so that the first measurement of it has somewhere to go.
+    double stream_relief = 1.0;
+    // Residency is quantised to this. A grant that cannot hold one whole line holds nothing:
+    // there is no 30% of a byte, and pricing one is how the linear model came to flatten
+    // AdmissionRule::Quota to a thousandth of a point.
+    std::size_t cache_line_bytes = 128;
 
     // --- limits ----------------------------------------------------------------------
     // Hard cap on plan size. A planner that emitted an action per tensor per kernel would
