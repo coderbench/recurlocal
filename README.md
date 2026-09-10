@@ -26,8 +26,8 @@ YES  a future-use graph
 ## The answer this project already has, before you read the rest
 
 RecurLocal — now the recurrent-state workload inside TensorTransit — asked whether a
-persisting-L2 policy over recurrent state could produce a scorable end-to-end speedup. It
-cannot, on any device this project can reach, **and the reason is arithmetic rather than
+persisting-L2 policy over recurrent state could produce a large end-to-end **throughput** gain.
+It cannot, on any device this project can reach, **and the reason is arithmetic rather than
 implementation**:
 
 ```text
@@ -42,7 +42,9 @@ best measured real gain is **+1.74% at batch 1**, on a checkpoint that **cannot 
 because the runtime is not reproducible on it.
 
 **The 0.2 generalization does not repeal that bound.** It relocates it: the bound applies to one
-planner (`recurrent_v0`) over one tensor class, rather than to the project.
+planner (`recurrent_v0`) over one tensor class, rather than to the project. And it bounds
+throughput specifically — it says nothing about latency, which is the other half of what a
+serving frontier is, and which nothing here has ever measured.
 
 **0.2.1 draws the consequence for how work here is scored.** Until 0.2.1 a submission was
 sorted into `XS`/`S`/`M`/`L`/`XL` with the lowest paying step at 2% weighted throughput gain —
