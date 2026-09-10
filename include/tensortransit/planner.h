@@ -59,15 +59,23 @@ enum class AdmissionRule : int {
     //
     // This is the rule the linear model cannot express, and the reason the cost model had to
     // change first. Under `saved = reused x (granted/bytes) x hit_ratio` the total is a
-    // fractional knapsack and greedy-on-density is PROVABLY optimal, so Density cannot be
-    // beaten and every other rule here is measuring nothing. The residency model couples the
-    // candidates -- one tensor's survival depends on how much the whole admitted set is
-    // asking the partition to hold -- and once it does, admitting one more tensor can lower
-    // the total. Density keeps going; this stops.
+    // fractional knapsack: every admission adds a non-negative amount and greedy-on-density
+    // is PROVABLY optimal, so nothing can ever stop early and Density cannot be beaten.
     //
-    // Inert under CostModel::Linear, where the marginal saving never decreases and this is
-    // exactly Density. That equivalence is asserted by a test, so the rule cannot quietly
-    // become something else on the model it was supposed to reduce to.
+    // Under CostModel::Residency an admission has a PRICE as well as a value -- the
+    // reservation is taken from the same L2 the weight and KV streams use, and the model
+    // charges for it -- so the marginal admission can be negative and stopping can be right.
+    // Density has no way to say that.
+    //
+    // The rest of the residency model's advantage over Density is not in this rule and should
+    // not be attributed to it: `saved` goes as resident^(1+beta), so a budget spread thinly
+    // pays less than the same budget concentrated. That difference is expressed in how a rule
+    // SHAPES its grants -- Quota keeps tensors whole, Proportional shaves all of them -- and
+    // it is why those two separate by 23x under this model against 10.5x under the linear one.
+    //
+    // Inert under CostModel::Linear, where there is no reservation cost, the marginal saving
+    // never decreases, and this is exactly Density. That equivalence is asserted by a test, so
+    // the rule cannot quietly become something else on the model it reduces to.
     Survival = 5,
     // Reserve a floor for each role that has reuse, then spend the remainder by Density.
     //

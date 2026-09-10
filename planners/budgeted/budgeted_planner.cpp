@@ -243,11 +243,15 @@ private:
     // else on the model it reduces to would make every comparison against Density a
     // comparison against a moving target.
     //
-    // Under CostModel::Residency it is not Density, and the reason is the whole point of that
-    // model: survival depends on what the WHOLE admitted set is asking the partition to hold,
-    // so admitting one more tensor lowers every already-admitted tensor's saving. Past a
-    // point the total falls, and the right move is to stop -- which is a thing a fractional
-    // knapsack can never say.
+    // Under CostModel::Residency it is not, because an admission there has a PRICE as well as
+    // a value: the reservation is taken from the same L2 the weight and KV streams use and the
+    // model charges for it, so the marginal admission can be negative and stopping can be
+    // right. A fractional knapsack can never say that.
+    //
+    // What this rule is NOT is the whole of the residency model's advantage over Density. The
+    // superlinearity -- saved goes as resident^(1+beta) -- is expressed in how a rule SHAPES
+    // its grants, not in when it stops, and that is why Quota and Proportional separate by 23x
+    // under this model against 10.5x under the linear one.
     std::vector<Grant> admit_survival(std::vector<detail::Candidate>& candidates,
                                       std::size_t budget, const PlanInput& input,
                                       std::vector<TransitDecline>* declined) const {

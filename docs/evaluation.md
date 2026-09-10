@@ -122,10 +122,17 @@ asks every recurrent layer for a shaved hit ratio. On the golden KV trace that i
 than concentrating under this model and 10.5x worse under the linear one, so the model does not
 merely change the magnitudes — it makes the admission axis a thing a contributor can move.
 
-`AdmissionRule::Survival` is the rule that exploits it: greedy on marginal saving, stopping
-when the next admission would make the plan worse. Under `--cost-model linear` it is *exactly*
-`density`, and a test asserts that, so a comparison against `density` is not a comparison
-against a moving target.
+Two different things follow, and they should not be confused:
+
+- **The shape of the grants.** Whether a rule keeps tensors whole or shaves all of them is now
+  worth 23x rather than 10.5x. That is `Quota` against `Proportional`, and it is the part that
+  makes the admission axis measure something.
+- **When to stop.** An admission now has a *price* as well as a value, because the reservation
+  is charged what it costs the traffic it displaces. `AdmissionRule::Survival` is greedy on
+  marginal saving and stops when the next admission would make the plan worse — which a
+  fractional knapsack can never say. Under `--cost-model linear` it is *exactly* `density`, and
+  a test asserts that, so a comparison against `density` is not a comparison against a moving
+  target.
 
 Both models ship. `--cost-model linear` is the control, and it is how a contributor checks
 whether a result is about the policy or about the model.
