@@ -1,8 +1,19 @@
 {
- "canonical_receipts": 0,
+ "canonical_receipts": 1,
  "compounded_expansion_percent": 0.0,
  "generation": "TTF-1",
- "history": [],
+ "history": [
+  {
+   "candidate_commit": "f89b1291142cab50757516d6115109724d6aa136",
+   "content_digest": "sha256:082fdcef93aa711aa0e81f08263802433ccbfe7f80568cc94614974b9d83f9cf",
+   "gain_percent": -4.692052097581123,
+   "pr": null,
+   "receipt": "baseline-0.2.1-persist",
+   "status": "NO_FRONTIER_GAIN",
+   "timestamp_utc": "2026-09-10T11:16:20+00:00",
+   "verified_gain_percent": 0.0
+  }
+ ],
  "note": "Compounded multiplicatively: each dF is measured against the `main` of its own moment, so two +5% contributions are +10.25% together, not +10%. Receipts with any status other than FRONTIER_GAIN credit nothing and are listed for audit.",
  "superseded_receipts": [],
  "verified_frontier_receipts": 0

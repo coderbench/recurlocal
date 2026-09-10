@@ -446,7 +446,37 @@ more than a cell's spread would score whatever the traffic budget says.
 That is an opening rather than a result. Measured, the shipped policy moves it the wrong way:
 +1.246% at `ctx128-c1` against a 0.94% spread — resolved, and worse. Section 8 has the rest.
 
-## 8. The first full TTF-1 matrix, and what it says about the matrix
+## 8. The canonical receipt, and the first full matrix that produced it
+
+The generation has now been run twice. The second run is the canonical one
+(`results/rtx5090-ttf1-canonical.json`, `frontier/TTF-1/receipts/baseline-0.2.1-persist.json`),
+and the difference between them is entirely in the ruler:
+
+| | first run | canonical |
+|---|--:|--:|
+| Frontier Gain | **−99.5152%** | **−4.6921%** |
+| cells scored | 10 | 8 |
+| cells at the generation's floor | 5 | **0** |
+| cells attributed to the runtime | — | 2 |
+
+Same generation, same policy, same box, three paired repeats each. What changed: the
+packed-path guard stopped dividing decode steps by a count that includes prefill chunks, so
+`ctx4096-c16` and `ctx4096-c32` are measured rather than refused; `ctx4096-c4` and `ctx16384-c4`
+are attributed to the runtime by a probe running no policy and are not scored; and `ctx128-c32`
+no longer reaches the floor on a p99 whose calibrated spread is 481%.
+
+**Eight cells scored, eight negative, none improved.** Goodput: −0.290% at `ctx128-c1`, −0.272%
+at `ctx128-c4`, −0.409% at `ctx128-c16`, −1.103% at `ctx128-c32`, −0.180% at `ctx4096-c1`,
+−0.754% at `ctx4096-c16`, −6.667% at `ctx4096-c32`, −0.444% at `ctx16384-c1`. Five of the eight
+resolve against that cell's published spread. The receipt credits nothing, as every
+`NO_FRONTIER_GAIN` does, and it is PARTIAL on its face.
+
+The scheduling-outlier detector — built the same day from a single observed instance — caught
+two more runs in this matrix: `ctx128-c32` repeat 1 at 9.53x its group's non-decode step count
+(576.9 tok/s against a median of 887.7) and `ctx4096-c32` repeat 3 at 4.6x (118.0 against
+168.0). The second is most of why `ctx4096-c32` reads −6.667%. Both are named on the receipt.
+
+### 8a. The first full matrix, and what it says about the matrix
 
 Every earlier measurement here used three cells. This is the whole generation: ten cells,
 `control` against `persist`, three paired repeats, interleaved, token-exact with three

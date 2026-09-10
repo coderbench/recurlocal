@@ -108,6 +108,7 @@
     "results/rtx5090-0.2.1-arms.json",
     "results/rtx5090-0.2.1-c32-latency.json",
     "results/rtx5090-0.2.1-concurrency-blind-graph.json",
+    "results/rtx5090-0.2.1-five-arms.json",
     "results/rtx5090-0.2.1-null-control.json",
     "results/rtx5090-0.2.1-rewiring-check.json",
     "results/rtx5090-baseline-matrix.json",

@@ -1,0 +1,1213 @@
+{
+ "schema_version": 1,
+ "what_this_is": "THE CANONICAL TTF-1 RECEIPT. The whole ten-cell generation, control against the shipped `persist` policy, three paired interleaved repeats, token-exact against three reproducible control replays -- re-run after the first attempt exposed five defects in the evaluator. Its receipt is the first entry in frontier/TTF-1/receipts/.",
+ "provenance": {
+  "attribution": {
+   "probed": [
+    "ctx16384-c4",
+    "ctx4096-c4"
+   ],
+   "verdicts": {
+    "ctx4096-c4": {
+     "verdict": "runtime",
+     "probe_status": "UNBATCHED",
+     "probe_config": "hook installed, no window (TENSORTRANSIT=baseline)",
+     "probe_binary": "the baseline build's qwen3_gguf_cb_bench",
+     "guard": "max_rows_seen=0, tokens_packed=0 of 266: not one decode step batched more than a single row, with NO policy running",
+     "probe_measured": {
+      "goodput_tps": 63.7,
+      "max_rows_seen": 0,
+      "tokens_packed": 0,
+      "tokens": 266
+     },
+     "source": "results/rtx5090-ttf1-first-matrix.json attribution_probe, same box, same runtime commit, same cells; the probe also re-ran both at four times the decode length and max_rows_seen stayed 0"
+    },
+    "ctx16384-c4": {
+     "verdict": "runtime",
+     "probe_status": "UNBATCHED",
+     "probe_config": "hook installed, no window (TENSORTRANSIT=baseline)",
+     "probe_binary": "the baseline build's qwen3_gguf_cb_bench",
+     "guard": "max_rows_seen=0, tokens_packed=0 of 266: not one decode step batched more than a single row, with NO policy running",
+     "probe_measured": {
+      "goodput_tps": 29.6,
+      "max_rows_seen": 0,
+      "tokens_packed": 0,
+      "tokens": 266
+     },
+     "source": "results/rtx5090-ttf1-first-matrix.json attribution_probe, same box, same runtime commit, same cells; the probe also re-ran both at four times the decode length and max_rows_seen stayed 0"
+    }
+   },
+   "skipped": false,
+   "note": "The probe run inside this matrix returned UNHOOKED for both cells -- its environment did not ask the adapter to print its counters, which is a defect in the runner fixed in the same commit as this file. The verdicts here come from the dedicated probe of the same two cells on the same box."
+  },
+  "baseline_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "candidate_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "cells_requested": [
+   "ctx128-c1",
+   "ctx4096-c1",
+   "ctx16384-c1",
+   "ctx128-c4",
+   "ctx4096-c4",
+   "ctx16384-c4",
+   "ctx128-c16",
+   "ctx4096-c16",
+   "ctx128-c32",
+   "ctx4096-c32"
+  ],
+  "correctness": {
+   "compared_against": "baseline build",
+   "control_binary": "/root/work/si-work/sparkinfer/build/runtime/qwen3_gguf_generate",
+   "control_replays": 3,
+   "correctness": "PASS",
+   "method": "greedy replay, token-exact",
+   "runtime_reproducible": true,
+   "tokens_compared": 64
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "hardware": {
+   "count": 1,
+   "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "instances": "public_only",
+  "long_prefill": 4096,
+  "main_concurrency_scaling": {
+   "ctx128-c16": {
+    "baseline_cell": "ctx128-c1",
+    "concurrency": 16,
+    "scale": 8.143,
+    "share_of_ideal": 0.509
+   },
+   "ctx128-c32": {
+    "baseline_cell": "ctx128-c1",
+    "concurrency": 32,
+    "scale": 13.009,
+    "share_of_ideal": 0.407
+   },
+   "ctx128-c4": {
+    "baseline_cell": "ctx128-c1",
+    "concurrency": 4,
+    "scale": 3.191,
+    "share_of_ideal": 0.798
+   },
+   "ctx16384-c4": {
+    "baseline_cell": "ctx16384-c1",
+    "concurrency": 4,
+    "scale": 1.316,
+    "share_of_ideal": 0.329
+   },
+   "ctx4096-c16": {
+    "baseline_cell": "ctx4096-c1",
+    "concurrency": 16,
+    "scale": 2.624,
+    "share_of_ideal": 0.164
+   },
+   "ctx4096-c32": {
+    "baseline_cell": "ctx4096-c1",
+    "concurrency": 32,
+    "scale": 3.237,
+    "share_of_ideal": 0.101
+   },
+   "ctx4096-c4": {
+    "baseline_cell": "ctx4096-c1",
+    "concurrency": 4,
+    "scale": 1.149,
+    "share_of_ideal": 0.287
+   }
+  },
+  "max_new": 64,
+  "mode": "authoritative",
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "repeats": 3,
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  },
+  "scheduling_outliers": [
+   {
+    "cell": "ctx128-c32",
+    "config_id": "persist",
+    "goodput_tps": 576.9,
+    "group_median_goodput_tps": 887.7,
+    "group_median_non_decode_steps": 15,
+    "non_decode_steps": 143,
+    "note": "the run bracketed far more steps than its siblings for the same decode work, which is the runtime scheduling the requests serially rather than co-scheduling them. Reported, not refused: it is a property of the runtime and it hits whichever arm is running.",
+    "ratio": 9.53,
+    "repeat": 1,
+    "variant": "candidate"
+   },
+   {
+    "cell": "ctx4096-c32",
+    "config_id": "persist",
+    "goodput_tps": 118.0,
+    "group_median_goodput_tps": 168.0,
+    "group_median_non_decode_steps": 140,
+    "non_decode_steps": 644,
+    "note": "the run bracketed far more steps than its siblings for the same decode work, which is the runtime scheduling the requests serially rather than co-scheduling them. Reported, not refused: it is a property of the runtime and it hits whichever arm is running.",
+    "ratio": 4.6,
+    "repeat": 3,
+    "variant": "candidate"
+   }
+  ]
+ },
+ "receipt": {
+  "aggregation": {
+   "cell_floor": 1e-06,
+   "cells_at_floor": {
+    "candidate": [],
+    "main": []
+   },
+   "floor_decided": false,
+   "floor_decided_inside_published_noise": [],
+   "method": "geometric_mean",
+   "weights": {
+    "ctx128-c1": 1.0,
+    "ctx128-c16": 1.0,
+    "ctx128-c32": 1.0,
+    "ctx128-c4": 1.0,
+    "ctx16384-c1": 1.0,
+    "ctx4096-c1": 1.0,
+    "ctx4096-c16": 1.0,
+    "ctx4096-c32": 1.0
+   }
+  },
+  "baseline_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "benchmark_generation": "TTF-1",
+  "candidate_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "cell_objectives": {
+   "ctx128-c1": [
+    {
+     "direction": "max",
+     "hi": 278.4,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 48.546,
+     "unit": "ms"
+    }
+   ],
+   "ctx128-c16": [
+    {
+     "direction": "max",
+     "hi": 2265.2,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 135.729,
+     "unit": "ms"
+    }
+   ],
+   "ctx128-c32": [
+    {
+     "direction": "max",
+     "hi": 3636.8,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 136.494,
+     "unit": "ms"
+    }
+   ],
+   "ctx128-c4": [
+    {
+     "direction": "max",
+     "hi": 888.4,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 112.92,
+     "unit": "ms"
+    }
+   ],
+   "ctx16384-c1": [
+    {
+     "direction": "max",
+     "hi": 90.4,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 50.988,
+     "unit": "ms"
+    }
+   ],
+   "ctx4096-c1": [
+    {
+     "direction": "max",
+     "hi": 224.0,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 48.882,
+     "unit": "ms"
+    }
+   ],
+   "ctx4096-c16": [
+    {
+     "direction": "max",
+     "hi": 588.0,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 141.822,
+     "unit": "ms"
+    }
+   ],
+   "ctx4096-c32": [
+    {
+     "direction": "max",
+     "hi": 726.0,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 167.94,
+     "unit": "ms"
+    }
+   ]
+  },
+  "cell_resolution": {
+   "ctx128-c1": {
+    "goodput_tps": {
+     "candidate_median": 68.8,
+     "configuration": "persist",
+     "main_median": 69.0,
+     "observed_change_pct": 0.28985507246377223,
+     "per_configuration_change_pct": {
+      "persist": 0.28985507246377223
+     },
+     "published_control_spread_pct": 0.1437,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.155,
+     "configuration": "persist",
+     "main_median": 16.719,
+     "observed_change_pct": 2.6078114719779886,
+     "per_configuration_change_pct": {
+      "persist": 2.6078114719779886
+     },
+     "published_control_spread_pct": 0.9393,
+     "resolves": true
+    }
+   },
+   "ctx128-c16": {
+    "goodput_tps": {
+     "candidate_median": 559.6,
+     "configuration": "persist",
+     "main_median": 561.9,
+     "observed_change_pct": 0.40932550275848983,
+     "per_configuration_change_pct": {
+      "persist": 0.40932550275848983
+     },
+     "published_control_spread_pct": 0.4238,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 44.824,
+     "configuration": "persist",
+     "main_median": 43.824,
+     "observed_change_pct": 2.281854691493246,
+     "per_configuration_change_pct": {
+      "persist": 2.281854691493246
+     },
+     "published_control_spread_pct": 6.6927,
+     "resolves": false
+    }
+   },
+   "ctx128-c32": {
+    "goodput_tps": {
+     "candidate_median": 887.7,
+     "configuration": "persist",
+     "main_median": 897.6,
+     "observed_change_pct": 1.1029411764705856,
+     "per_configuration_change_pct": {
+      "persist": 1.1029411764705856
+     },
+     "published_control_spread_pct": 1.7378,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 48.709,
+     "configuration": "persist",
+     "main_median": 46.309,
+     "observed_change_pct": 5.182577900624081,
+     "per_configuration_change_pct": {
+      "persist": 5.182577900624081
+     },
+     "published_control_spread_pct": 481.0431,
+     "resolves": false
+    }
+   },
+   "ctx128-c4": {
+    "goodput_tps": {
+     "candidate_median": 219.6,
+     "configuration": "persist",
+     "main_median": 220.2,
+     "observed_change_pct": 0.27247956403269497,
+     "per_configuration_change_pct": {
+      "persist": 0.27247956403269497
+     },
+     "published_control_spread_pct": 0.09,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 39.357,
+     "configuration": "persist",
+     "main_median": 38.779,
+     "observed_change_pct": 1.4904974341782815,
+     "per_configuration_change_pct": {
+      "persist": 1.4904974341782815
+     },
+     "published_control_spread_pct": 0.7784,
+     "resolves": true
+    }
+   },
+   "ctx16384-c1": {
+    "goodput_tps": {
+     "candidate_median": 22.4,
+     "configuration": "persist",
+     "main_median": 22.5,
+     "observed_change_pct": 0.44444444444445075,
+     "per_configuration_change_pct": {
+      "persist": 0.44444444444445075
+     },
+     "published_control_spread_pct": 0.0,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.645,
+     "configuration": "persist",
+     "main_median": 17.307,
+     "observed_change_pct": 1.9529670075691972,
+     "per_configuration_change_pct": {
+      "persist": 1.9529670075691972
+     },
+     "published_control_spread_pct": 1.871,
+     "resolves": true
+    }
+   },
+   "ctx4096-c1": {
+    "goodput_tps": {
+     "candidate_median": 55.5,
+     "configuration": "persist",
+     "main_median": 55.6,
+     "observed_change_pct": 0.17985611510791621,
+     "per_configuration_change_pct": {
+      "persist": 0.17985611510791621
+     },
+     "published_control_spread_pct": 0.1786,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.273,
+     "configuration": "persist",
+     "main_median": 16.725,
+     "observed_change_pct": 3.2765321375186742,
+     "per_configuration_change_pct": {
+      "persist": 3.2765321375186742
+     },
+     "published_control_spread_pct": 1.2888,
+     "resolves": true
+    }
+   },
+   "ctx4096-c16": {
+    "goodput_tps": {
+     "candidate_median": 144.8,
+     "configuration": "persist",
+     "main_median": 145.9,
+     "observed_change_pct": 0.7539410555174738,
+     "per_configuration_change_pct": {
+      "persist": 0.7539410555174738
+     },
+     "published_control_spread_pct": 0.2041,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 51.071,
+     "configuration": "persist",
+     "main_median": 48.092,
+     "observed_change_pct": 6.194377443233801,
+     "per_configuration_change_pct": {
+      "persist": 6.194377443233801
+     },
+     "published_control_spread_pct": 4.8462,
+     "resolves": true
+    }
+   },
+   "ctx4096-c32": {
+    "goodput_tps": {
+     "candidate_median": 168.0,
+     "configuration": "persist",
+     "main_median": 180.0,
+     "observed_change_pct": 6.666666666666667,
+     "per_configuration_change_pct": {
+      "persist": 6.666666666666667
+     },
+     "published_control_spread_pct": 39.0083,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 52.778,
+     "configuration": "persist",
+     "main_median": 55.686,
+     "observed_change_pct": 5.222138418992209,
+     "per_configuration_change_pct": {
+      "persist": 5.222138418992209
+     },
+     "published_control_spread_pct": 41.6631,
+     "resolves": false
+    }
+   }
+  },
+  "cells": {
+   "ctx128-c1": {
+    "gain": -0.01512848219745977,
+    "hypervolume": {
+     "candidate": 0.16003010505263168,
+     "main": 0.16248830650488624
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": true,
+    "weight": 1.0
+   },
+   "ctx128-c16": {
+    "gain": -0.013345237343834082,
+    "hypervolume": {
+     "candidate": 0.165723533934146,
+     "main": 0.1679650676271028
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": true,
+    "weight": 1.0
+   },
+   "ctx128-c32": {
+    "gain": -0.04384213644027646,
+    "hypervolume": {
+     "candidate": 0.15592428998634011,
+     "main": 0.16307379349037876
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx128-c4": {
+    "gain": -0.009147732979655876,
+    "hypervolume": {
+     "candidate": 0.16125204908129867,
+     "main": 0.16274075808113164
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx16384-c1": {
+    "gain": -0.014435174463676703,
+    "hypervolume": {
+     "candidate": 0.1620377794948803,
+     "main": 0.16441108214946978
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx4096-c1": {
+    "gain": -0.018931336694271605,
+    "hypervolume": {
+     "candidate": 0.16021632086306967,
+     "main": 0.1633079588162748
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx4096-c16": {
+    "gain": -0.029098075224476494,
+    "hypervolume": {
+     "candidate": 0.15929133933050313,
+     "main": 0.16406532448406871
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx4096-c32": {
+    "gain": -0.04355088795275541,
+    "hypervolume": {
+     "candidate": 0.15868201650136757,
+     "main": 0.1659074325049186
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   }
+  },
+  "configurations": {
+   "candidate": [
+    "persist"
+   ],
+   "main": [
+    "control"
+   ]
+  },
+  "content_digest": "sha256:082fdcef93aa711aa0e81f08263802433ccbfe7f80568cc94614974b9d83f9cf",
+  "correctness": "PASS",
+  "correctness_compared_against": "baseline build",
+  "correctness_method": "greedy replay, token-exact",
+  "coverage": {
+   "improved_cells": 0,
+   "missing_cells": [],
+   "neutral_cells": 0,
+   "partial": true,
+   "regressed_cells": 8,
+   "scheduling_outliers": [
+    {
+     "cell": "ctx128-c32",
+     "config_id": "persist",
+     "goodput_tps": 576.9,
+     "group_median_goodput_tps": 887.7,
+     "group_median_non_decode_steps": 15,
+     "non_decode_steps": 143,
+     "note": "the run bracketed far more steps than its siblings for the same decode work, which is the runtime scheduling the requests serially rather than co-scheduling them. Reported, not refused: it is a property of the runtime and it hits whichever arm is running.",
+     "ratio": 9.53,
+     "repeat": 1,
+     "variant": "candidate"
+    },
+    {
+     "cell": "ctx4096-c32",
+     "config_id": "persist",
+     "goodput_tps": 118.0,
+     "group_median_goodput_tps": 168.0,
+     "group_median_non_decode_steps": 140,
+     "non_decode_steps": 644,
+     "note": "the run bracketed far more steps than its siblings for the same decode work, which is the runtime scheduling the requests serially rather than co-scheduling them. Reported, not refused: it is a property of the runtime and it hits whichever arm is running.",
+     "ratio": 4.6,
+     "repeat": 3,
+     "variant": "candidate"
+    }
+   ],
+   "scored_cells": 8,
+   "total_cells": 10,
+   "unservable_cells": [
+    "ctx16384-c4",
+    "ctx4096-c4"
+   ],
+   "unservable_evidence": {
+    "ctx16384-c4": {
+     "guard": "max_rows_seen=0, tokens_packed=0 of 266: not one decode step batched more than a single row, with NO policy running",
+     "probe_binary": "the baseline build's qwen3_gguf_cb_bench",
+     "probe_config": "hook installed, no window (TENSORTRANSIT=baseline)",
+     "probe_measured": {
+      "goodput_tps": 29.6,
+      "max_rows_seen": 0,
+      "tokens": 266,
+      "tokens_packed": 0
+     },
+     "probe_status": "UNBATCHED",
+     "source": "results/rtx5090-ttf1-first-matrix.json attribution_probe, same box, same runtime commit, same cells; the probe also re-ran both at four times the decode length and max_rows_seen stayed 0",
+     "verdict": "runtime"
+    },
+    "ctx4096-c4": {
+     "guard": "max_rows_seen=0, tokens_packed=0 of 266: not one decode step batched more than a single row, with NO policy running",
+     "probe_binary": "the baseline build's qwen3_gguf_cb_bench",
+     "probe_config": "hook installed, no window (TENSORTRANSIT=baseline)",
+     "probe_measured": {
+      "goodput_tps": 63.7,
+      "max_rows_seen": 0,
+      "tokens": 266,
+      "tokens_packed": 0
+     },
+     "probe_status": "UNBATCHED",
+     "source": "results/rtx5090-ttf1-first-matrix.json attribution_probe, same box, same runtime commit, same cells; the probe also re-ran both at four times the decode length and max_rows_seen stayed 0",
+     "verdict": "runtime"
+    }
+   }
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "failures": {
+   "candidate:UNBATCHED": 6
+  },
+  "frontier": {
+   "after": 0.15615798453648153,
+   "before": 0.16384571063933095,
+   "credit_withheld": null,
+   "gain_percent": -4.692052097581123,
+   "verified_gain_percent": 0.0
+  },
+  "generation_checksum": "sha256:0aa32b091ad0830e7e6c2d45af527286064fcdd8e33c26ac20d9ac414f0a1817",
+  "hardware": {
+   "count": 1,
+   "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "instances": "public_only",
+  "mode": "authoritative",
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "objectives": [
+   {
+    "direction": "max",
+    "hi": 4000.0,
+    "key": "goodput_tps",
+    "lo": 0.0,
+    "unit": "tok/s"
+   },
+   {
+    "direction": "min",
+    "hi": 0.0,
+    "key": "p99_itl_ms",
+    "lo": 200.0,
+    "unit": "ms"
+   }
+  ],
+  "pr": null,
+  "receipt_schema_version": 1,
+  "reference_point": [
+   0.0,
+   0.0
+  ],
+  "regression_guard": {
+   "max_regression": 0.05,
+   "protected_cells": [
+    "ctx128-c1",
+    "ctx128-c16"
+   ],
+   "violations": []
+  },
+  "resolution_summary": {
+   "goodput_tps": {
+    "resolved_cells": [
+     "ctx128-c1",
+     "ctx128-c4",
+     "ctx16384-c1",
+     "ctx4096-c1",
+     "ctx4096-c16"
+    ],
+    "resolved_of_scored": "5/8",
+    "resolved_weight_share": 0.625,
+    "unknown_weight_share": 0.0
+   },
+   "p99_itl_ms": {
+    "resolved_cells": [
+     "ctx128-c1",
+     "ctx128-c4",
+     "ctx16384-c1",
+     "ctx4096-c1",
+     "ctx4096-c16"
+    ],
+    "resolved_of_scored": "5/8",
+    "resolved_weight_share": 0.625,
+    "unknown_weight_share": 0.0
+   }
+  },
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  },
+  "statistics": {
+   "candidate_spread_pct": 5.547346211225179,
+   "confidence_level": 0.99,
+   "confidence_qualifies": false,
+   "lower_gain_percent": -6.957740237754084,
+   "main_spread_pct": 0.6202892942731842,
+   "method": "paired_bootstrap_percentile",
+   "noise_floor_pct": 5.547346211225179,
+   "paired_repeats": 3,
+   "per_repeat_frontier": {
+    "candidate": [
+     0.1557130579461895,
+     0.16075952545276723,
+     0.15212158303240642
+    ],
+    "main": [
+     0.16451166079226925,
+     0.16353019549536105,
+     0.16349730049670752
+    ]
+   },
+   "resamples": 20000,
+   "resolved": false,
+   "seed": 20260910,
+   "unpaired_repeats": [],
+   "upper_gain_percent": -1.6942865103297788
+  },
+  "status": "NO_FRONTIER_GAIN",
+  "timestamp_utc": "2026-09-10T11:16:20+00:00"
+ },
+ "cells": {
+  "ctx128-c1": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 69.0,
+    "p50_itl_ms": 10.421,
+    "p99_itl_ms": 16.719
+   },
+   "candidate": {
+    "goodput_tps": 68.8,
+    "p50_itl_ms": 10.411,
+    "p99_itl_ms": 17.155
+   },
+   "goodput_delta_pct": -0.2899,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 68.8,
+     "configuration": "persist",
+     "main_median": 69.0,
+     "observed_change_pct": 0.28985507246377223,
+     "per_configuration_change_pct": {
+      "persist": 0.28985507246377223
+     },
+     "published_control_spread_pct": 0.1437,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.155,
+     "configuration": "persist",
+     "main_median": 16.719,
+     "observed_change_pct": 2.6078114719779886,
+     "per_configuration_change_pct": {
+      "persist": 2.6078114719779886
+     },
+     "published_control_spread_pct": 0.9393,
+     "resolves": true
+    }
+   }
+  },
+  "ctx128-c16": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 561.9,
+    "p50_itl_ms": 17.057,
+    "p99_itl_ms": 43.824
+   },
+   "candidate": {
+    "goodput_tps": 559.6,
+    "p50_itl_ms": 17.056,
+    "p99_itl_ms": 44.824
+   },
+   "goodput_delta_pct": -0.4093,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 559.6,
+     "configuration": "persist",
+     "main_median": 561.9,
+     "observed_change_pct": 0.40932550275848983,
+     "per_configuration_change_pct": {
+      "persist": 0.40932550275848983
+     },
+     "published_control_spread_pct": 0.4238,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 44.824,
+     "configuration": "persist",
+     "main_median": 43.824,
+     "observed_change_pct": 2.281854691493246,
+     "per_configuration_change_pct": {
+      "persist": 2.281854691493246
+     },
+     "published_control_spread_pct": 6.6927,
+     "resolves": false
+    }
+   }
+  },
+  "ctx128-c32": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 897.6,
+    "p50_itl_ms": 18.601,
+    "p99_itl_ms": 46.309
+   },
+   "candidate": {
+    "goodput_tps": 887.7,
+    "p50_itl_ms": 18.807,
+    "p99_itl_ms": 48.709
+   },
+   "goodput_delta_pct": -1.1029,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 887.7,
+     "configuration": "persist",
+     "main_median": 897.6,
+     "observed_change_pct": 1.1029411764705856,
+     "per_configuration_change_pct": {
+      "persist": 1.1029411764705856
+     },
+     "published_control_spread_pct": 1.7378,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 48.709,
+     "configuration": "persist",
+     "main_median": 46.309,
+     "observed_change_pct": 5.182577900624081,
+     "per_configuration_change_pct": {
+      "persist": 5.182577900624081
+     },
+     "published_control_spread_pct": 481.0431,
+     "resolves": false
+    }
+   }
+  },
+  "ctx128-c4": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 220.2,
+    "p50_itl_ms": 10.853,
+    "p99_itl_ms": 38.779
+   },
+   "candidate": {
+    "goodput_tps": 219.6,
+    "p50_itl_ms": 10.845,
+    "p99_itl_ms": 39.357
+   },
+   "goodput_delta_pct": -0.2725,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 219.6,
+     "configuration": "persist",
+     "main_median": 220.2,
+     "observed_change_pct": 0.27247956403269497,
+     "per_configuration_change_pct": {
+      "persist": 0.27247956403269497
+     },
+     "published_control_spread_pct": 0.09,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 39.357,
+     "configuration": "persist",
+     "main_median": 38.779,
+     "observed_change_pct": 1.4904974341782815,
+     "per_configuration_change_pct": {
+      "persist": 1.4904974341782815
+     },
+     "published_control_spread_pct": 0.7784,
+     "resolves": true
+    }
+   }
+  },
+  "ctx16384-c1": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 22.5,
+    "p50_itl_ms": 10.608,
+    "p99_itl_ms": 17.307
+   },
+   "candidate": {
+    "goodput_tps": 22.4,
+    "p50_itl_ms": 10.593,
+    "p99_itl_ms": 17.645
+   },
+   "goodput_delta_pct": -0.4444,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 22.4,
+     "configuration": "persist",
+     "main_median": 22.5,
+     "observed_change_pct": 0.44444444444445075,
+     "per_configuration_change_pct": {
+      "persist": 0.44444444444445075
+     },
+     "published_control_spread_pct": 0.0,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.645,
+     "configuration": "persist",
+     "main_median": 17.307,
+     "observed_change_pct": 1.9529670075691972,
+     "per_configuration_change_pct": {
+      "persist": 1.9529670075691972
+     },
+     "published_control_spread_pct": 1.871,
+     "resolves": true
+    }
+   }
+  },
+  "ctx16384-c4": {
+   "repeats": {
+    "main": 3,
+    "candidate": 0
+   },
+   "control": {
+    "goodput_tps": 29.6,
+    "p50_itl_ms": 10.609,
+    "p99_itl_ms": 17.07
+   },
+   "candidate": null,
+   "status": "UNBATCHED in every repeat; attributed to the runtime",
+   "resolution": null
+  },
+  "ctx4096-c1": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 55.6,
+    "p50_itl_ms": 10.608,
+    "p99_itl_ms": 16.725
+   },
+   "candidate": {
+    "goodput_tps": 55.5,
+    "p50_itl_ms": 10.583,
+    "p99_itl_ms": 17.273
+   },
+   "goodput_delta_pct": -0.1799,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 55.5,
+     "configuration": "persist",
+     "main_median": 55.6,
+     "observed_change_pct": 0.17985611510791621,
+     "per_configuration_change_pct": {
+      "persist": 0.17985611510791621
+     },
+     "published_control_spread_pct": 0.1786,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.273,
+     "configuration": "persist",
+     "main_median": 16.725,
+     "observed_change_pct": 3.2765321375186742,
+     "per_configuration_change_pct": {
+      "persist": 3.2765321375186742
+     },
+     "published_control_spread_pct": 1.2888,
+     "resolves": true
+    }
+   }
+  },
+  "ctx4096-c16": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 145.9,
+    "p50_itl_ms": 28.856,
+    "p99_itl_ms": 48.092
+   },
+   "candidate": {
+    "goodput_tps": 144.8,
+    "p50_itl_ms": 29.007,
+    "p99_itl_ms": 51.071
+   },
+   "goodput_delta_pct": -0.7539,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 144.8,
+     "configuration": "persist",
+     "main_median": 145.9,
+     "observed_change_pct": 0.7539410555174738,
+     "per_configuration_change_pct": {
+      "persist": 0.7539410555174738
+     },
+     "published_control_spread_pct": 0.2041,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 51.071,
+     "configuration": "persist",
+     "main_median": 48.092,
+     "observed_change_pct": 6.194377443233801,
+     "per_configuration_change_pct": {
+      "persist": 6.194377443233801
+     },
+     "published_control_spread_pct": 4.8462,
+     "resolves": true
+    }
+   }
+  },
+  "ctx4096-c32": {
+   "repeats": {
+    "main": 3,
+    "candidate": 3
+   },
+   "control": {
+    "goodput_tps": 180.0,
+    "p50_itl_ms": 27.825,
+    "p99_itl_ms": 55.686
+   },
+   "candidate": {
+    "goodput_tps": 168.0,
+    "p50_itl_ms": 27.554,
+    "p99_itl_ms": 52.778
+   },
+   "goodput_delta_pct": -6.6667,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 168.0,
+     "configuration": "persist",
+     "main_median": 180.0,
+     "observed_change_pct": 6.666666666666667,
+     "per_configuration_change_pct": {
+      "persist": 6.666666666666667
+     },
+     "published_control_spread_pct": 39.0083,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 52.778,
+     "configuration": "persist",
+     "main_median": 55.686,
+     "observed_change_pct": 5.222138418992209,
+     "per_configuration_change_pct": {
+      "persist": 5.222138418992209
+     },
+     "published_control_spread_pct": 41.6631,
+     "resolves": false
+    }
+   }
+  },
+  "ctx4096-c4": {
+   "repeats": {
+    "main": 3,
+    "candidate": 0
+   },
+   "control": {
+    "goodput_tps": 63.9,
+    "p50_itl_ms": 10.607,
+    "p99_itl_ms": 16.879
+   },
+   "candidate": null,
+   "status": "UNBATCHED in every repeat; attributed to the runtime",
+   "resolution": null
+  }
+ },
+ "what_changed_from_the_first_matrix": {
+  "first_receipt_gain_pct": -99.51525523716245,
+  "this_receipt_gain_pct": -4.692052097581123,
+  "detail": "The first full matrix read -99.5152%. This one reads -4.6921% on the same generation, the same policy and the same box, and the difference is entirely in the ruler:\n  * The packed-path guard divided decode steps by a count that includes prefill chunks, so `ctx4096-c16` and `ctx4096-c32` were refused although every decode step batched at full width. Both are measured here.\n  * `ctx4096-c4` and `ctx16384-c4` genuinely cannot be batched by this runtime -- a probe with no policy running reproduces max_rows_seen 0 at two decode lengths -- so they are attributed to the runtime, not scored, and the receipt is PARTIAL on its face.\n  * `ctx128-c32` reached the generation's cell floor last time on a p99 whose calibrated control spread is 481%. It does not this time.\nNo cell is at the floor in this receipt."
+ },
+ "findings": [
+  {
+   "finding": "Eight cells scored, eight negative, none improved.",
+   "detail": "Goodput: -0.290% at ctx128-c1, -0.272% at ctx128-c4, -0.409% at ctx128-c16, -1.103% at ctx128-c32, -0.180% at ctx4096-c1, -0.754% at ctx4096-c16, -6.667% at ctx4096-c32 and -0.444% at ctx16384-c1. Five of the eight resolve against the spread the generation published for that cell. The shipped default policy is a regression wherever this instrument can see it."
+  },
+  {
+   "finding": "The scheduling-outlier detector, built this morning from ONE instance, caught two more.",
+   "detail": "`ctx128-c32` repeat 1 at 9.53x its group's non-decode step count (576.9 tok/s against a group median of 887.7) and `ctx4096-c32` repeat 3 at 4.6x (118.0 against 168.0). Both are the runtime scheduling requests serially, both pass every other guard, and the second is most of why ctx4096-c32 reads -6.667%. Scored and named rather than refused, because the failure is the runtime's -- but a three-repeat median does not survive one of them, which is exactly what the receipt says on its face."
+  },
+  {
+   "finding": "The probe inside this run returned UNHOOKED, which was a defect in the runner.",
+   "detail": "`ATTRIBUTION_ENV` did not set `RECURLOCAL_STATS`, so the probe emitted no telemetry, the harness refused it as unhooked, and UNHOOKED is not a serving guard -- so both cells came back attributed to the candidate and stayed charged. Conservative and useless. Fixed. The verdicts recorded here come from the dedicated probe of the same two cells on the same box, which did set it."
+  }
+ ]
+}
