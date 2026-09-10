@@ -72,6 +72,15 @@ def compute_frontier(generation, results, *, allow_partial=False):
     seen_cells = set()
     seen_repeats = defaultdict(set)
 
+    # Cells the candidate lost to a SERVING guard that the evaluator's own probe reproduced
+    # with NO policy running. See runner.attribute_serving_losses: the control is unhooked and
+    # emits no packing telemetry, so a cell that collapses in both arms can only be seen to
+    # collapse in the hooked one. Charging that to the candidate would report a property of the
+    # runtime as a locality regression -- at the generation's floor, through a geometric mean.
+    unservable_evidence = {}
+    candidate_usable = defaultdict(int)
+    attributions = defaultdict(set)
+
     for record in results:
         for key in ("workload_id", "variant", "config_id", "repeat", "metrics"):
             _require(key in record, f"raw result is missing {key!r}: {record!r}")
@@ -91,6 +100,14 @@ def compute_frontier(generation, results, *, allow_partial=False):
         status = str(record.get("status", "OK"))
         if str(record.get("correctness", "PASS")) != "PASS":
             status = "CORRECTNESS_FAIL"
+        if variant == "candidate":
+            if status in FAILURE_STATUSES:
+                attributions[cell].add(str(record.get("attribution", "unresolved")))
+                probe = (record.get("detail") or {}).get("attribution")
+                if probe:
+                    unservable_evidence[cell] = probe
+            else:
+                candidate_usable[cell] += 1
         point = normalize_point(record["metrics"], generation.objectives_for(cell), status)
         if point is None:
             failures[f"{variant}:{status}"] += 1
@@ -124,7 +141,17 @@ def compute_frontier(generation, results, *, allow_partial=False):
              f"{len(repeats)} paired repeats, {generation.name} requires "
              f"{generation.min_repeats}")
 
-    scored_cells = sorted(seen_cells)
+    # A cell is unservable when the candidate produced no operating point there AND every one
+    # of its failures was attributed to the runtime by a probe that ran no policy. Anything
+    # less -- one usable repeat, one unresolved failure, one probe that came back clean -- and
+    # the cell is scored as measured, which is the conservative direction: the candidate keeps
+    # the loss.
+    unservable = sorted(cell for cell, verdicts in attributions.items()
+                        if verdicts == {"runtime"} and not candidate_usable[cell])
+    scored_cells = sorted(seen_cells - set(unservable))
+    _require(scored_cells,
+             f"every cell {generation.name} declares was either missing or unservable; there "
+             f"is nothing left to score. Unservable: {unservable}")
     per_repeat = {"main": [], "candidate": []}
     per_cell_detail = defaultdict(dict)
     at_floor = defaultdict(set)
@@ -247,6 +274,11 @@ def compute_frontier(generation, results, *, allow_partial=False):
         unpaired_repeats=unpaired,
         cells_scored=scored_cells,
         cells_missing=missing_cells,
+        # Named on the receipt's face rather than renormalized away in silence. Dropping a cell
+        # is the cheapest way to raise a score, so the evidence for each drop travels with it.
+        cells_unservable=unservable,
+        unservable_evidence={c: unservable_evidence[c] for c in unservable
+                             if c in unservable_evidence},
         cell_gain=cell_gain,
         cell_hypervolume={c: {"main": _median(per_cell_detail[c].get("main", [])),
                               "candidate": _median(per_cell_detail[c].get("candidate", []))}
@@ -266,7 +298,7 @@ def compute_frontier(generation, results, *, allow_partial=False):
                                  for cell in scored_cells},
         failures=dict(failures),
         guard_violations=guard_violations,
-        partial=bool(missing_cells),
+        partial=bool(missing_cells or unservable),
         weights={c: generation.weights[c] for c in scored_cells},
     )
 

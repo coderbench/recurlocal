@@ -144,6 +144,11 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
             "total_cells": len(generation.cells),
             "scored_cells": len(computation.cells_scored),
             "missing_cells": computation.cells_missing,
+            # A cell dropped because the evaluator's own probe reproduced the failure with no
+            # policy running. Dropping a cell is the cheapest way to raise a score, so the
+            # drop and its evidence travel together and force PARTIAL.
+            "unservable_cells": getattr(computation, "cells_unservable", []),
+            "unservable_evidence": getattr(computation, "unservable_evidence", {}),
             "partial": computation.partial,
         },
         "cells": {

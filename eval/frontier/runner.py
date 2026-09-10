@@ -26,6 +26,7 @@ import re
 import subprocess
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -70,6 +71,15 @@ def declares_a_policy(env) -> bool:
     if preset == "baseline" or planner == "baseline":
         return False
     return True
+
+
+# A guard that says the runtime TRIED to serve this workload and could not. Distinct from a
+# configuration failure, which aborts, and from EVAL_ERROR, which is the harness's own fault
+# and is never attributed away from the candidate.
+SERVING_GUARDS = ("OOM", "TIMEOUT", "UNBATCHED")
+
+# The hook with no window: the same telemetry, no policy.
+ATTRIBUTION_ENV = {"TENSORTRANSIT": "baseline", "TENSORTRANSIT_WINDOW_ATTACH": "capture_node"}
 
 
 def classify_guard(message: str) -> str:
@@ -214,6 +224,97 @@ def run_matrix(*, generation, cells, model, variants, repeats, max_new, long_pre
                                    if status == "OK" else f"** {status} **")
                         print(f"   {summary}", flush=True)
     return records
+
+
+def cells_needing_attribution(records, cells):
+    """Cells the candidate lost to a SERVING guard in every repeat, where main produced points.
+
+    The incident this exists for: the first full TTF-1 matrix lost four long-context
+    concurrency cells to `RUNTIME FELL OFF THE BATCHED DECODE PATH`, and the control looked
+    perfect at all four -- because the control is unhooked by construction, emits no packing
+    telemetry, and therefore CANNOT be seen to fall off the same path. The guard fires on the
+    arm that can be observed, not on the arm that failed.
+
+    Charged to the candidate, such a cell is scored at the generation's floor, and one
+    floor-decided cell moves dF through the geometric mean by more than any policy in this
+    repository ever has. So a cell in this list is not yet a regression; it is a question.
+    """
+    lost = defaultdict(lambda: {"guarded": 0, "usable": 0})
+    main_ok = defaultdict(int)
+    for record in records:
+        cell = record["workload_id"]
+        status = record.get("status", "OK")
+        if record["variant"] == "main":
+            if status == "OK":
+                main_ok[cell] += 1
+            continue
+        if status in SERVING_GUARDS:
+            lost[cell]["guarded"] += 1
+        elif status == "OK":
+            lost[cell]["usable"] += 1
+    return [cell for cell in cells
+            if lost[cell]["guarded"] and not lost[cell]["usable"] and main_ok[cell]]
+
+
+def attribute_serving_losses(*, cells, model, baseline_cb_binary, max_new, long_prefill,
+                             settle_seconds=30, verbose=True):
+    """One probe per cell: the BASELINE build's bench, hook on, no window, no policy.
+
+    Two deliberate choices.
+
+    *The baseline build, not the candidate's.* A candidate whose own probe failed would get a
+    cell it lost DROPPED instead of scored at the floor, which is strictly to its advantage.
+    The probe must therefore run none of the candidate's code. In the same-binary A/B a
+    contributor runs locally these are one file and the probe answers a weaker question, which
+    the receipt records.
+
+    *The hook rather than the control.* The control cannot answer the question at all -- that
+    is what created the incident. `baseline` is the hook installed with no window: it emits the
+    same telemetry the guard reads, and it applies no policy, so a collapse under it is the
+    runtime's and nobody else's.
+    """
+    verdicts = {}
+    for cell in cells:
+        if settle_seconds:
+            time.sleep(settle_seconds)
+        label = f"attribution/baseline/{cell}"
+        if verbose:
+            print(f">> {label}", flush=True)
+        _, status, detail = measure_cell(
+            baseline_cb_binary, model, cell, dict(ATTRIBUTION_ENV), label,
+            max_new=max_new, long_prefill=long_prefill, expect_policy=False, verbose=verbose)
+        verdict = "runtime" if status in SERVING_GUARDS else "candidate"
+        verdicts[cell] = {
+            "verdict": verdict,
+            "probe_status": status,
+            "probe_config": "hook installed, no window (TENSORTRANSIT=baseline)",
+            "probe_binary": str(baseline_cb_binary),
+            "guard": detail.get("guard", ""),
+        }
+        if verbose:
+            print(f"   attribution: {cell} -> {verdict} (probe {status})", flush=True)
+    return verdicts
+
+
+def apply_attribution(records, verdicts):
+    """Stamp each serving-guard record with what the probe found, or with `unresolved`.
+
+    `unresolved` is the conservative value and it is the DEFAULT: a loss nobody probed stays
+    charged to the candidate exactly as before. The only thing that moves a cell out of the
+    score is a probe that reproduced the failure without any policy running.
+    """
+    stamped = 0
+    for record in records:
+        if record["variant"] != "candidate":
+            continue
+        if record.get("status", "OK") not in SERVING_GUARDS:
+            continue
+        found = verdicts.get(record["workload_id"])
+        record["attribution"] = found["verdict"] if found else "unresolved"
+        if found:
+            record.setdefault("detail", {})["attribution"] = found
+        stamped += 1
+    return stamped
 
 
 def correctness_gate(generate_binary, model, *, prompt_ids, gate_tokens, control_env,

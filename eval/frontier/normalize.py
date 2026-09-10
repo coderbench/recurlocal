@@ -26,7 +26,19 @@ class ObjectiveError(ValueError):
 # A measurement carrying one of these is a serving failure, not a slow point (spec section
 # 49). They are values of `status` in a raw result record.
 FAILURE_STATUSES = frozenset({"OOM", "TIMEOUT", "CRASH", "SLO_FAIL", "CORRECTNESS_FAIL",
-                              "NOT_RUN"})
+                              "NOT_RUN",
+                              # A run that fell off the runtime's batched decode path measured
+                              # the single-sequence path once per row; its throughput is not
+                              # this cell's number and must not become a point on this cell's
+                              # frontier. It used to be excluded only by accident -- such a
+                              # record carries no metrics, so it fell into the missing-
+                              # objective branch below and was counted as a harness fault.
+                              "UNBATCHED",
+                              # The configuration failures. The runner aborts on these rather
+                              # than recording them, so they reach here only from a raw file
+                              # written by something else; naming them is what keeps such a
+                              # file from being scored as if the arm had merely been slow.
+                              "UNHOOKED", "NULL_POLICY", "EVAL_ERROR"})
 
 
 @dataclass(frozen=True)

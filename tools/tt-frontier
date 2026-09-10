@@ -338,6 +338,23 @@ def cmd_run(args):
         repeats=args.repeats, max_new=args.max_new, long_prefill=args.long_prefill,
         settle_seconds=args.settle_seconds, verbose=not args.quiet)
 
+    # Attribution. A candidate that lost every repeat of a cell to a SERVING guard, where main
+    # produced points, is charged the generation's floor for that cell -- and one floor-decided
+    # cell moves dF further than any policy in this repository ever has. Before that is
+    # believed, the same cell is run once more on the BASELINE binary with the hook installed
+    # and no window. A collapse there is the runtime's, not the submission's.
+    attribution = {}
+    if not args.no_attribution:
+        needs = runner_mod.cells_needing_attribution(records, cells)
+        if needs:
+            print(f">> attribution probe for {len(needs)} cell(s) the candidate lost: "
+                  f"{', '.join(needs)}", file=sys.stderr, flush=True)
+            attribution = runner_mod.attribute_serving_losses(
+                cells=needs, model=args.model, baseline_cb_binary=args.cb_binary,
+                max_new=args.max_new, long_prefill=args.long_prefill,
+                settle_seconds=args.settle_seconds, verbose=not args.quiet)
+        runner_mod.apply_attribution(records, attribution)
+
     provenance = {
         "baseline_commit": args.baseline_commit,
         "candidate_commit": args.candidate_commit,
@@ -347,6 +364,13 @@ def cmd_run(args):
         "model": {"name": args.model_name or Path(args.model).name, "digest": args.model_digest},
         "environment_fingerprint": args.environment_fingerprint,
         "correctness": correctness,
+        "attribution": {
+            "probed": sorted(attribution),
+            "verdicts": attribution,
+            "probe_binary_is_baseline": bool(args.candidate_cb
+                                             and args.candidate_cb != args.cb_binary),
+            "skipped": bool(args.no_attribution),
+        },
         "cells_requested": cells,
         "mode": args.mode,
         "instances": (generation.raw.get("hidden") or {}).get("mode", "unspecified"),
@@ -512,6 +536,11 @@ def main(argv=None):
     p.add_argument("--max-new", type=int, default=64)
     p.add_argument("--long-prefill", type=int, default=4096)
     p.add_argument("--settle-seconds", type=int, default=30)
+    p.add_argument("--no-attribution", action="store_true",
+                   help="skip the baseline probe for cells the candidate lost to a serving "
+                        "guard. Every such loss then stays charged to the candidate, which is "
+                        "the conservative direction -- and the receipt says the probe was "
+                        "skipped rather than that it came back clean.")
     p.add_argument("--gate-tokens", type=int, default=64)
     p.add_argument("--gate-prompt", default="9707,3837,1879,13,25001,752,911")
     p.add_argument("--gate-control-replays", type=int, default=3)

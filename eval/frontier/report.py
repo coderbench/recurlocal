@@ -36,8 +36,8 @@ def receipt_box(receipt: dict) -> str:
         ("Status", receipt["status"]),
     ]
     if coverage.get("partial"):
-        rows.insert(3, ("Coverage", f"PARTIAL -- {len(coverage['missing_cells'])} cell(s) "
-                                    f"not run"))
+        dropped = len(coverage.get("missing_cells") or []) + len(coverage.get("unservable_cells") or [])
+        rows.insert(3, ("Coverage", f"PARTIAL -- {dropped} cell(s) unscored"))
     # Widest "key + value" pair, plus the two spaces beside them and a little air.
     width = max(len(f"{k}{v}") for k, v in rows) + 6
     width = max(width, 38)
@@ -91,6 +91,13 @@ def pr_comment(receipt: dict) -> str:
                   f"**Partial matrix.** Not run: {', '.join(coverage['missing_cells'])}. "
                   f"A cell that was not run is not averaged in as a zero; this receipt is "
                   f"marked PARTIAL and does not qualify as a full-coverage contribution."]
+    if coverage.get("unservable_cells"):
+        lines += ["",
+                  f"**Unservable on this runtime.** Not scored: "
+                  f"{', '.join(coverage['unservable_cells'])}. The candidate produced no "
+                  f"operating point there, and an evaluator probe running no policy at all "
+                  f"reproduced the same failure -- so the loss is the runtime's and not this "
+                  f"submission's. This receipt is PARTIAL."]
     aggregation = receipt.get("aggregation") or {}
     if aggregation.get("floor_decided"):
         floored = aggregation.get("cells_at_floor") or {}
@@ -273,6 +280,19 @@ def markdown(receipt: dict, *, raw_results_path=None) -> str:
                   f"through the geometric mean; it is the intended treatment of a lost or a "
                   f"newly-created operating region, and it is named here so that it cannot "
                   f"do so silently."]
+    if coverage.get("unservable_cells"):
+        evidence = coverage.get("unservable_evidence") or {}
+        detail = "; ".join(
+            f"`{cell}` -> probe {(evidence.get(cell) or {}).get('probe_status', '?')}"
+            for cell in coverage["unservable_cells"])
+        out += ["",
+                f"> **Unservable on this runtime, not scored.** {detail}. The control arm is "
+                f"unhooked by construction and emits no packing telemetry, so a cell that "
+                f"collapses in BOTH arms can only be *seen* to collapse in the hooked one. "
+                f"Before charging such a cell to the submission at the generation's floor, the "
+                f"evaluator re-ran it on the baseline binary with the hook installed and no "
+                f"window, and the failure reproduced. The probe configuration and binary are "
+                f"in the receipt so this drop can be argued with rather than trusted."]
     if coverage.get("missing_cells"):
         out += ["",
                 f"> **Partial matrix.** Not run: "

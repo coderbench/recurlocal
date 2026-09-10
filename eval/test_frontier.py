@@ -288,6 +288,76 @@ def matrix(main_spec, candidate_spec, repeats=3):
     return out
 
 
+def test_attribution_of_a_serving_loss():
+    """A cell the candidate lost, and the question of whose loss it is.
+
+    The incident: the first full TTF-1 matrix lost four long-context concurrency cells to
+    `RUNTIME FELL OFF THE BATCHED DECODE PATH`, and the control looked perfect at all four --
+    because the control is unhooked, emits no packing telemetry, and therefore cannot be SEEN
+    to fall off the same path. Charged to the candidate, each of those cells is scored at the
+    generation's floor, and one floor-decided cell moves dF further than any policy here has.
+    """
+    section("attribution of a serving loss")
+    from frontier import runner as runner_mod
+
+    generation = make_generation()
+    flat = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+            "ctx128-c4": {"base": (500.0, 50.0, "OK")}}
+    lost = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+            "ctx128-c4": {"base": (0.0, 0.0, "UNBATCHED")}}
+
+    # Unattributed, the loss stays with the candidate and lands on the floor. That is the
+    # conservative default and it must not change.
+    charged = compute_frontier(generation, matrix(flat, lost))
+    check("ctx128-c4" in charged.cells_at_floor["candidate"],
+          "an unattributed serving loss is scored at the floor, against the candidate")
+    check(charged.gain < -0.5, "and it costs the candidate more than any policy ever gains")
+    check(not charged.cells_unservable, "and the cell is still scored")
+
+    # The probe reproduced the same failure with no policy running.
+    runtime_fault = matrix(flat, lost)
+    runner_mod.apply_attribution(runtime_fault, {"ctx128-c4": {"verdict": "runtime"}})
+    result = compute_frontier(generation, runtime_fault, allow_partial=True)
+    check(result.cells_unservable == ["ctx128-c4"], "an attributed loss is not scored")
+    check(result.cells_scored == ["ctx128-c1"], "only the servable cells are")
+    check(result.partial, "and the receipt is PARTIAL on its face")
+    check(close(result.gain, 0.0, 1e-9), "the remaining cell decides, and it is a tie")
+
+    # A probe that came back clean leaves the loss where it was.
+    candidate_fault = matrix(flat, lost)
+    runner_mod.apply_attribution(candidate_fault, {"ctx128-c4": {"verdict": "candidate"}})
+    blamed = compute_frontier(generation, candidate_fault)
+    check(not blamed.cells_unservable and blamed.gain < -0.5,
+          "a probe that ran clean leaves the loss with the candidate")
+
+    # One usable repeat is enough to keep the cell scored: the candidate served it sometimes,
+    # so it is not unservable, whatever a single probe found.
+    sometimes = matrix(flat, lost)
+    for record in sometimes:
+        if (record["variant"] == "candidate" and record["workload_id"] == "ctx128-c4"
+                and record["repeat"] == 2):
+            record["status"] = "OK"
+            record["metrics"] = {"goodput_tps": 480.0, "p99_itl_ms": 52.0}
+    runner_mod.apply_attribution(sometimes, {"ctx128-c4": {"verdict": "runtime"}})
+    mixed = compute_frontier(generation, sometimes)
+    check(not mixed.cells_unservable,
+          "a cell the candidate served in any repeat is scored, not dropped")
+
+    # Which cells even get probed. A probe costs a model load; it is spent only where the
+    # answer can change the score.
+    scan = matrix(flat, lost)
+    check(runner_mod.cells_needing_attribution(scan, generation.cells) == ["ctx128-c4"],
+          "only a cell the candidate lost in every repeat is probed")
+    both_failed = matrix(lost, lost)
+    check(runner_mod.cells_needing_attribution(both_failed, generation.cells) == [],
+          "a cell main lost too needs no probe: neither arm has a point there")
+
+    # And the direction of the whole mechanism, stated once: it can only ever REMOVE a cell
+    # the candidate lost. There is no path by which attribution adds territory.
+    check(set(result.cells_scored) <= set(charged.cells_scored),
+          "attribution can drop a cell and can never add one")
+
+
 def test_compute_cases():
     section("frontier cases (spec section 51)")
     generation = make_generation()
@@ -649,7 +719,8 @@ def test_reports_render():
 
 def main():
     for test in (test_normalization, test_pareto, test_hypervolume, test_aggregate,
-                 test_confidence, test_generation, test_compute_cases, test_compute_guards,
+                 test_confidence, test_generation, test_attribution_of_a_serving_loss,
+                 test_compute_cases, test_compute_guards,
                  test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone,
                  test_regression_guard, test_receipt_and_result_match_their_schemas,
                  test_receipt_and_ledger, test_status_derivation,
