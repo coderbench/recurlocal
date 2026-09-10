@@ -21,7 +21,8 @@ from frontier import (compute_frontier, build_receipt, verify_receipt,  # noqa: 
 from frontier.aggregate import aggregate_cells, AggregateError          # noqa: E402
 from frontier.compute import ComputeError                               # noqa: E402
 from frontier.confidence import paired_bootstrap                        # noqa: E402
-from frontier.generations import parse_generation, GenerationError      # noqa: E402
+from frontier.generations import (parse_generation, load_generation,    # noqa: E402
+                                  GenerationError)
 from frontier.normalize import Objective, ObjectiveError, normalize_point  # noqa: E402
 from frontier.receipt import ReceiptError, content_digest, decide_status  # noqa: E402
 from frontier import ledger as ledger_mod                               # noqa: E402
@@ -804,6 +805,34 @@ def test_status_derivation():
     check(decide_status(Fake(), "PASS") == "REGRESSION_GUARD_FAIL", "the guard vetoes")
 
 
+def test_a_frozen_generation_has_exactly_one_definition():
+    """It is stored twice, and the two copies must be the same bytes.
+
+    `eval/generations/TTF-N/` is what the scorer loads and what `eval/run_from_base.sh` overlays
+    from the base commit; `frontier/TTF-N/` keeps a copy beside the receipts so a reader of the
+    ledger can see what those receipts were scored under. Both are the DEFINITION, the checksum
+    covers it, and a receipt whose generation has moved does not verify -- so two copies that
+    drift would make a ledger unauditable in a way nothing else here would catch.
+    """
+    section("one definition, stored twice")
+    root = Path(__file__).resolve().parent.parent
+    scored = root / "eval" / "generations"
+    ledger = root / "frontier"
+    for path in sorted(scored.glob("*/generation.json")):
+        name = path.parent.name
+        for filename in ("generation.json", "reference.json"):
+            here, there = scored / name / filename, ledger / name / filename
+            if not here.exists():
+                continue
+            check(there.exists(), f"{name}/{filename} is missing from the ledger copy")
+            if there.exists():
+                check(here.read_bytes() == there.read_bytes(),
+                      f"{name}/{filename} differs between eval/generations and frontier/")
+        check(load_generation(scored / name / "generation.json").checksum()
+              == load_generation(ledger / name / "generation.json").checksum(),
+              f"{name} hashes to the same value from either copy")
+
+
 def test_no_size_bands():
     section("no size bands anywhere")
     generation = make_generation()
@@ -868,6 +897,7 @@ def main():
                  test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone,
                  test_regression_guard, test_receipt_and_result_match_their_schemas,
                  test_receipt_and_ledger, test_status_derivation,
+                 test_a_frozen_generation_has_exactly_one_definition,
                  test_no_size_bands, test_reports_render):
         test()
     print()
