@@ -100,6 +100,15 @@ if(RECURLOCAL_BUILD_CUDA)
     add_executable(recur_local_cuda_bench bench/cuda_bench.cu)
     target_link_libraries(recur_local_cuda_bench PRIVATE recurlocal_cuda CUDA::cudart)
     set_target_properties(recur_local_cuda_bench PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
+
+    # Standalone: does an access-policy window set on a node of a graph that is STILL BEING
+    # CAPTURED survive into the instantiated graph, and does it take effect on replay? It
+    # links nothing of RecurLocal's - it reproduces the pattern in isolation, which is the
+    # point - but it is built here so it cannot rot while the mechanism it justifies ships.
+    # Not registered as a test: it needs a real device and it times replays.
+    add_executable(capture_attr_probe tools/capture_attr_probe.cu)
+    target_link_libraries(capture_attr_probe PRIVATE CUDA::cudart)
+    set_target_properties(capture_attr_probe PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
 endif()
 
 if(RECURLOCAL_BUILD_TESTS)
