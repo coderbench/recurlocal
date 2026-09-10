@@ -142,6 +142,49 @@ static void test_the_linear_control_still_reproduces_the_published_sweep(
     }
 }
 
+// The second proof track, asked of geometry nobody wrote by hand.
+//
+// The three synthetic fixtures model 176 kernels where the runtime has 64 and a KV block 1.5x
+// larger than the runtime's live slice. `trace_live_c1.json` is the adapter's own recorded
+// graph, and the whole point of recording it was to find out whether the answer survives real
+// geometry. It does, and this pins all three legs of it: the linear control where the global
+// arm provably cannot win, the residency model where it does, and the one dial that takes the
+// advantage away again.
+static void test_the_second_proof_track_holds_on_the_recorded_trace(const DeviceProfile& device) {
+    Loaded loaded = load("trace_live_c1.json");
+    if (!loaded.ok) { ++g_failures; return; }
+    RuntimeState state{};
+    state.active_requests = loaded.meta.active_requests;
+    parse_runtime_phase(loaded.meta.phase.c_str(), &state.phase);
+    PlanInput input{&loaded.graph, &loaded.registry, device, state};
+
+    const auto arm = [&](PolicyPreset preset, const TransitPlannerConfig& cfg) {
+        const TransitPlannerConfig config = preset_config(preset, cfg);
+        return make_planner(preset_planner(preset), config)->build_plan(input)
+                   .cost().predicted_throughput_ratio() - 1.0;
+    };
+    const auto best_independent = [&](const TransitPlannerConfig& cfg) {
+        return std::max(std::max(arm(PolicyPreset::RecurrentOnly, cfg),
+                                 arm(PolicyPreset::KVOnly, cfg)),
+                        arm(PolicyPreset::NaiveBothPersistent, cfg));
+    };
+
+    TransitPlannerConfig cfg = base();
+    cfg.cost_model = CostModel::Linear;
+    CHECK(arm(PolicyPreset::Global, cfg) <= best_independent(cfg));
+
+    cfg = base();
+    cfg.cost_model = CostModel::Residency;
+    const double with_relief = arm(PolicyPreset::Global, cfg);
+    const double best = best_independent(cfg);
+    CHECK(with_relief > best);
+
+    cfg.stream_relief = 0.0;
+    const double without_relief = arm(PolicyPreset::Global, cfg);
+    CHECK(without_relief < with_relief);
+    CHECK(without_relief <= best);
+}
+
 static std::size_t persist_count(const TransitPlan& plan) {
     std::size_t n = 0;
     for (const TransitAction& action : plan.actions())
@@ -206,6 +249,7 @@ int main(int argc, char** argv) {
 
     test_the_linear_control_still_reproduces_the_published_sweep(device, &g_failures);
     test_survival_is_density_at_the_fitted_beta_and_nothing_above_it(device);
+    test_the_second_proof_track_holds_on_the_recorded_trace(device);
 
     for (const char* trace_name : traces) {
         Loaded loaded = load(trace_name);

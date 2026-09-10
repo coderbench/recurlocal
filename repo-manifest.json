@@ -170,7 +170,7 @@
         "ok": true
       },
       "test_golden": {
-        "checks": 25,
+        "checks": 48,
         "ok": true
       },
       "test_overhead_budget": {
@@ -190,15 +190,15 @@
         "ok": true
       },
       "test_decide.py": {
-        "checks": 111,
+        "checks": 114,
         "ok": true
       },
       "test_frontier.py": {
-        "checks": 138,
+        "checks": 156,
         "ok": true
       },
       "test_schemas.py": {
-        "checks": 9,
+        "checks": 10,
         "ok": true
       }
     }
