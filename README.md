@@ -520,10 +520,17 @@ Weighted across the whole matrix, and this is the number that decides the projec
 | share of removable traffic a cache can address | 10% | **48%** |
 
 The MoE's total room is *smaller*, but the persist family reaches 48% of it instead of 10% —
-**1.94% weighted, and 0.52% on the model that is scored.** The best model this work found, with both dials at maximum and
-a perfect replacement policy assumed, misses the significance floor by six hundredths of a
-point. No policy closes that: the numerator is the device's 60 MiB and the denominator is what
-the workload moves.
+**1.94% weighted, and 0.52% on the model that is scored.** The best model this work found, with
+both dials at maximum and a perfect replacement policy assumed, misses **the project's own 2%
+go/no-go bar** by six hundredths of a point. No policy closes that: the numerator is the
+device's 60 MiB and the denominator is what the workload moves.
+
+That bar decides whether this *research direction* continues; it does not decide whether a
+submission counts, and as of 0.2.1 neither scorer lets it. `tools/tt-frontier` reports a
+continuous Frontier Gain, and `eval/decide.py` calls a result significant when it is positive,
+complete and clear of its own run-to-run spread — the rule the rest of the harness uses. A
+threshold above the physical ceiling is a broken instrument in either scorer, and the impact
+bands were removed for exactly that reason.
 
 ### The one thing that disqualifies this result: the gate cannot run here
 
