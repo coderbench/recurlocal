@@ -177,6 +177,39 @@ role-floor arbitration alone, and measures the same as it within noise.
 [`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
 maintainer has to answer before handing this to contributors.
 
+### Added — the 32-sequence collapse has a signature, after three releases of not having one
+
+Nine paired repeats of `ctx128-c32` were run to settle that cell's p99. One of the nine
+reproduced the collapse this repository has carried as open since 0.1: **575.1 tok/s against
+the arm's own median of 893.0**, a 36% drop, with every guard passing it — all requests
+completed, 63 of 64 decode steps batched at 32 rows, the hook applied a policy, no capture
+invalidated.
+
+The adapter's step counters had been emitting the answer all along:
+
+| | healthy (8 of 9) | collapsed (1 of 9) |
+|---|--:|--:|
+| steps bracketed | 78 | **207** |
+| of which batched decode | 63 | **63** |
+| geometry rebuilds | 5 | **15** |
+| p50 inter-token latency | 18.6 ms | 18.8 ms |
+
+**The decode work is identical.** What differs is 144 single-row steps against 15 — the runtime
+scheduling the 32 requests substantially serially, so wall time grew while the batched work did
+not. That is consistent with every observation `docs/OPTIMIZATION-SURFACES.md` had recorded and
+could not explain, including why per-token latency is unchanged and why `baseline` — which
+installs no window at all — can collapse.
+
+`eval/frontier/runner.py::scheduling_outliers` compares each repeat's non-decode step count
+against its group's median. Across 77 hooked runs in three matrices on the reference box, every
+healthy group is stable to within one step and exactly one run deviates, at 9.6x. It is
+**reported, never refused**: the failure is the runtime's, it lands on whichever arm happens to
+be running, and turning it into a cell failure would charge a candidate for it. What an operator
+needs is the fact that a median over nine repeats survives one and a median over three does not.
+
+What remains open is *why* the scheduler does it, which is a question about SparkInfer's
+continuous-batching admission rather than about this library.
+
 ### Fixed — the second scorer still had the impact bands' defect
 
 `eval/decide.py` gated `significant` on a 2% weighted gain. That is the same number the impact

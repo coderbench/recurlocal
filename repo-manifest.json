@@ -188,7 +188,7 @@
         "ok": true
       },
       "test_cli_pipeline.py": {
-        "checks": 35,
+        "checks": 39,
         "ok": true
       },
       "test_decide.py": {
@@ -196,7 +196,7 @@
         "ok": true
       },
       "test_frontier.py": {
-        "checks": 165,
+        "checks": 172,
         "ok": true
       },
       "test_schemas.py": {
