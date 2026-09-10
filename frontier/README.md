@@ -69,6 +69,25 @@ An evaluation is run by the trusted evaluator, never by the candidate:
 scripts/trusted_eval.sh --candidate <ref> --model <path> --pr 184
 ```
 
+## Running one as an operator
+
+The GPU workflow is `workflow_dispatch` and needs one repository variable:
+
+| variable | what it is |
+|---|---|
+| `TT_MODEL_PATH` | absolute path to a **read-only** copy of the pinned checkpoint on the worker |
+
+and a runner labelled `self-hosted, gpu, ephemeral` that carries no SSH key, no cloud
+credential and no long-lived token. `SECURITY.md` is the contract; `scripts/trusted_eval.sh`
+refuses to start if it can see a credential, so a misconfigured worker fails loudly instead of
+leaking quietly.
+
+To check the staging without a GPU, a model or a ten-minute build:
+
+```bash
+scripts/trusted_eval.sh --baseline main --candidate <ref> --stage-only
+```
+
 ## Generations
 
 A generation freezes everything that decides what a number *means*: the model and its digest,
