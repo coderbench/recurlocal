@@ -160,6 +160,11 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
             # them is the difference between a result and a number.
             "cells_at_floor": computation.cells_at_floor,
             "floor_decided": computation.floor_decided,
+            # A floor decision taken on an objective whose PUBLISHED control spread swallows
+            # the change observed. The generation froze that spread when it was calibrated, so
+            # this is not the run grading its own homework.
+            "floor_decided_inside_published_noise":
+                getattr(computation, "floor_decided_inside_published_noise", []),
         },
 
         "coverage": {
@@ -176,6 +181,10 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
             "unservable_evidence": getattr(computation, "unservable_evidence", {}),
             "partial": computation.partial,
         },
+        # Per cell, per objective: what moved, against the spread the generation published for
+        # that cell. Diagnostic and never a score -- it says which cells the score is entitled
+        # to rest on.
+        "cell_resolution": getattr(computation, "cell_resolution", {}),
         "cells": {
             cell: {
                 "gain": computation.cell_gain[cell],

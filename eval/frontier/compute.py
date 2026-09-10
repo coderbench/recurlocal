@@ -215,6 +215,62 @@ def compute_frontier(generation, results, *, allow_partial=False):
         else:
             coverage["neutral"].append(cell)
 
+    # Per cell, per objective: what the candidate actually moved, against the spread the
+    # generation PUBLISHED for that cell when it was frozen.
+    #
+    # This is the rule the rest of the harness already applies -- an axis whose effect sits
+    # inside its own noise is open, not solved -- asked of each cell rather than of the whole
+    # matrix. It matters because a cell decides the score through the geometric mean, and TTF-1
+    # publishes 0.14% for `ctx128-c1` goodput and 481% for `ctx128-c32` p99. The first full
+    # TTF-1 receipt read -99.5%, and the cell that decided it was decided on the second axis.
+    #
+    # Nothing here changes a score. It says which cells the score is entitled to rest on.
+    raw_values = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for record in results:
+        if str(record.get("status", "OK")) != "OK":
+            continue
+        for key, value in (record.get("metrics") or {}).items():
+            if value is not None:
+                raw_values[str(record["workload_id"])][record["variant"]][key].append(
+                    float(value))
+
+    cell_resolution = {}
+    for cell in scored_cells:
+        per_objective = {}
+        for objective in generation.objectives_for(cell):
+            key = objective.key
+            main_values = raw_values[cell]["main"].get(key) or []
+            cand_values = raw_values[cell]["candidate"].get(key) or []
+            published = generation.published_spread(cell, key)
+            if not main_values or not cand_values:
+                per_objective[key] = {"published_control_spread_pct": published,
+                                      "observed_change_pct": None, "resolves": None}
+                continue
+            main_median, cand_median = _median(main_values), _median(cand_values)
+            change = (abs(cand_median - main_median) / main_median * 100.0
+                      if main_median else float("inf"))
+            per_objective[key] = {
+                "published_control_spread_pct": published,
+                "observed_change_pct": change,
+                "main_median": main_median,
+                "candidate_median": cand_median,
+                # None where the generation published no spread: unknown, not resolved.
+                "resolves": None if published is None else bool(change > published),
+            }
+        cell_resolution[cell] = per_objective
+
+    # Cells whose score was decided at the floor on an axis the generation itself says cannot
+    # be measured there. Loud because it is the difference between a result and an artifact.
+    floor_on_noise = []
+    for cell in sorted(at_floor["candidate"] | at_floor["main"]):
+        for key, detail in cell_resolution.get(cell, {}).items():
+            published = detail.get("published_control_spread_pct")
+            if published is not None and detail.get("observed_change_pct") is not None \
+                    and not detail["resolves"]:
+                floor_on_noise.append({"cell": cell, "objective": key,
+                                       "published_control_spread_pct": published,
+                                       "observed_change_pct": detail["observed_change_pct"]})
+
     guard_violations = [
         {"cell": cell, "gain": cell_gain[cell], "limit": -generation.protected_max_regression}
         for cell in generation.protected_cells
@@ -291,6 +347,11 @@ def compute_frontier(generation, results, *, allow_partial=False):
         # capability" case the specification most wants to reward -- main OOMs, the candidate
         # succeeds -- and rewarding it is right; letting it do so SILENTLY is not.
         cells_at_floor={variant: sorted(at_floor[variant]) for variant in ("main", "candidate")},
+        cell_resolution=cell_resolution,
+        # A floor decision taken on an objective whose published control spread swallows the
+        # observed change. The receipt names these because a score that rests on one is not
+        # evidence about the candidate, whatever its confidence interval says.
+        floor_decided_inside_published_noise=floor_on_noise,
         floor_decided=bool(at_floor["main"] or at_floor["candidate"]),
         configurations={v: sorted(configs[v]) for v in ("main", "candidate")},
         frontier_configurations={cell: {v: sorted(on_frontier[cell][v])

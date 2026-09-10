@@ -168,6 +168,14 @@
     },
     "floor_decided": {
      "type": "boolean"
+    },
+    "floor_decided_inside_published_noise": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "description": "Floor decisions taken on an objective whose PUBLISHED per-cell control spread -- frozen with the generation at calibration -- is larger than the change observed. A score that rests on one of these is not evidence about the candidate, whatever its confidence interval says."
     }
    }
   },
@@ -329,6 +337,11 @@
    "type": "string",
    "pattern": "^sha256:[0-9a-f]{64}$",
    "description": "SHA-256 over every scored field. `tt-frontier receipt verify` recomputes it, which is what turns 'a finalized receipt is never silently rewritten' from a rule into a check."
+  },
+  "cell_resolution": {
+   "type": "object",
+   "additionalProperties": true,
+   "description": "Per cell, per objective: the published control spread, the observed change, and whether the second exceeds the first. Diagnostic; it never moves a score. It says which cells the score is entitled to rest on."
   }
  }
 }

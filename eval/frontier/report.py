@@ -99,6 +99,17 @@ def pr_comment(receipt: dict) -> str:
                   f"reproduced the same failure -- so the loss is the runtime's and not this "
                   f"submission's. This receipt is PARTIAL."]
     aggregation = receipt.get("aggregation") or {}
+    noisy = aggregation.get("floor_decided_inside_published_noise") or []
+    if noisy:
+        worst = max(noisy, key=lambda r: r.get("published_control_spread_pct") or 0)
+        lines += ["",
+                  f"**A floor decision inside the published noise.** `{worst['cell']}` was "
+                  f"scored at the cell floor, and on `{worst['objective']}` that cell's control "
+                  f"spread was calibrated at "
+                  f"{worst.get('published_control_spread_pct', 0):.1f}% when the generation was "
+                  f"frozen, against an observed change of "
+                  f"{worst.get('observed_change_pct', 0):.1f}%. A score resting on that cell is "
+                  f"not evidence about the candidate."]
     if aggregation.get("floor_decided"):
         floored = aggregation.get("cells_at_floor") or {}
         parts = "; ".join(f"{variant}: {', '.join('`' + c + '`' for c in cells)}"
@@ -280,6 +291,20 @@ def markdown(receipt: dict, *, raw_results_path=None) -> str:
                   f"through the geometric mean; it is the intended treatment of a lost or a "
                   f"newly-created operating region, and it is named here so that it cannot "
                   f"do so silently."]
+    noisy = (receipt.get("aggregation") or {}).get("floor_decided_inside_published_noise") or []
+    if noisy:
+        rows = "; ".join(
+            f"`{r['cell']}` / `{r['objective']}`: observed "
+            f"{r.get('observed_change_pct', 0):.1f}% against a published control spread of "
+            f"{r.get('published_control_spread_pct', 0):.1f}%" for r in noisy)
+        out += ["",
+                f"> **A floor decision inside the published noise.** {rows}. The spread is the "
+                f"one frozen with the generation at calibration, not one re-estimated from this "
+                f"run, and `frontier/TTF-1/reference.json` publishes it per cell precisely so a "
+                f"contributor can see the noise before spending a week. A cell whose observed "
+                f"change is smaller than its own calibrated spread carries no information about "
+                f"the candidate, and a cell scored at the floor carries the whole matrix through "
+                f"the geometric mean. Both at once is an artifact, not a result."]
     if coverage.get("unservable_cells"):
         evidence = coverage.get("unservable_evidence") or {}
         detail = "; ".join(

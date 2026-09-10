@@ -81,6 +81,20 @@ class Generation:
                                  unit=objective.unit))
         return out
 
+    def published_spread(self, cell: str, objective_key: str):
+        """The control's own run-to-run spread for this cell and objective, as calibrated when
+        the generation was frozen, in percent. None where the generation did not publish one.
+
+        This is the noise a contributor was told to beat, and it is frozen alongside the bounds
+        so that it cannot be re-estimated from the run being scored. TTF-1 publishes 0.14% for
+        `ctx128-c1` goodput and **481%** for `ctx128-c32` p99 -- an axis on which no measurement
+        can mean anything, on a cell that is scored anyway.
+        """
+        bounds = (self.cell_bounds.get(cell) or {}).get(objective_key)
+        if not bounds or bounds.get("control_spread_pct") is None:
+            return None
+        return float(bounds["control_spread_pct"])
+
     def checksum(self) -> str:
         """SHA-256 of the canonical generation document. Recorded in every receipt."""
         canonical = json.dumps(self.raw, sort_keys=True, separators=(",", ":")).encode()
