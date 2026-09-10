@@ -18,9 +18,19 @@ import decide as label  # noqa: E402
 DECIDE_PY = Path(__file__).resolve().parent / "decide.py"
 
 
-def real_doc(workloads, identical=True):
-    return {"correctness": {"output_identical": identical, "method": "greedy replay"},
-            "workloads": workloads}
+# A document that reports NO resolution evidence is INCONCLUSIVE whatever it measured -- absent
+# is not resolved -- so the default here carries an empty `unresolved_workloads`, which is what
+# `real_eval.py` writes for a run where every arm cleared its own spread. Tests that are about
+# the absence itself build their document without it; see
+# `test_a_result_with_no_resolution_evidence_is_inconclusive`.
+def real_doc(workloads, identical=True, measurement=("default",)):
+    doc = {"correctness": {"output_identical": identical, "method": "greedy replay"},
+           "workloads": workloads}
+    if measurement == ("default",):
+        measurement = {"unresolved_workloads": []}
+    if measurement is not None:
+        doc["measurement"] = measurement
+    return doc
 
 
 def flat(ratio, weights=None):
@@ -53,18 +63,35 @@ class Statuses(unittest.TestCase):
                           "EVAL_ERROR"})
 
     def test_status_follows_from_the_numbers(self):
-        clear = label.score_real(real_doc(flat(1.10)))
+        # Every one of these carries resolution evidence, because a document without it is
+        # INCONCLUSIVE whatever it measured -- see the test below.
+        resolved = {"unresolved_workloads": []}
+        clear = label.score_real(real_doc(flat(1.10), measurement=resolved))
         self.assertEqual(clear["status"], "FRONTIER_GAIN")
         self.assertTrue(clear["significant"])
 
-        flatline = label.score_real(real_doc(flat(1.0)))
+        flatline = label.score_real(real_doc(flat(1.0), measurement=resolved))
         self.assertEqual(flatline["status"], "NO_FRONTIER_GAIN")
 
-        tiny = label.score_real(real_doc(flat(1.001)))
-        self.assertEqual(tiny["status"], "NO_FRONTIER_GAIN",
-                         "a gain below the floor is not a gain, but it is also not a band")
+        # 0.1%, resolved, on a complete matrix. The physical ceiling for the persist family on
+        # the scored model is 0.52%, so a scorer that called this "not a gain" would be the
+        # impact-band table again under another name -- and that table was removed for exactly
+        # this reason. `verdict` still says `reject`, because the project's go/no-go bar is a
+        # different question from whether a submission moved the number.
+        tiny = label.score_real(real_doc(flat(1.001), measurement=resolved))
+        self.assertEqual(tiny["status"], "FRONTIER_GAIN")
+        self.assertEqual(tiny["verdict"], "reject")
         self.assertAlmostEqual(tiny["weighted_gain_pct"], 0.1, places=6,
                                msg="and the continuous figure is still reported as itself")
+
+    def test_a_result_with_no_resolution_evidence_is_inconclusive(self):
+        # Absent is not resolved. Until the 2% floor stopped gating `significant`, a document
+        # that never reported a noise floor was saved by the floor rather than caught by it.
+        out = label.score_real(real_doc(flat(1.10), measurement=None))
+        self.assertEqual(out["status"], "INCONCLUSIVE")
+        self.assertFalse(out["significant"])
+        self.assertEqual(out["resolution_evidence"], "absent")
+        self.assertIn("absent is not", out["reason"])
 
     def test_go_no_go_boundaries(self):
         # Overview section 21.
@@ -153,11 +180,17 @@ class RealScoring(unittest.TestCase):
         out = label.score_real({"workloads": flat(1.10)})
         self.assertEqual(out["verdict"], "REJECT")
 
-    def test_sub_two_percent_is_not_significant(self):
-        out = label.score_real(real_doc(flat(1.015)))
+    def test_the_go_no_go_threshold_does_not_gate_a_submission(self):
+        # 1.5%: below the project's 2% go/no-go bar and above the 0.52% physical ceiling for
+        # the persist family. `verdict` rejects the direction; `status` reports what the
+        # submission did, and the two are different questions.
+        out = label.score_real(real_doc(flat(1.015), measurement={"unresolved_workloads": []}))
         self.assertTrue(out["scored"])
-        self.assertFalse(out["significant"])
-        self.assertEqual(out["status"], "NO_FRONTIER_GAIN")
+        self.assertEqual(out["verdict"], "reject")
+        self.assertTrue(out["significant"])
+        self.assertEqual(out["status"], "FRONTIER_GAIN")
+        self.assertIn("go/no-go threshold", out["reason"])
+        self.assertIn("physical ceiling", out["reason"])
 
     def test_default_weights_apply_by_name(self):
         doc = real_doc({n: {"baseline_tps": 100.0, "candidate_tps": 110.0} for n in label.DEFAULT_WEIGHTS})

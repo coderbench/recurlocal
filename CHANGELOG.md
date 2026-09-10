@@ -100,6 +100,25 @@ role-floor arbitration alone, and measures the same as it within noise.
 [`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
 maintainer has to answer before handing this to contributors.
 
+### Fixed — the second scorer still had the impact bands' defect
+
+`eval/decide.py` gated `significant` on a 2% weighted gain. That is the same number the impact
+bands used for their lowest paying step, and it was removed from THEM in 0.2.1 because it sits
+above the physical ceiling — 0.52% for the persist family on the scored model, 1.94% on the
+best model this project has found. Left in the other scorer it meant no result achievable on
+this hardware could ever be called significant, `--real` always exited non-zero, and the status
+vocabulary the two scorers share meant one thing in `decide.py` and another in `tt-frontier`.
+
+`significant` is now what the rest of the harness means by it: a positive gain, on a complete
+matrix, that cleared its own run-to-run spread. The 2% threshold keeps deciding `verdict` and
+`go_no_go`, which answer "should this research direction continue" — the project's decision
+about itself — and the reason line now says so, and says the number is above the ceiling.
+
+**And the removal exposed a hole the floor had been hiding.** `unresolved_workloads` was read
+as a list, so a document that reported no resolution evidence at all looked identical to one
+where everything resolved. Absent is not resolved: a result with no
+`measurement.unresolved_workloads` is INCONCLUSIVE and says why.
+
 ### Fixed — an empty plan and a plumbing failure read the same in the 0.1 counters
 
 `windows_applied 0, windows_attached_to_node 0, pre_touch_launches 0` is a NULL CANDIDATE — the

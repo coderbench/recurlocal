@@ -64,8 +64,18 @@ DEFAULT_WEIGHTS = {"batch1": 0.40, "concurrency4": 0.20, "concurrency16": 0.20, 
 
 # Section 44 — "no important workload may regress > 2%".
 REGRESSION_GUARD = 0.98
-# Both tables call anything under 2% noise; it is also the synthetic evaluator's
-# default stability threshold, so the two agree on what counts as resolvable.
+# The threshold for the PROJECT's own go/no-go, and nothing else.
+#
+# It used to gate `significant` as well, because the impact-band table and the go/no-go table
+# both called anything under 2% noise. The band table is gone as of 0.2.1 -- removed because
+# its lowest paying step sat ABOVE the physical ceiling, which `eval/traffic_budget.py` puts at
+# 0.52% for the persist family on the scored model and 1.94% on the best model this project has
+# found. Leaving it gating `significant` left the same defect in the other scorer: no result
+# achievable on this hardware could ever be called significant, `--real` always exited non-zero,
+# and the shared status vocabulary meant one thing here and another in `tools/tt-frontier`.
+#
+# It still decides `verdict` and `go_no_go`, which answer "should this research direction
+# continue" -- the project's decision about itself, not a label attached to somebody's PR.
 SIGNIFICANCE_PCT = 2.0
 
 
@@ -187,17 +197,29 @@ def score_real(doc, allow_regression=False, allow_partial=False):
     # An arm whose gain sits inside its own run-to-run spread is not evidence. real_eval.py
     # computes that per workload; until now decide.py never read it, so a "significant"
     # verdict could rest entirely on arms that did not resolve.
-    unresolved = sorted((doc.get("measurement") or {}).get("unresolved_workloads") or [])
+    measurement = doc.get("measurement") or {}
+    unresolved = sorted(measurement.get("unresolved_workloads") or [])
     if unresolved:
         out["unresolved_workloads"] = unresolved
+    # ABSENT is not RESOLVED. A result file that carries no resolution evidence has not shown
+    # that anything cleared its own run-to-run spread, and until the 2% floor stopped gating
+    # `significant` that omission was masked by the floor rather than caught. `real_eval.py`
+    # always writes the key, so a document without it was produced by something else.
+    resolution_reported = "unresolved_workloads" in measurement
+    if not resolution_reported:
+        out["resolution_evidence"] = "absent"
 
     blocking = missing if not allow_partial else []
     _, decision, decision_text = band(gain_pct, GO_NO_GO)
     # GO_NO_GO stays. It answers a different question from a submission's score -- "should this
     # research direction continue" -- and it is the project's decision about itself, not a
     # label attached to somebody's PR.
-    significant = gain_pct >= SIGNIFICANCE_PCT and not unresolved and not blocking
-    if unresolved or blocking:
+    # Resolved outside its own run-to-run spread, on a complete matrix, and positive. The same
+    # rule the rest of the harness applies, and NOT the 2% go/no-go threshold -- see
+    # SIGNIFICANCE_PCT.
+    significant = (gain_pct > 0.0 and not unresolved and not blocking
+                   and resolution_reported)
+    if unresolved or blocking or not resolution_reported:
         status = "INCONCLUSIVE"
     elif gain_pct > 0.0 and significant:
         status = "FRONTIER_GAIN"
@@ -209,8 +231,19 @@ def score_real(doc, allow_regression=False, allow_partial=False):
         out["partial_waived"] = True
     reasons = []
     if gain_pct < SIGNIFICANCE_PCT:
+        # Said, not scored. A reader who sees `verdict: reject` is entitled to know that the
+        # threshold it was rejected against is above what the hardware can deliver, and that
+        # the rejection is of the project's hypothesis rather than of the submission.
         reasons.append(f"weighted gain {gain_pct:.2f}% is below the "
-                       f"{SIGNIFICANCE_PCT:.0f}% significance floor")
+                       f"{SIGNIFICANCE_PCT:.0f}% go/no-go threshold, which is the PROJECT's "
+                       f"bar for continuing this direction and sits above the physical ceiling "
+                       f"eval/traffic_budget.py computes for the persist family (0.52% on the "
+                       f"scored model). It does not gate `significant` and says nothing about "
+                       f"a submission; tools/tt-frontier scores those")
+    if not resolution_reported:
+        reasons.append("the result carries no `measurement.unresolved_workloads`, so nothing "
+                       "here has been shown to clear its own run-to-run spread; absent is not "
+                       "resolved and this is reported as INCONCLUSIVE rather than credited")
     if unresolved:
         reasons.append(f"{', '.join(unresolved)} did not resolve outside its own run-to-run "
                        "spread — take more repeats")
