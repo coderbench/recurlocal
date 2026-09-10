@@ -14,7 +14,11 @@
 #include <string>
 
 static int g_failures = 0;
-#define CHECK(cond) do { if (!(cond)) { \
+// Counted, and printed on success. A suite that says only "passed" cannot be
+// distinguished from one whose checks were all compiled out, and the repo manifest
+// used to carry a hand-typed total that nothing regenerated.
+static int g_checks = 0;
+#define CHECK(cond) do { ++g_checks; if (!(cond)) { \
     std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); ++g_failures; } } while (0)
 
 static void test_the_old_namespace_still_names_the_planner() {
@@ -76,6 +80,6 @@ int main() {
     test_the_adapter_surface_is_reachable_under_both_names();
 
     if (g_failures) { std::cout << g_failures << " compatibility check(s) failed\n"; return 1; }
-    std::cout << "compatibility tests passed\n";
+    std::cout << "compatibility tests passed (" << g_checks << " checks)\n";
     return 0;
 }

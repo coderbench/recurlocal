@@ -211,6 +211,7 @@ def main():
             print(f"FAIL {failure}")
         print(f"{len(failures)} schema check(s) failed")
         return 1
+    print(f"Ran {checked} tests")
     print(f"schema tests passed ({checked} document(s) validated)")
     return 0
 

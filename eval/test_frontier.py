@@ -30,7 +30,12 @@ from frontier import report as report_mod                               # noqa: 
 FAILURES = []
 
 
+CHECKS = 0
+
+
 def check(condition, message):
+    global CHECKS
+    CHECKS += 1
     if not condition:
         FAILURES.append(message)
         print(f"  FAIL {message}")
@@ -732,6 +737,7 @@ def main():
         for failure in FAILURES:
             print(f"  - {failure}")
         return 1
+    print(f"Ran {CHECKS} tests")
     print("frontier: all golden tests passed")
     return 0
 

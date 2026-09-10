@@ -176,6 +176,16 @@ jobs:
       - run: cmake --build build-cuda -j2
       - run: ctest --test-dir build-cuda --output-on-failure
 
+  manifest:
+    # repo-manifest.json is quoted, so a manifest that is wrong about what is in the repository
+    # is worse than none. By 0.2.1 it was missing 37 files including every file of the frontier
+    # scorer, because the list was maintained by hand.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the manifest matches the repository
+        run: python3 scripts/manifest.py --check
+
   anti-gaming:
     # The property that a submission cannot win by editing the ruler is enforced by a script,
     # and a script nothing runs is a rule that holds only for honest submissions.

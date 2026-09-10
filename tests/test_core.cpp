@@ -17,7 +17,11 @@
 using namespace tensortransit;
 
 static int g_failures = 0;
-#define CHECK(cond) do { if (!(cond)) { \
+// Counted, and printed on success. A suite that says only "passed" cannot be
+// distinguished from one whose checks were all compiled out, and the repo manifest
+// used to carry a hand-typed total that nothing regenerated.
+static int g_checks = 0;
+#define CHECK(cond) do { ++g_checks; if (!(cond)) { \
     std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); ++g_failures; } } while (0)
 
 static constexpr std::size_t MiB = 1024ull * 1024ull;
@@ -517,6 +521,6 @@ int main() {
     test_the_recording_executor_sees_a_balanced_plan();
 
     if (g_failures) { std::cout << g_failures << " core check(s) failed\n"; return 1; }
-    std::cout << "core tests passed\n";
+    std::cout << "core tests passed (" << g_checks << " checks)\n";
     return 0;
 }

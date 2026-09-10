@@ -29,7 +29,11 @@
 using namespace tensortransit;
 
 static int g_failures = 0;
-#define CHECK(cond) do { if (!(cond)) { \
+// Counted, and printed on success. A suite that says only "passed" cannot be
+// distinguished from one whose checks were all compiled out, and the repo manifest
+// used to carry a hand-typed total that nothing regenerated.
+static int g_checks = 0;
+#define CHECK(cond) do { ++g_checks; if (!(cond)) { \
     std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); ++g_failures; } } while (0)
 
 // Measured control-arm decode latency for the pinned model on the reference RTX 5090:
@@ -217,6 +221,6 @@ int main() {
                     "missing, which is the failure this budget is really about.\n");
         return 1;
     }
-    std::printf("overhead budget tests passed\n");
+    std::printf("overhead budget tests passed (%d checks)\n", g_checks);
     return 0;
 }

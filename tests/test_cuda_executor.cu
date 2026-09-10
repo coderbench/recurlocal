@@ -13,7 +13,11 @@
 using namespace tensortransit;
 
 static int g_failures = 0;
-#define CHECK(cond) do { if (!(cond)) { \
+// Counted, and printed on success. A suite that says only "passed" cannot be
+// distinguished from one whose checks were all compiled out, and the repo manifest
+// used to carry a hand-typed total that nothing regenerated.
+static int g_checks = 0;
+#define CHECK(cond) do { ++g_checks; if (!(cond)) { \
     std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); ++g_failures; } } while (0)
 
 static constexpr std::size_t MiB = 1024ull * 1024ull;
@@ -279,6 +283,6 @@ int main() {
     test_a_window_reaches_a_captured_graph_node(fixture);
 
     if (g_failures) { std::printf("%d CUDA executor check(s) failed\n", g_failures); return 1; }
-    std::printf("CUDA executor tests passed\n");
+    std::printf("CUDA executor tests passed (%d checks)\n", g_checks);
     return 0;
 }

@@ -48,6 +48,9 @@ for gen in eval/generations/*/; do
     python3 tools/tt-frontier generation show "$name" | sed -n '1,2p'
 done
 
+step "the manifest still matches the repository"
+python3 scripts/manifest.py --check
+
 step "the ledger audits clean"
 for gen in frontier/*/; do
     name="$(basename "$gen")"

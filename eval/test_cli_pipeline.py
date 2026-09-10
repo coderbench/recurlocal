@@ -26,9 +26,12 @@ CLI = [sys.executable, str(ROOT / "tools" / "tt-frontier")]
 GENERATION = "TTF-1"
 
 failures = []
+checks = 0
 
 
 def check(condition, message):
+    global checks
+    checks += 1
     if not condition:
         failures.append(message)
         print(f"  FAIL {message}")
@@ -186,6 +189,7 @@ def main():
         for f in failures:
             print(f"  - {f}")
         return 1
+    print(f"Ran {checks} tests")
     print("tt-frontier CLI pipeline passed")
     return 0
 

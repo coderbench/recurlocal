@@ -13,7 +13,11 @@ using namespace tensortransit;
 // assert() disappears under NDEBUG, which would leave a Release build reporting a
 // green test run with nothing checked. These checks are always compiled in.
 static int g_failures = 0;
-#define CHECK(cond) do { if (!(cond)) { \
+// Counted, and printed on success. A suite that says only "passed" cannot be
+// distinguished from one whose checks were all compiled out, and the repo manifest
+// used to carry a hand-typed total that nothing regenerated.
+static int g_checks = 0;
+#define CHECK(cond) do { ++g_checks; if (!(cond)) { \
     std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); ++g_failures; } } while (0)
 #define CHECK_NEAR(a, b) CHECK(std::abs((a) - (b)) < 1e-9)
 
@@ -1492,6 +1496,6 @@ int main() {
     test_a_backoff_that_changed_nothing_is_not_reported_as_a_reduction();
 
     if (g_failures) { std::cout << g_failures << " planner check(s) failed\n"; return 1; }
-    std::cout << "planner tests passed\n";
+    std::cout << "planner tests passed (" << g_checks << " checks)\n";
     return 0;
 }
