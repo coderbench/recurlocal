@@ -402,6 +402,7 @@ void Engine::maybe_write_trace(int sequences) noexcept {
 void Engine::snapshot_plan() noexcept {
     const TransitPlan& plan = runtime_.plan();
     plan_digest_ = plan.digest();
+    plan_actions_ = plan.actions().size();
     committed_bytes_ = plan.cost().committed_bytes;
     predicted_saved_ = plan.cost().predicted_saved_bytes;
     step_traffic_ = plan.cost().step_traffic_bytes;

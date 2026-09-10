@@ -203,6 +203,10 @@ public:
     std::size_t set_aside_at_init_bytes() const noexcept { return set_aside_at_init_; }
     const std::string& planner_name() const noexcept { return settings_.planner; }
     std::uint64_t plan_digest() const noexcept { return plan_digest_; }
+    // How many actions the plan in force carries. Zero is a planner that DECIDED to do
+    // nothing; non-zero with nothing applied is a plumbing failure, and the 0.1 counters
+    // cannot tell those apart -- see eval/real_eval.py::declined_every_candidate.
+    std::size_t plan_actions() const noexcept { return plan_actions_; }
     // Counts by decline reason, in DeclineReason order, from the plan in force.
     const std::uint64_t* declines() const noexcept { return declines_; }
     std::size_t declines_size() const noexcept { return kDeclineReasons; }
@@ -265,6 +269,7 @@ private:
     int pending_layer_ = -1;
     std::size_t set_aside_at_init_ = 0;
     std::uint64_t plan_digest_ = 0;
+    std::size_t plan_actions_ = 0;
     std::uint64_t declines_[kDeclineReasons] = {};
     int recurrent_layers_ = 0;
     int kv_layers_ = 0;

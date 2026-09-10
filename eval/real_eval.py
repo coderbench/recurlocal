@@ -214,14 +214,32 @@ def declined_every_candidate(stats):
     st = (stats or {}).get("stats", {})
     if st.get("windows_deferred_to_caller", 0):
         return None
-    declines = ((stats or {}).get("transit") or {}).get("declines")
+    transit = (stats or {}).get("transit") or {}
+    declines = transit.get("declines")
     if not isinstance(declines, dict):
         return None                      # the v0 engine keeps no census; no opinion
     total = sum(v for v in declines.values() if isinstance(v, (int, float)))
     if total <= 0:
         return None
     named = {k: v for k, v in declines.items() if v and k != "none"}
-    return {"declined": total, "reasons": named} if named else None
+    if not named:
+        return None
+
+    # A non-empty decline census is NOT enough, and the five-arm run proved it: the `global`
+    # arm declined 192 candidates and still ADMITTED 14 persists and 50 stream hints, none of
+    # which reached a kernel. That is the plumbing failure this guard exists for, wearing a
+    # census. The plan must carry no actions at all.
+    actions = transit.get("plan_actions")
+    if actions is None:
+        # A build older than that counter. `committed_bytes` is the closest thing it has: a
+        # plan that reserved bytes admitted something. It cannot see a stream-only plan, which
+        # is exactly why the counter was added.
+        if transit.get("committed_bytes"):
+            return None
+        return {"declined": total, "reasons": named, "evidence": "committed_bytes == 0"}
+    if actions:
+        return None
+    return {"declined": total, "reasons": named, "evidence": "plan_actions == 0"}
 
 
 def require_hook_engaged(text, env_extra, label):

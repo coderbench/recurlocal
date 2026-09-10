@@ -947,7 +947,7 @@ void write_transit_stats_json(std::FILE* out) noexcept {
         ",\"transit\":{\"engine\":\"transit\",\"planner\":\"%s\","
         "\"admission\":\"%s\",\"reuse_metric\":\"%s\",\"window_binding\":\"%s\","
         "\"window_preference\":\"%s\",\"max_windows_per_kernel\":%d,"
-        "\"plan_digest\":\"%016llx\","
+        "\"plan_digest\":\"%016llx\",\"plan_actions\":%zu,"
         "\"recurrent_tensors\":%d,\"kv_tensors\":%d,\"kv_declared\":%s,"
         "\"layers_windowed\":%llu,"
         "\"committed_bytes\":%zu,\"predicted_saved_bytes\":%zu,"
@@ -962,7 +962,7 @@ void write_transit_stats_json(std::FILE* out) noexcept {
         e.planner_name().c_str(), to_string(cfg.admission), to_string(cfg.reuse_metric),
         to_string(cfg.window_binding), to_string(cfg.window_preference),
         cfg.max_windows_per_kernel,
-        (unsigned long long)e.plan_digest(),
+        (unsigned long long)e.plan_digest(), e.plan_actions(),
         e.recurrent_layers(), e.kv_layers(), a.kv_declared ? "true" : "false",
         (unsigned long long)e.counters().layers,
         e.committed_bytes(), e.predicted_saved_bytes(), e.step_traffic_bytes(),

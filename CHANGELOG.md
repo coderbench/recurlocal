@@ -316,6 +316,13 @@ keeps its guard: a window computed and handed back to a runtime that never attac
 `windows_deferred_to_caller > 0`, which is checked first and still aborts. An engine that keeps
 no census — the 0.1 controller — gets no benefit of the doubt.
 
+**A non-empty census turned out not to be enough, and the five-arm run found it within the
+hour.** The `global` arm reported 192 declined candidates *and* had admitted 14 persists and 50
+stream hints, none of which reached a kernel — the plumbing failure wearing a census. The
+exemption now requires the plan to carry **no actions at all**, which needed a new counter:
+`transit.plan_actions`. A build older than it falls back to `committed_bytes`, which sees a plan
+that reserved a partition but not a stream-only one — which is exactly why the counter exists.
+
 ### Fixed — the packed-path guard counted prefill chunks in its denominator
 
 `eval/real_eval.py` refused a concurrency measurement whose `tokens_packed / tokens` fell below

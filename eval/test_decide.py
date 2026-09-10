@@ -390,32 +390,58 @@ class HarnessIntegrity(unittest.TestCase):
         The incident the NULL CANDIDATE guard exists for is different and keeps its guard: a
         window that was computed and handed back to a runtime that never attached it.
         """
-        def stats(deferred, declines):
+        def stats(deferred, declines, actions=None, committed=None):
             body = {"ever_initialised": True, "initialised": True, "broken": False,
                     "stats": {"layers": 48, "windows_applied": 0,
                               "windows_attached_to_node": 0, "pre_touch_launches": 0,
                               "windows_deferred_to_caller": deferred}}
+            transit = {}
             if declines is not None:
-                body["transit"] = {"declines": declines}
+                transit["declines"] = declines
+            if actions is not None:
+                transit["plan_actions"] = actions
+            if committed is not None:
+                transit["committed_bytes"] = committed
+            if transit:
+                body["transit"] = transit
             return "RECURLOCAL_STATS " + json.dumps(body)
 
         env = {"TENSORTRANSIT": "persist"}
         # A planner that declined everything for a stated reason is an arm, not a failure.
         self.assertIsNotNone(real_eval.require_hook_engaged(
-            stats(0, {"below_min_hit_ratio": 448, "role_excluded": 64}), env, "naive_both"))
+            stats(0, {"below_min_hit_ratio": 448, "role_excluded": 64}, actions=0),
+            env, "naive_both"))
+
+        # A non-empty census is NOT enough, and the five-arm run proved it: `global` declined
+        # 192 candidates and still ADMITTED 14 persists and 50 stream hints, none of which
+        # reached a kernel. That is the plumbing failure wearing a census.
+        with self.assertRaises(SystemExit) as caught:
+            real_eval.require_hook_engaged(
+                stats(0, {"budget_exhausted": 99, "not_supported": 29, "role_excluded": 64},
+                      actions=64), env, "global")
+        self.assertIn("NULL CANDIDATE", str(caught.exception))
+
+        # A build older than that counter falls back to committed bytes, which sees a plan that
+        # reserved a partition and not a stream-only one -- which is why the counter exists.
+        with self.assertRaises(SystemExit):
+            real_eval.require_hook_engaged(
+                stats(0, {"budget_exhausted": 99}, committed=47185920), env, "old build")
+        self.assertIsNotNone(real_eval.require_hook_engaged(
+            stats(0, {"budget_exhausted": 192}, committed=0), env, "old build, empty"))
 
         # Deferred windows are the plumbing failure and still abort, census or no census.
         for declines in (None, {"below_min_hit_ratio": 448}):
             with self.assertRaises(SystemExit) as caught:
-                real_eval.require_hook_engaged(stats(192, declines), env, "arm")
+                real_eval.require_hook_engaged(stats(192, declines, actions=0), env, "arm")
             self.assertIn("NULL CANDIDATE", str(caught.exception))
 
         # And an engine that keeps no census gets no benefit of the doubt.
         with self.assertRaises(SystemExit) as caught:
-            real_eval.require_hook_engaged(stats(0, None), env, "v0 arm")
+            real_eval.require_hook_engaged(stats(0, None, actions=0), env, "v0 arm")
         self.assertIn("NULL CANDIDATE", str(caught.exception))
         with self.assertRaises(SystemExit):
-            real_eval.require_hook_engaged(stats(0, {"none": 512}), env, "no reason given")
+            real_eval.require_hook_engaged(stats(0, {"none": 512}, actions=0), env,
+                                           "no reason given")
 
     def test_the_packed_path_guard_counts_decode_steps_not_prefill_chunks(self):
         """The measured numbers that corrected it, from the reference box.
