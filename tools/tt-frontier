@@ -88,14 +88,25 @@ def _persist_ceilings(generation, bandwidth_gbs, state_bytes_scale=0.5):
         import traffic_budget
     except Exception:                                     # noqa: BLE001
         return {}
-    pin_path = REPO / "adapters" / "sparkinfer" / "pin.json"
-    if not pin_path.exists():
-        return {}
-    pin = json.loads(pin_path.read_text())
-    model = pin.get("model_geometry") or pin.get("model") or {}
     needed = ("recurrent_layers", "lin_state_bytes_per_layer", "lin_conv_state_bytes_per_layer")
+    # The GENERATION's own model block first, and the pinned integration only as a fallback.
+    #
+    # A generation names the model it scores, and once there is more than one generation the
+    # pin is the wrong place to read a state shape from: pairing one model's decode rates with
+    # another's geometry produces a confident, wrong ceiling with nothing in the output to show
+    # it. `eval/traffic_budget.py` learned the same lesson from its --matrix spec and says so in
+    # its own docstring.
+    model = generation.model if isinstance(generation.model, dict) else {}
+    source = f"{generation.name}'s own model block"
+    if not all(k in model for k in needed):
+        pin_path = REPO / "adapters" / "sparkinfer" / "pin.json"
+        if not pin_path.exists():
+            return {}
+        model = json.loads(pin_path.read_text()).get("model") or {}
+        source = "adapters/sparkinfer/pin.json (the generation carries no geometry)"
     if not all(k in model for k in needed):
         return {}
+    _persist_ceilings.source = source
     out = {}
     for cell in generation.cells:
         match = re.fullmatch(r"ctx(\d+)-c(\d+)", cell)
@@ -209,7 +220,8 @@ def cmd_generation(args):
         if ceilings:
             print()
             print(f"  persist-family ceiling per cell, against that cell's own goodput spread "
-                  f"({args.bandwidth_gbs:g} GB/s, geometry from adapters/sparkinfer/pin.json,")
+                  f"({args.bandwidth_gbs:g} GB/s, geometry from "
+                  f"{getattr(_persist_ceilings, 'source', 'the pin')},")
             print(f"  matrix state scaled by {args.state_bytes_scale:g} above one sequence "
                   f"because the packed decode path compacts it to bf16):")
             print(f"    {'cell':16s} {'persist':>9s} {'any mech.':>10s} {'bw':>5s} "

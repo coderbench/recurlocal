@@ -894,6 +894,30 @@ def test_status_derivation():
     check(decide_status(Fake(), "PASS") == "REGRESSION_GUARD_FAIL", "the guard vetoes")
 
 
+def test_a_ceiling_reads_the_generation_it_is_about():
+    """Pairing one model's decode rates with another's state shape is a confident wrong number.
+
+    `--reachable` computes `2 x min(persisting-L2, footprint) / step` from the recurrent
+    geometry. That geometry used to come from `adapters/sparkinfer/pin.json` unconditionally,
+    which is correct while exactly one generation exists and silently wrong the moment a second
+    one scores a different model -- the rates would be the new model's and the footprint the old
+    one's. `eval/traffic_budget.py` carries the same rule for its --matrix spec and records
+    which source it used; this does too.
+    """
+    section("a ceiling reads its own generation")
+    root = Path(__file__).resolve().parent.parent
+    import subprocess
+    done = subprocess.run([sys.executable, str(root / "tools" / "tt-frontier"),
+                           "generation", "show", "TTF-1", "--reachable"],
+                          capture_output=True, text=True, cwd=root)
+    check(done.returncode == 0, "the reachability view runs")
+    check("geometry from" in done.stdout,
+          "and names where it took the state shape from, rather than leaving it to be assumed")
+    check("pin.json (the generation carries no geometry)" in done.stdout
+          or "TTF-1's own model block" in done.stdout,
+          "which is either the generation's own block or the pin, said explicitly")
+
+
 def test_a_frozen_generation_has_exactly_one_definition():
     """It is stored twice, and the two copies must be the same bytes.
 
@@ -988,6 +1012,7 @@ def main():
                  test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone,
                  test_regression_guard, test_receipt_and_result_match_their_schemas,
                  test_receipt_and_ledger, test_status_derivation,
+                 test_a_ceiling_reads_the_generation_it_is_about,
                  test_a_frozen_generation_has_exactly_one_definition,
                  test_no_size_bands, test_reports_render):
         test()
