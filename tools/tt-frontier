@@ -572,6 +572,22 @@ def cmd_run(args):
         repeats=args.repeats, max_new=args.max_new, long_prefill=args.long_prefill,
         settle_seconds=args.settle_seconds, verbose=not args.quiet)
 
+    # Runs that spent their time somewhere other than decoding the workload. Reported, never
+    # refused -- see runner.scheduling_outliers for why, and for the one measured instance the
+    # detector was built from.
+    outliers = runner_mod.scheduling_outliers(records)
+    if outliers:
+        print(f"!! {len(outliers)} run(s) bracketed far more steps than their siblings for the "
+              f"same decode work:", file=sys.stderr)
+        for row in outliers:
+            print(f"     {row['cell']}/{row['config_id']}/r{row['repeat']}: "
+                  f"{row['non_decode_steps']} non-decode steps against a group median of "
+                  f"{row['group_median_non_decode_steps']:g} ({row['ratio']}x), "
+                  f"{row['goodput_tps']:.1f} tok/s against "
+                  f"{row['group_median_goodput_tps']:.1f}", file=sys.stderr)
+        print("     The runtime scheduled the requests serially. A median over nine repeats "
+              "survives one of these; a median over three does not.", file=sys.stderr)
+
     # Attribution. A candidate that lost every repeat of a cell to a SERVING guard, where main
     # produced points, is charged the generation's floor for that cell -- and one floor-decided
     # cell moves dF further than any policy in this repository ever has. Before that is
@@ -611,6 +627,7 @@ def cmd_run(args):
             "skipped": bool(args.no_attribution),
         },
         "main_concurrency_scaling": runner_mod.concurrency_scaling(records, cells),
+        "scheduling_outliers": outliers,
         "cells_requested": cells,
         "mode": args.mode,
         "instances": (generation.raw.get("hidden") or {}).get("mode", "unspecified"),

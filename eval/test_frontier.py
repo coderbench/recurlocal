@@ -414,6 +414,54 @@ def test_attribution_of_a_serving_loss():
         check("credits" in str(exc), "a PARTIAL receipt that credits a gain does not verify")
 
 
+def test_a_run_that_scheduled_serially_is_named_and_still_scored():
+    """The c=32 collapse this repository has carried as unexplained since 0.1, diagnosed.
+
+    Nine paired repeats of ctx128-c32 on the reference box. Eight bracketed 78 steps of which
+    63 took the packed decode path; one bracketed 207 of which 63 did. The decode work was
+    identical -- 63 batched steps at 32 rows in every one of the nine -- and the odd one
+    returned 575 tok/s where its siblings returned 890 to 896. The runtime scheduled the
+    requests substantially serially, so the wall time grew while the batched work did not.
+
+    Every other guard passes it: all requests completed, 63 of 64 decode steps batched, the
+    hook applied a policy. The numbers below are the measured ones.
+    """
+    section("a run the runtime scheduled serially")
+    from frontier import runner as runner_mod
+
+    measured = [144, 15, 14, 14, 14, 15, 15, 15, 15]
+    goodput = [575.1, 894.3, 890.5, 890.1, 892.9, 893.0, 895.9, 895.4, 893.0]
+    records = [
+        {"workload_id": "ctx128-c32", "variant": "candidate", "config_id": "persist",
+         "repeat": i + 1, "status": "OK", "metrics": {"goodput_tps": g},
+         "detail": {"adapter": {"stats": {"tokens": 63 + nd, "tokens_packed": 63}}}}
+        for i, (nd, g) in enumerate(zip(measured, goodput))]
+
+    found = runner_mod.scheduling_outliers(records)
+    check(len(found) == 1, f"exactly one of the nine is flagged (got {len(found)})")
+    check(found[0]["repeat"] == 1 and found[0]["ratio"] == 9.6,
+          "and it is the one that returned 575 tok/s, at 9.6x its group's median")
+    check(records[0]["detail"]["scheduling_outlier"]["goodput_tps"] == 575.1,
+          "the record carries the evidence, so a receipt can name it")
+    check(all("scheduling_outlier" not in (r.get("detail") or {}) for r in records[1:]),
+          "and the eight healthy runs are not touched")
+
+    # It must not fire on a group that merely varies, and must not fire on two points -- two
+    # measurements have no median worth comparing against.
+    steady = [dict(r, repeat=i + 1,
+                   detail={"adapter": {"stats": {"tokens": 63 + nd, "tokens_packed": 63}}})
+              for i, (r, nd) in enumerate(zip(records, [14, 15, 16, 15, 14, 15, 16, 15, 14]))]
+    check(runner_mod.scheduling_outliers(steady) == [],
+          "a group that varies by a step or two is not an outlier")
+    check(runner_mod.scheduling_outliers(records[:2]) == [],
+          "and two repeats are not enough to call one of them anomalous")
+
+    # Scored, not refused. Charging it to the candidate is the trap: the collapse is the
+    # runtime's and it hits whichever arm happens to be running.
+    check(all(r["status"] == "OK" for r in records),
+          "the flagged run keeps its status and its operating point")
+
+
 def test_a_floor_decision_inside_the_published_noise_is_named():
     """The first full TTF-1 receipt read -99.5%, and one cell decided it.
 
@@ -892,6 +940,7 @@ def test_reports_render():
 def main():
     for test in (test_normalization, test_pareto, test_hypervolume, test_aggregate,
                  test_confidence, test_generation, test_attribution_of_a_serving_loss,
+                 test_a_run_that_scheduled_serially_is_named_and_still_scored,
                  test_a_floor_decision_inside_the_published_noise_is_named,
                  test_compute_cases, test_compute_guards,
                  test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone,

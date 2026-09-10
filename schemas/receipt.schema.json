@@ -229,6 +229,14 @@
      "type": "object",
      "additionalProperties": true,
      "description": "Per unservable cell: the probe's status, the configuration it ran and the binary it ran, so a drop can be argued with rather than trusted."
+    },
+    "scheduling_outliers": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": true
+     },
+     "description": "Runs that bracketed far more steps than their siblings for the same decode work -- the runtime scheduling requests serially rather than co-scheduling them, which costs about a third of aggregate throughput and is invisible to every other guard. Scored rather than refused, because the failure is the runtime's and hits whichever arm is running; named, because a median over three repeats does not survive one."
     }
    }
   },

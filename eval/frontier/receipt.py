@@ -180,6 +180,10 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
             "unservable_cells": getattr(computation, "cells_unservable", []),
             "unservable_evidence": getattr(computation, "unservable_evidence", {}),
             "partial": computation.partial,
+            # Runs that took far longer than their siblings for the same decode work. Scored,
+            # because the failure is the runtime's, and named, because a median over three
+            # repeats does not survive one of them.
+            "scheduling_outliers": getattr(computation, "scheduling_outliers", []),
         },
         # Per cell, per objective: what moved, against the spread the generation published for
         # that cell. Diagnostic and never a score -- it says which cells the score is entitled

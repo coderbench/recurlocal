@@ -81,6 +81,14 @@ def compute_frontier(generation, results, *, allow_partial=False):
     candidate_usable = defaultdict(int)
     attributions = defaultdict(set)
 
+    # Runs the runner flagged as having spent their time somewhere other than decoding the
+    # workload. They are SCORED -- the failure is the runtime's and refusing them would charge
+    # a candidate for it -- and named, because a median over three repeats does not survive one.
+    outliers = [dict((record.get("detail") or {}).get("scheduling_outlier") or {},
+                     repeat=record.get("repeat"))
+                for record in results
+                if (record.get("detail") or {}).get("scheduling_outlier")]
+
     for record in results:
         for key in ("workload_id", "variant", "config_id", "repeat", "metrics"):
             _require(key in record, f"raw result is missing {key!r}: {record!r}")
@@ -406,6 +414,7 @@ def compute_frontier(generation, results, *, allow_partial=False):
                                         for v in ("main", "candidate")}
                                  for cell in scored_cells},
         failures=dict(failures),
+        scheduling_outliers=outliers,
         guard_violations=guard_violations,
         partial=bool(missing_cells or unservable),
         weights={c: generation.weights[c] for c in scored_cells},

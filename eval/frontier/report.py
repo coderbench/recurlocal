@@ -108,6 +108,15 @@ def pr_comment(receipt: dict) -> str:
                 f"- {key}: {detail.get('resolved_of_scored', '?')} cells, "
                 f"{(detail.get('resolved_weight_share') or 0.0) * 100:.0f}% of scored weight"
                 + (f" ({unknown * 100:.0f}% unmeasured)" if unknown else ""))
+    outliers = (coverage or {}).get("scheduling_outliers") or []
+    if outliers:
+        lines += ["",
+                  f"**The runtime scheduled some requests serially** in "
+                  f"{len(outliers)} run(s): "
+                  + ", ".join(f"{o.get('cell')}/{o.get('config_id')} r{o.get('repeat')} at "
+                              f"{o.get('ratio')}x its group's non-decode step count" for o in outliers)
+                  + ". Scored, because the failure is the runtime's; named, because a median "
+                    "over three repeats does not survive one."]
     aggregation = receipt.get("aggregation") or {}
     noisy = aggregation.get("floor_decided_inside_published_noise") or []
     if noisy:
@@ -301,6 +310,23 @@ def markdown(receipt: dict, *, raw_results_path=None) -> str:
                   f"through the geometric mean; it is the intended treatment of a lost or a "
                   f"newly-created operating region, and it is named here so that it cannot "
                   f"do so silently."]
+    outliers = (receipt.get("coverage") or {}).get("scheduling_outliers") or []
+    if outliers:
+        rows = "; ".join(
+            f"`{o.get('cell')}`/`{o.get('config_id')}` repeat {o.get('repeat')}: "
+            f"{o.get('non_decode_steps')} non-decode steps against a group median of "
+            f"{o.get('group_median_non_decode_steps')} ({o.get('ratio')}x), "
+            f"{o.get('goodput_tps', 0):.1f} tok/s against "
+            f"{o.get('group_median_goodput_tps', 0):.1f}" for o in outliers)
+        out += ["",
+                f"> **The runtime scheduled some requests serially.** {rows}. The decode work "
+                f"in those runs was identical to their siblings' — the same number of batched "
+                f"decode steps at the same row count — and the wall time was not, so aggregate "
+                f"throughput fell by about a third. Every other guard passes them: all requests "
+                f"completed, the batched path was used, the hook applied a policy. They are "
+                f"SCORED, because the failure is the runtime's and it hits whichever arm "
+                f"happens to be running; they are named because a median over three repeats "
+                f"does not survive one of them and a median over nine does."]
     resolution = receipt.get("resolution_summary") or {}
     if resolution:
         out += ["", "### Resolution", "",

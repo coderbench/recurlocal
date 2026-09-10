@@ -106,6 +106,7 @@
     "results/README.md",
     "results/rtx5090-0.2-migration-check.json",
     "results/rtx5090-0.2.1-arms.json",
+    "results/rtx5090-0.2.1-c32-latency.json",
     "results/rtx5090-0.2.1-null-control.json",
     "results/rtx5090-0.2.1-rewiring-check.json",
     "results/rtx5090-baseline-matrix.json",

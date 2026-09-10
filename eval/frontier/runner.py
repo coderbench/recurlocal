@@ -318,6 +318,85 @@ def concurrency_scaling(records, cells):
     return out
 
 
+# A run may exceed its group's median by this much before it is called an outlier. Generous by
+# design: across 77 measured runs the healthy groups vary by at most one step and the single
+# collapsed run is 9.6x its group's median, so anything between about 2 and 8 separates them.
+SCHEDULING_OUTLIER_RATIO = 3.0
+
+
+def scheduling_outliers(records):
+    """Runs that spent their time somewhere other than decoding the workload.
+
+    This is the signature of the c=32 collapse this repository has carried as unexplained
+    since 0.1, and it is now diagnosable rather than merely observed. The adapter counts every
+    step it brackets (`tokens`) and the subset that took the runtime's packed decode path
+    (`tokens_packed`); the difference is prefill chunks and single-row steps. In a healthy run
+    that difference is a property of the workload and is stable to within one step across
+    repeats -- 77, 77, 77 at ctx128-c1; 15, 15, 15 at ctx128-c16; 14, 14, 15 at ctx128-c32.
+
+    One run of the seventy-seven measured on the reference box did 144, against its group's
+    median of 15, and returned 575 tok/s where its eight siblings returned 890-896. The decode
+    work was identical: 63 packed steps in every one of the nine. The runtime scheduled the 32
+    requests substantially serially, so the wall time grew while the batched work did not.
+
+    Every other guard misses it. All requests completed, so `require_requests_completed` passes.
+    63 of 64 decode steps batched at 32 rows, so `require_packed_path` passes at 98%. The hook
+    ran and applied a policy. The only thing wrong is that the run took 1.6x as long, and the
+    only counter that says so is this one.
+
+    Reported, never refused: the failure is the runtime's, it hits the arm that happens to be
+    running, and turning it into a cell failure would charge a candidate for it. A median over
+    nine repeats survives one; a median over three does not, which is what an operator needs to
+    know when they read a receipt with one of these in it.
+    """
+    groups = defaultdict(list)
+    for record in records:
+        stats = ((record.get("detail") or {}).get("adapter") or {}).get("stats") or {}
+        total, packed = stats.get("tokens"), stats.get("tokens_packed")
+        if not total:
+            continue
+        groups[(record["workload_id"], record["variant"], record["config_id"])].append(
+            (record, total - (packed or 0)))
+
+    out = []
+    for (cell, variant, config), rows in sorted(groups.items()):
+        if len(rows) < 3:
+            continue                      # two points have no median worth comparing against
+        counts = sorted(count for _, count in rows)
+        median = counts[len(counts) // 2] if len(counts) % 2 else \
+            0.5 * (counts[len(counts) // 2 - 1] + counts[len(counts) // 2])
+        if not median:
+            continue
+        for record, count in rows:
+            if count <= SCHEDULING_OUTLIER_RATIO * median:
+                continue
+            detail = {
+                "cell": cell, "variant": variant, "config_id": config,
+                "repeat": record["repeat"],
+                "non_decode_steps": count,
+                "group_median_non_decode_steps": median,
+                "ratio": round(count / median, 2),
+                "goodput_tps": (record.get("metrics") or {}).get("goodput_tps"),
+                "group_median_goodput_tps": _median_of(
+                    [(r.get("metrics") or {}).get("goodput_tps") for r, _ in rows]),
+                "note": ("the run bracketed far more steps than its siblings for the same "
+                         "decode work, which is the runtime scheduling the requests serially "
+                         "rather than co-scheduling them. Reported, not refused: it is a "
+                         "property of the runtime and it hits whichever arm is running."),
+            }
+            record.setdefault("detail", {})["scheduling_outlier"] = detail
+            out.append(detail)
+    return out
+
+
+def _median_of(values):
+    clean = sorted(v for v in values if v)
+    if not clean:
+        return None
+    mid = len(clean) // 2
+    return clean[mid] if len(clean) % 2 else 0.5 * (clean[mid - 1] + clean[mid])
+
+
 def attribute_serving_losses(*, cells, model, baseline_cb_binary, max_new, long_prefill,
                              settle_seconds=30, verbose=True, scaling=None):
     """One probe per cell: the BASELINE build's bench, hook on, no window, no policy.
