@@ -249,13 +249,20 @@ Rules the harness enforces, each because the failure happened:
   one: the runtime served fine, and the number would be the hook's overhead wearing a policy's
   name. A configuration that declares no policy — the control, and the `baseline` arm that
   measures the hook's own cost — is exempt, and the exemption reads the environment rather
-  than the result.
+  than the result. A *planner* that declined every candidate for a stated reason is exempt too,
+  and that exemption reads the decline census: `naive_both` declines all 512 at concurrency 4
+  because a budget shared that far leaves nothing above `min_hit_ratio`, which is the straw man
+  doing what it is for. The incident the guard exists for keeps its guard — a window that was
+  computed and handed back reports `windows_deferred_to_caller > 0` and still aborts.
 - **Arms that lost requests to a device OOM are refused.** An arm that lost requests did not
   run slower, it ran less: aggregate tok/s is tokens over wall time. Under the frontier runner
   that becomes a *failure status* rather than an abort, because a lost operating region is
   real information about a candidate — but it never becomes a slow point.
 - **Arms that fell off the batched decode path are refused**, by the adapter's own packing
-  counters.
+  counters — `max_rows_seen` first, which is unambiguous, and then the share of the DECODE steps
+  the arm asked for. Not the share of every step the hook bracketed: at ctx4096 seventy of a
+  run's 133 steps are prefill chunks, and dividing by them refused two cells whose every decode
+  step batched at full width.
 - **The control is replayed against itself first.**
 - **Ceilings are quoted in throughput currency**, `f/(1-f)`, never as a traffic share `f`.
 
