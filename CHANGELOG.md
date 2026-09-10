@@ -251,6 +251,59 @@ receipt assigns one.
 `GO_NO_GO` table survives, because "should this research direction continue" is the project's
 decision about itself and not a label attached to somebody's submission.
 
+### Fixed — a percentile bootstrap over three points can qualify pure jitter
+
+Confidence was the only statistical gate. It is not enough at the repeat counts this generation
+allows, and that is a property of the estimator rather than a bug: a percentile bootstrap over
+three paired points has at most 27 distinct resamples, so if all three paired ratios fall on the
+same side of 1.0 — which pure jitter does one time in four — every resample does too and the
+lower bound clears zero however small the effect. A synthetic candidate identical to `main` to
+within 0.03% scored `FRONTIER_GAIN` this way, found by the CLI pipeline test on its first run.
+
+There are now **two gates and both must pass**: the bootstrap, and the observed `dF` exceeding
+the run-to-run spread of the runs that produced it — the rule the rest of this harness has
+always used. The receipt carries `noise_floor_pct`, `resolved` and `confidence_qualifies`
+separately, so which gate failed is on the page. The floor is each arm's own absolute spread and
+not the paired one, deliberately and conservatively; the cost is a real small effect on a noisy
+box being reported `INCONCLUSIVE`, and the remedy is repeats.
+
+### Added — a receipt says which configuration held the frontier, and where
+
+`cells[<cell>].on_frontier` names the non-dominated configurations per variant, and the Markdown
+report renders them. "The candidate gained 4%" and "the candidate's specialized planner is on the
+frontier in four cells and its default is on none" are different facts, and only the second tells
+a contributor where their work earned its place. A candidate does not have to beat every existing
+strategy everywhere — it has to hold territory somewhere — and this is the table that says
+whether it did.
+
+### Added — the PR comment is posted from a job the submission's code never runs in
+
+The evaluation job holds `contents: read` and nothing else, because it executes a stranger's
+CUDA. Posting needs `pull-requests: write`. So they are two jobs: the GPU job produces an
+artifact, and a second job on a hosted runner downloads it and posts the Markdown. The two never
+share a runner.
+
+### Fixed — the exactness gate compared the candidate against itself
+
+The control replays ran the candidate's own binary with a scrubbed environment, so the gate asked
+"does enabling the policy change the output" rather than "does this submission change the
+output" — and a candidate whose *inert* path changed the output would have been compared against
+its own changed output and passed. `scripts/trusted_eval.sh` has both builds and now passes both;
+the receipt records which question was answered (`correctness_compared_against`).
+
+### Fixed — a hung cell took the whole matrix with it, and a null policy did not stop one
+
+A `subprocess.TimeoutExpired` propagated and ended a sixty-run matrix two thirds of the way
+through, having spent an hour of device time and produced nothing scoreable. Serving failures —
+OOM, timeout, a fall off the batched path — are now recorded as *territory lost* and the matrix
+continues, which is what the frontier is built to price. Configuration failures — a candidate
+that asked for a policy and whose own telemetry says none reached a kernel — still abort, because
+the number there would be the hook's overhead wearing a policy's name.
+
+The `baseline` arm, which applies no policy on purpose and is how the hook's own cost is
+measured, was being refused by that same guard. The exemption now reads the environment rather
+than the result.
+
 ### Added — TTF-1, and what calibration found
 
 Ten cells, not twelve. The 4x3 matrix was cut down by **measurement**, and
