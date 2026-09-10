@@ -70,8 +70,21 @@ that must be resident is every recurrent layer for every sequence at once — 14
 | concurrency 32 | 12.71% | 2394 MiB | 39.9x | 0.28% |
 
 **The persist ceiling falls as the traffic ceiling rises.** Weighted across the section 44
-matrix the traffic ceiling is 5.22% and the persist family's is **0.52%** — below the floor at
-every concurrency. `eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json
+matrix the traffic ceiling is 5.22% and the persist family's is **0.52%** — below the 2% floor
+section 21 used to reject at, at every concurrency.
+
+**And below a floor that matters more.** Asked of each TTF-1 cell rather than weighted, against
+that cell's own *measurable* floor — the larger of its calibrated control spread and what the
+bench can print — the persist ceiling loses on **seven of ten**:
+
+```bash
+tools/tt-frontier generation show TTF-1 --reachable
+```
+
+`ctx128-c16` is one of them: ceiling 0.249%, floor 0.424%. Every surface below this line that is
+a persisting-window surface inherits that, and the three cells where the family can still be
+measured are `ctx128-c1`, `ctx4096-c1` and `ctx128-c4` — where the full matrix measures it at
+−0.289%, −0.179% and −0.361%. `eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json
 --bandwidth-gbs 1792` computes both, and the bound is generous: it assumes every resident byte
 hits and the set-aside costs its neighbours nothing.
 
