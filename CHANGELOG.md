@@ -50,8 +50,11 @@ answered rather than removed:
 And the largest effects measured this session are **not this library's**. SparkInfer's
 `launch_mmvq_rows` cliff is worth 2.7x of aggregate throughput on the checkpoint that matters
 (`docs/UPSTREAM-SPARKINFER-MMVQ.md`), and a dense 32-sequence run intermittently loses a third
-of its wall time to something that is *not* its decode path — per-token latency is identical
-through the collapse. Against those, the best thing RecurLocal does is **+1.74% at
+of its wall time to something that is *not* its decode path, not request loss, and not the
+per-row projection fallback — per-token latency is identical through it and every request
+completes. That one is narrowed on three sides and still open; a separate and more severe
+failure found while looking for it — per-request device OOM, an 85% drop — is identified and
+now guarded. Against those, the best thing RecurLocal does is **+1.74% at
 batch 1 on one unscorable checkpoint**, and the best thing this session added to it is
 **+0.1 to +0.2 points over a constant**.
 
@@ -329,82 +332,73 @@ adjacent statements. Attaching to an already-instantiated graph is **not** avail
 CUDA 13.3 has no exec-level attribute setter and `cudaGraphExecUpdate` rejects attribute
 changes outright.
 
-### Solved — the dense concurrency-32 collapse. It is device memory, and it was a failure reported as a slowdown
+### Found — a failure mode at concurrency 32 that every guard here passed, and it is not the collapse
 
-The runtime says so itself, once the output is not filtered:
+Looking for the dense model's intermittent 32-sequence collapse turned up something else
+first, and it is worth having on its own. Eight identical isolated runs of
+`qwen3_gguf_cb_bench` on Qwen3.8-27B at 32 sequences, full output captured:
+
+| rep | decode tokens | wall | aggregate | mean ITL | `out of memory` messages |
+|--:|--:|--:|--:|--:|--:|
+| 1 | **320** | 2.239 s | 142.9 tok/s | 20.77 ms | **48** |
+| 2 | **384** | 2.330 s | 164.8 tok/s | 24.26 ms | **47** |
+| 3-8 | 2056 | 2.215-2.235 s | 919.8-928.4 tok/s | 19.25-20.54 ms | 0 |
 
 ```
 [qwen35] malloc: out of memory
 [warn] request error: device out of memory (not a capacity/queue condition -- requires operator attention)
 ```
 
-Six identical isolated runs of `qwen3_gguf_cb_bench` on the dense checkpoint at 32 sequences,
-nothing between them, full output captured:
+Per-request device-memory allocation fails, the runtime reports it as a per-request warning and
+carries on. **The wall time is unchanged** — 2.24 s against a healthy 2.22 s — so the arm did
+not run slowly; it ran *less*, and `agg_tok_s` is tokens over wall time. A run that lost four
+fifths of its requests reports an 85% throughput collapse that is entirely a failure.
 
-| rep | decode tokens | aggregate | mean ITL | out-of-memory messages |
-|--:|--:|--:|--:|--:|
-| 1 | **320** | 142.9 tok/s | 20.77 ms | many |
-| 2 | **384** | 164.8 tok/s | 24.26 ms | many |
-| 3 | 2056 | 925.5 tok/s | 19.29 ms | 0 |
-| 4 | 2056 | 924.7 tok/s | 19.31 ms | 0 |
-| 5 | 2056 | 927.5 tok/s | 19.25 ms | 0 |
+Every guard in this harness passed it: the hook ran, the packed path was used, `agg_tok_s`
+parsed. **`real_eval.py` now refuses such an arm by name** —
+`require_requests_completed` compares the decoded token count against what the workload asked
+for, refuses below 90%, and quotes the count and the out-of-memory message count. The lesson
+generalises past this bug: a throughput harness that reads only a rate cannot tell a slow run
+from a short one, and this repository had been averaging short runs into control/candidate
+ratios for three releases.
 
-**The collapsed runs did not run slower. They ran less.** Per-request device-memory allocation
-fails, the runtime reports it as a per-request warning and carries on, and `agg_tok_s` is
-tokens over wall time — so an arm that lost four fifths of its requests reports a collapse
-that is really a failure. That is why per-token latency was unchanged through it, why it hit
-`baseline` (nothing to do with a locality policy), why it is intermittent, and why every guard
-in this harness passed it: the hook ran, the packed path was used, `agg_tok_s` parsed. The
-prior session's named candidate — accumulated device state across arms — was right, and the
-runtime's own error message says so.
+**This is NOT the collapse this repository has been carrying**, and saying so matters because
+the two look alike in a summary table. The historical evidence is `prefetch` ratios
+`[0.932, 0.676, 0.925]` — a **32%** drop. This failure is an **85%** drop. The ratio that
+matches 0.676 is the one below, which has a full token count.
 
-**`real_eval.py` now refuses such an arm by name.** `require_requests_completed` compares the
-decoded token count against what the workload asked for and refuses below 90%, quoting the
-count and the number of out-of-memory messages. The lesson generalises past this bug: a
-throughput harness that reads only a rate cannot tell a slow run from a short one, and this
-repository had been averaging short runs into control/candidate ratios for three releases.
+### Still open — the 32% collapse itself, now bounded on three sides
 
-### Measured — the collapse is not a decode-path fallback, and the obvious candidate was falsified
-
-`docs/OPTIMIZATION-SURFACES.md` has said for two releases that the dense model's intermittent
-32-sequence collapse is "the runtime falling off its batched decode path". It reproduces, and
-that description does not survive the measurement.
-
-Two consecutive, identical, isolated runs of `qwen3_gguf_cb_bench` on Qwen3.8-27B at 32
-sequences, nothing between them:
+Two consecutive identical isolated runs, earlier in the same session:
 
 | | run 1 | run 2 |
 |---|--:|--:|
-| aggregate | **910.9 tok/s** | **589.9 tok/s** |
+| aggregate | **910.9 tok/s** | **589.9 tok/s** (ratio **0.648**) |
+| decode tokens | 2056 | **2056** |
 | mean inter-token latency | 19.32 ms | **19.31 ms** |
-| decode tokens | 2056 | 2056 |
-| wall | 2.257 s | 3.486 s |
+| wall | 2.257 s | **3.486 s** |
 
-**Per-token decode is identical to two decimal places.** A run that had fallen onto a per-row
-decode path would show it in the inter-token latency; this one does not. The lost 1.2 seconds
-is wall time that is not attributable to per-token decode — the long-prefill request, the
-scheduler, or something else outside the loop the phrase "batched decode path" names.
+Full token count, identical per-token latency, and 1.2 seconds of extra wall time. That ratio
+of 0.648 is the historical `0.676`, and **none of the three obvious explanations survives**:
 
-The obvious candidate was tested and **falsified**. The NVFP4 projection dispatcher has a
-silent third tier — a per-row loop that runs the projection one row at a time and returns
-success, invisible to `[dflash-verify]` and to `tokens_packed`
-(`qwen35_prefill.cpp:3202-3216`). `SPARKINFER_QWEN38_NVFP4_DP4A_PROJ=0` forces that tier
-permanently. If it were the collapse, forcing it would reproduce a ~35% loss:
+- **Not request loss.** Both runs completed all 2056 tokens; the new guard would not fire.
+- **Not a decode-path fallback.** A run that had dropped onto per-row decode would show it in
+  the inter-token latency, and per-token decode is identical to two decimal places.
+- **Not the NVFP4 per-row projection loop.** That silent third tier exists
+  (`qwen35_prefill.cpp:3202-3216`: the dp4a rows kernel which chunks, then
+  `launch_gemv_nvfp4_rows` which refuses `M > 8`, then a bare per-row loop that returns
+  success), and `SPARKINFER_QWEN38_NVFP4_DP4A_PROJ=0` forces it permanently. Forcing it costs
+  about 19% at 8 sequences and 7% at 32 and is **stable** — 847.5 and 846.4 tok/s, within
+  0.1% — where the collapse is 35% and intermittent. Forcing the suspect *removes* the
+  variance rather than reproducing it.
 
-| | default | `DP4A_PROJ=0` (per-row loop forced) |
-|---|--:|--:|
-| c=8 | 348.0, 356.1 tok/s | 288.7, 289.3 tok/s |
-| c=32 | 910.9, **589.9** tok/s | 847.5, **846.4** tok/s |
-
-The forced row loop costs about 19% at 8 sequences and 7% at 32, and it is **stable** — two
-runs within 0.1%. The collapse is 35% and intermittent. So the per-row fallback is real, is
-worth naming, and is *not* this. Forcing it actually removes the variance.
-
-What this leaves is narrower and better posed than what it replaces: something outside the
-per-token decode loop occasionally costs a dense 32-sequence run about a third of its wall
-time, and it is not a locality policy (it hit `baseline`), not the packed-decode refusal (that
-is the MoE's Q4_K failure), and not the NVFP4 per-row fallback. `docs/OPTIMIZATION-SURFACES.md`
-no longer says otherwise.
+It also did not reproduce in the eight-run set above, so it is rarer than one in eight. What is
+left is 1.2 seconds of wall time, outside the per-token decode loop, on a run that completed
+every request — the long-prefill phase, the scheduler, or a stall the timeline would show. That
+is a much narrower question than "the runtime falls off its batched decode path", which is what
+this repository used to say, and `docs/OPTIMIZATION-SURFACES.md` no longer says it. The
+measurement that would close it is a timeline profile, and see the section below for why that
+cannot be taken on this box.
 
 ### Blocked — the spec's chain of evidence cannot be closed on this box
 
@@ -416,8 +410,22 @@ from end-to-end throughput, and that is the weakest link in the chain.
 Nsight Compute 2026.2.1.0 is installed at `/usr/local/cuda/bin/ncu` and is **unusable on this
 box**. `/proc/driver/nvidia/params` reports `RmProfilingAdminOnly: 1`, and every on-device
 query returns `ERR_NVGPUCTRPERM` — including as root, because the restriction is a driver
-module parameter set on the host, not a permission inside the container. Item E is blocked
-before any command can be written, and no amount of work inside this environment moves it.
+module parameter set on the host, not a permission inside the container.
+
+**The block is not specific to `ncu`, and that is worth checking before someone reaches for the
+obvious alternative.** Nsight Systems 2026.1.3 is also installed, and
+`nsys profile --gpu-metrics-devices=help` answers:
+
+```
+GPU Metrics: None of the installed GPUs are supported:
+    Blackwell GB202 | NVIDIA GeForce RTX 5090 - Insufficient privilege, see ERR_NVGPUCTRPERM
+```
+
+`RmProfilingAdminOnly` gates the driver's hardware performance counters, so it takes `ncu`,
+`nsys --gpu-metrics` and CUPTI's profiling API together. What survives is counter-free tracing —
+`nsys` kernel and API timelines, CUPTI activity records — which can time a stall but cannot
+report a byte of DRAM traffic. Item E is blocked before any command can be written, and no
+amount of work inside this environment moves it.
 
 Two things worth recording for whoever has a box where it is not blocked:
 

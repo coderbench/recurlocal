@@ -128,11 +128,20 @@ one kernel node is pending, and counts the declines in `window_attach_ambiguous`
 modes stay opt-in and counted (`stats().capture_invalidations`), and node attachment
 self-disables after a first detected invalidation.
 
-The 32-sequence collapse is real, and its cause is **identified**: per-request device-memory
-allocation fails (`[qwen35] malloc: out of memory`), the runtime reports it as a per-request
-warning and continues, and the collapsed runs decoded 320 and 384 tokens where a healthy run
-decodes 2056. It is a failure reported as a slowdown. `real_eval.py` now refuses such an arm
-by name. See the changelog.
+The 32-sequence collapse is real and is now **two** things, which a summary table makes look
+like one:
+
+- **An 85% drop that is request loss.** Per-request device-memory allocation fails
+  (`[qwen35] malloc: out of memory`), the runtime reports it as a per-request warning and
+  continues, and the run decodes 320 or 384 tokens where a healthy one decodes 2056 — at the
+  same wall time. A failure reported as a slowdown. Identified, and `real_eval.py` now refuses
+  such an arm by name.
+- **A 32% drop that is still open.** This is the historical one — the `prefetch` ratio 0.676
+  above matches a measured 0.648, not the 0.15 that request loss produces. It completes every
+  request, its per-token latency is identical to a healthy run's, and it spends 1.2 s more wall
+  time somewhere outside the decode loop. It is not a decode-path fallback and it is not the
+  NVFP4 per-row projection loop (forcing that loop permanently costs a *stable* 7% at 32
+  sequences, not an intermittent 35%). See the changelog.
 
 An earlier version of this document blamed it on `capture_node` mutating the graph. **That
 attribution was wrong, and the code proves it.** The two arms that collapsed were `baseline`
