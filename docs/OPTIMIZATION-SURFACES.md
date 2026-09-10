@@ -396,6 +396,50 @@ pre-touch adds one extra read of the recurrent state, 64 MB against a 3.56 GB st
 the traffic where the same read was 0.35% of an 18.5 GB one, and the graph-node cost is charged
 against a step 5.2x shorter.
 
+## Surface: how large the set-aside is, as opposed to how large the constant is
+
+`--axis set-aside-policy`. Every number in this repository before this axis reserved
+`persisting_budget_fraction` of the device's persisting-L2 capacity — a constant chosen before
+anything is known about the workload — and the measurements said that constant is wrong in
+both directions. `SetAsidePolicy` reads the recurrent geometry the runtime already declares.
+
+| value | what it reserves |
+|---|---|
+| `fixed` | `persisting_budget_fraction` of capacity, whatever the workload. **The control.** |
+| `fit_footprint` | `min(windowed footprint, capacity)`. Parameter-free. |
+| `residency` | `fit_footprint`, and declines outright below `--axis min-residency` (default 0.50) |
+
+**The windowed footprint is not the token footprint, and conflating them was a defect.** A
+persisting window is an address range and this library places ONE per layer, over one
+sequence's slice — at concurrency the runtime hands over a device array of per-row pointers for
+the pre-touch and a single host-nameable row for the window. So set-aside beyond one sequence's
+footprint holds nothing, however many sequences are in flight. The token footprint is what
+*competes* for the cache and counts every sequence; it is what the hot-set models count and it
+is the wrong number to size a reservation from.
+
+Batch 1 on the MoE checkpoint, three independent runs across two rebuilds. **All three resolve
+and all three put the shipped constant last:**
+
+| run | `fixed` | `fit_footprint` | `residency` | spread | floor |
+|---|--:|--:|--:|--:|--:|
+| 1 | +1.285% | +1.509% | +1.441% | 0.224% | 0.071% |
+| 2 | +1.32% | +1.37% | +1.41% | 0.100% | 0.043% |
+| 3 | +1.30% | +1.40% | +1.46% | 0.160% | 0.077% |
+
+Worth **+0.09 to +0.22 points over the constant with no dial touched by the operator**, and it
+reaches the +1.5% that previously required someone to know to set
+`RECURLOCAL_BUDGET_FRACTION=1.00` by hand. Quote the range: between-run drift on one
+configuration (0.14 points) exceeds any single run's floor.
+
+At four sequences the axis **does not resolve** — two of three runs are inside their floor, and
+the one that resolved did not replicate (the same 60 MiB reservation measured -0.99% and
+-0.28% on two runs). What does resolve there is an ordering: on `--axis budget-fraction
+--concurrency 4`, the largest set-aside is **last in all three pairs**, which is a 1-in-64
+coincidence if a MiB of set-aside cost nothing. A sign test, not a magnitude.
+
+`results/rtx5090-setaside.json` carries all of it, including the three integration defects that
+had to be fixed before any concurrency number meant anything.
+
 ## Axes that were dead on the dense model and are live here
 
 On Qwen3.8-27B the recurrent footprint is 2.4x the persisting capacity at batch 1 and 39.9x at
