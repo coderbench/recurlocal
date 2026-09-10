@@ -308,7 +308,7 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
     state.granted_budget_bytes = executor_.set_aside_bytes();
     runtime_.compile(state);
     snapshot_plan();
-    maybe_write_trace();
+    maybe_write_trace(state.active_requests);
 
     // Which state kind holds the window at each layer, so `after_launch` is a lookup. The
     // rule is the v0 engine's: ask which allocation the resolved region fell in, rather than
@@ -342,19 +342,26 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
     oversubscribed_ = cost.budget_bytes != 0 && cost.peak_live_bytes > cost.budget_bytes;
 }
 
-void Engine::maybe_write_trace() noexcept {
-    // Once per process, after the first compile: the graph is stable across tokens by
-    // construction (that is what the plan cache keys on), so a second write would be the same
-    // file and a write per token would put file I/O on the decode path.
-    if (trace_written_ || settings_.trace_out.empty()) return;
-    trace_written_ = true;
+void Engine::maybe_write_trace(int sequences) noexcept {
+    // On every REBUILD, overwriting, rather than once after the first compile.
+    //
+    // Once-only was wrong and the first recorded trace proved it: the runtime declares its KV
+    // pools AFTER it opens the token, so the first graph this engine builds has no KV in it at
+    // all. A trace written there records 96 recurrent states, 64 weight slices and zero KV --
+    // which is exactly the hand-written approximation the recording was meant to replace.
+    //
+    // Rebuilds are rare by construction (three in a 128-token run; the plan cache exists to
+    // make them rare), so this is not file I/O on the decode path -- and the LAST one is the
+    // steady-state graph, which is the one worth having.
+    if (settings_.trace_out.empty()) return;
+    ++counters_.traces_written;
     TraceMetadata meta{};
     meta.device = device_;
     meta.model = settings_.trace_model;
     meta.runtime = "SparkInfer";
     meta.runtime_commit = settings_.trace_runtime_commit;
     meta.phase = "decode";
-    meta.active_requests = runtime_.plan().cost().budget_bytes ? recurrent_layers_ : 1;
+    meta.active_requests = sequences > 0 ? sequences : 1;
     meta.cyclic = true;
     meta.notes = "recorded from the live SparkInfer adapter";
     std::string error;
@@ -363,9 +370,12 @@ void Engine::maybe_write_trace() noexcept {
         std::fprintf(stderr, "[recurlocal] could not write trace to %s: %s\n",
                      settings_.trace_out.c_str(), error.c_str());
     } else {
-        std::fprintf(stderr, "[recurlocal] wrote trace %s (%zu tensors, %zu kernels)\n",
+        std::fprintf(stderr,
+                     "[recurlocal] wrote trace %s (%zu tensors, %zu kernels, %d sequence(s), "
+                     "write %llu)\n",
                      settings_.trace_out.c_str(), runtime_.registry().size(),
-                     runtime_.graph().kernels().size());
+                     runtime_.graph().kernels().size(), meta.active_requests,
+                     (unsigned long long)counters_.traces_written);
     }
 }
 

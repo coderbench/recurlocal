@@ -127,6 +127,9 @@ struct Counters {
     std::uint64_t layers = 0;
     std::uint64_t hit_ratio_reduced = 0;
     std::uint64_t hot_set_oversubscribed = 0;
+    // Traces written. More than one is normal and is the point: the first graph an engine
+    // builds has no KV in it, because the runtime declares its pools after it opens the token.
+    std::uint64_t traces_written = 0;
 };
 
 // One engine instance. Not synchronised: the adapter holds exactly one, for one model on one
@@ -212,7 +215,7 @@ private:
     };
 
     void rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcept;
-    void maybe_write_trace() noexcept;
+    void maybe_write_trace(int sequences) noexcept;
     void snapshot_plan() noexcept;
 
     TransitRuntime runtime_;
@@ -234,7 +237,6 @@ private:
     cudaStream_t compute_ = nullptr;
     bool initialised_ = false;
     bool have_signature_ = false;
-    bool trace_written_ = false;
     bool warned_no_step_traffic_ = false;
     const char* error_ = nullptr;
     int device_ = 0;
