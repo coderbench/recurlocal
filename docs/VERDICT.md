@@ -6,16 +6,23 @@ gives a number for each part of the answer, and where the answer is no it says s
 
 Short version:
 
-> **A surface, yes; a gain over the control, not yet.** On the scored model and device the
-> **admission axis at concurrency** is where a contributor's change shows up: two admission
-> rules differ from each other by more than the noise, with non-overlapping 99% intervals. But
-> **no arm has been measured to beat the control by more than the published spread of the cell
-> it was measured in**, and the shipped default is negative on every cell of the full matrix
-> that the runtime can actually batch. Four of the ten scored cells cannot be batched by this
-> runtime at all, and one more has a p99 whose calibrated control spread is 481%. The largest
-> number anywhere near this project — 5.4x — belongs to the runtime, not to this library.
+> **The surface is real and it is large. The mechanism this project ships cannot reach it, and
+> on half the matrix it provably never could.**
 >
-> Sections 3 and 8 give each of those a number and say which measurement produced it.
+> Per cell, a persisting-L2 policy is bounded by `2 x persisting-L2 / step traffic`, and the
+> numerator is 60 MiB of hardware. Against each cell's own calibrated control spread, **five of
+> TTF-1's ten cells cannot be won by that family at all** — the control moves further between
+> repeats of itself than a *perfect* policy could ever move it. `ctx128-c16` is one of them:
+> ceiling **0.249%**, published spread **0.424%**, and it is the cell at which every headline
+> figure in this repository was measured.
+>
+> Removing *all* recurrent traffic is worth **5.2%** at sixteen sequences and **8.6%** at
+> thirty-two against those same spreads. The room at concurrency is one to two orders of
+> magnitude above the noise. It is simply not addressable by a 60 MiB carve-out.
+>
+> `tools/tt-frontier generation show TTF-1 --reachable` prints the whole table, computed from
+> the pinned geometry and each cell's own measured control. Sections 3, 8 and 9 give each claim
+> a number and name the measurement it came from.
 
 ---
 
@@ -213,27 +220,56 @@ SparkInfer's to fix and it is worth more than everything in this repository put 
 Saying so is the point. A locality planner that pretended otherwise would be competing for a
 contributor's week under false pretences.
 
-## 7. The answer
+## 7. What is reachable, per cell, before anyone measures anything
 
-**Is there a scorable surface?** Yes: the admission axis at concurrency, worth about 0.3–0.4
-points of throughput against a 0.28% floor, measured and resolved. It is the only one, it is
-narrow, and it is real.
+The ceiling for a persisting-L2 policy is arithmetic, and section 1 gives it weighted across
+the matrix. Asked of each cell separately — from the pinned state geometry and that cell's own
+calibrated control rate — it says something section 1's single number cannot:
 
-**Should the bands have been shipped?** No, and they have not been. Nothing on this model and
-device could ever have reached them.
+```text
+    cell               persist  any mech.    bw    spread   verdict
+    ctx128-c1           0.491%     1.210%   71%    0.144%   measurable by the persist family
+    ctx4096-c1          0.395%     0.971%   57%    0.179%   measurable by the persist family
+    ctx16384-c1         0.159%     0.390%   23%    0.000%   measurable by the persist family
+    ctx128-c4           0.391%     1.983%   57%    0.090%   measurable by the persist family
+    ctx4096-c4          0.113%     0.564%   17%    0.156%   PERSIST FAMILY UNWINNABLE
+    ctx16384-c4         0.052%     0.262%    8%    0.000%   measurable by the persist family
+    ctx128-c16          0.249%     5.217%   40%    0.424%   PERSIST FAMILY UNWINNABLE
+    ctx4096-c16         0.065%     1.304%   10%    0.204%   PERSIST FAMILY UNWINNABLE
+    ctx128-c32          0.200%     8.649%   36%    1.738%   PERSIST FAMILY UNWINNABLE
+    ctx4096-c32         0.040%     1.615%    7%   39.008%   PERSIST FAMILY UNWINNABLE; and so is any
+```
 
-**Is the repository ready for contributors?** Yes, on these terms and no others:
+`tools/tt-frontier generation show TTF-1 --reachable`. `persist` is `2 x persisting-L2 / step
+traffic` — what a policy that held every byte it could and lost nothing would be worth.
+`any mech.` is what removing *all* recurrent traffic would be worth. `spread` is how far the
+control moved between repeats of itself when the generation was calibrated, published in
+`reference.json` since it was frozen.
 
-- the surface a contributor changes is in the measured path, and that was checked;
-- what is scored is continuous, and what is reachable is published per cell with its noise;
-- the instrument runs from the base commit, keyless and ephemeral, and CI proves both;
-- three things are open and named — the cost model's ranking, the `Stream` mechanism, and
-  whether more repeats can reach the latency objective — and none of them needs a maintainer's
-  permission to start.
+**Where the spread exceeds the persist ceiling, nothing this project ships can be measured to
+win.** Not a better admission rule, not a better window shape, not a better hot-set heuristic:
+the room is smaller than the noise, and that is arithmetic rather than an implementation
+problem. It is true of five of the ten cells, including every cell above four sequences.
 
-**What would change the answer.** A model whose decode step moves under 6.42 GB *and* is
-reproducible against itself. Four were screened and none is. If one appears, the persist family
-goes from 0.52% to 3.67% and this document is rewritten.
+**`ctx128-c16` is on that list, and it is the cell this repository has quoted from all
+along** — section 3's table, `docs/MINING.md`'s table, the 0.2.1 release note. Its persist
+ceiling is 0.249% and the arms sweep reported `density` at +0.389%. A measurement above its own
+physical ceiling is not a small result; it is noise, and the cell's published spread of 0.424%
+says the same thing twice.
+
+**And the opposite half of the finding matters more.** At sixteen sequences 5.2% of the step is
+recurrent traffic and at thirty-two it is 8.6%, against spreads of 0.42% and 1.74%. That room
+is twelve to five times the noise, it is exactly where a serving frontier is scored, and it is
+unreachable by a 60 MiB carve-out for a reason that has nothing to do with policy quality: the
+per-token recurrent footprint at sixteen sequences is 2.46 GB and the device's persisting
+partition is 0.06 GB. A mechanism whose ceiling is not `2 x 60 MiB / step` — recomputation,
+compaction, a different residency substrate, or moving the reuse rather than holding it — has
+one to two orders of magnitude more to play for.
+
+One caveat, in the tool's own words: the `bw` column is how much of peak bandwidth each step
+actually used, and **every TTF-1 cell is below the 80% at which a traffic ceiling is tight**. So
+`any mech.` is a loose upper bound — part of those steps is latency and occupancy rather than
+bytes. The `persist` column does not depend on it.
 
 ## 8. The first full TTF-1 matrix, and what it says about the matrix
 
@@ -305,3 +341,46 @@ defects produced it, both now fixed and both now named on the receipt's own face
 Neither fix moves a score by itself. What they change is whether a number can be published
 without saying what it rests on — and the first full run of this generation could not have
 been.
+## 9. The answer
+
+**Is there a scorable surface?** There is a *surface* — 5.2% of the step at sixteen sequences,
+8.6% at thirty-two, against control spreads of 0.42% and 1.74%. **The persisting-L2 family
+cannot reach it**, and on five of the ten cells it provably cannot be measured trying: its
+ceiling there is smaller than the control's own run-to-run spread. Section 7 has the table.
+
+So the honest answer is in two halves, and reporting only the first would be the mistake this
+document exists to avoid:
+
+- **For the mechanism this project ships:** no. The one axis that ever separated two policies
+  from each other — admission — separates them by less than the cell's published noise, and the
+  cell it was measured in has a physical ceiling *below* the figure that was reported. Five of
+  ten cells are unwinnable by arithmetic. The shipped default is negative on every cell of the
+  full matrix the runtime can batch.
+- **For a mechanism that is not bounded by `2 x 60 MiB / step`:** yes, and by one to two orders
+  of magnitude. The recurrent traffic is there, at the concurrencies a serving frontier is
+  scored at, well outside the noise. Nothing in this repository addresses it, and nothing about
+  the instrument prevents someone from doing so — the graph, the planner interface, the
+  executor and the scorer are all indifferent to which action a plan emits.
+
+**Should the bands have been shipped?** No, and they have not been. Nothing on this model and
+device could ever have reached them — and the same defect turned out to be in `eval/decide.py`,
+where a 2% floor gated `significant` until 0.2.1.
+
+**Is the repository ready for contributors?** Yes, on these terms and no others:
+
+- the surface a contributor changes is in the measured path, and that was checked rather than
+  asserted;
+- what is scored is continuous, and what is *reachable* is published per cell, with its noise
+  and its ceiling, in one command;
+- the instrument runs from the base commit, keyless and ephemeral, and CI proves both;
+- the evaluator's own defects are named in the CHANGELOG with the incident each one caused,
+  including five found by the first full run of its own generation;
+- four things are open and named — the cost model has no per-window term and the measurement is
+  ordered by window count; the `Stream` mechanism is unmeasured; the latency objective does not
+  resolve at three repeats; and whether any mechanism *outside* the persist family can reach the
+  5–9% at concurrency is untouched. None needs a maintainer's permission to start.
+
+**What would change the answer.** For the persist family: a model whose decode step moves under
+6.42 GB *and* is reproducible against itself. Four were screened and none is. For everything
+else: nothing needs to change. The room is measured, published, and larger than the noise.
+
