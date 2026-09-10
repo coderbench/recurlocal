@@ -1,0 +1,117 @@
+name: frontier-eval
+# The authoritative GPU evaluation: main against a candidate, on hardware, producing a
+# Frontier Receipt.
+#
+# NOT on `pull_request`, and that is the whole design. A performance PR is arbitrary CUDA
+# from a stranger; running it automatically on a GPU host would hand every drive-by an
+# execution environment. A maintainer starts this deliberately, and the worker it runs on is
+# ephemeral, keyless and rebuilt between runs.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: "candidate ref or SHA to evaluate"
+        required: true
+      baseline:
+        description: "baseline ref (default main)"
+        required: false
+        default: "main"
+      generation:
+        description: "TTF generation"
+        required: false
+        default: "TTF-1"
+      cells:
+        description: "comma-separated cell subset; empty runs the whole matrix"
+        required: false
+        default: ""
+      repeats:
+        description: "paired repeats (the generation's minimum is 3)"
+        required: false
+        default: "3"
+      pr:
+        description: "PR number, for the receipt and the ledger id"
+        required: false
+        default: ""
+
+concurrency:
+  # One evaluation at a time, per worker. Two runs racing for VRAM turn the loser into a
+  # plausible-looking number, and the harness cannot tell that from a slow candidate.
+  group: frontier-eval-gpu
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    # A self-hosted worker with a GPU, no SSH keys, no cloud credentials, read-only model
+    # artifacts and a minimal token. SECURITY.md is the contract; this label is where it is
+    # asserted.
+    runs-on: [self-hosted, gpu, ephemeral]
+    timeout-minutes: 360
+    permissions:
+      contents: read          # the minimum: no packages, no deployments, no id-token
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # the runner needs both refs to build both trees
+
+      - name: refuse a worker that is carrying a secret
+        run: |
+          # Belt and braces with the same check inside trusted_eval.sh: a job that got this
+          # far with a credential in scope has already leaked it to nothing yet, and this is
+          # the last point before a submission's build script runs.
+          for v in SSH_AUTH_SOCK AWS_ACCESS_KEY_ID GOOGLE_APPLICATION_CREDENTIALS HF_TOKEN; do
+            if [ -n "${!v:-}" ]; then echo "::error::$v is set on this worker"; exit 1; fi
+          done
+          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+
+      - name: the instrument still passes its own tests
+        # Run BEFORE the candidate is built, from the baseline tree, so a broken scorer is
+        # reported as a broken scorer rather than as a verdict on the submission.
+        run: |
+          git checkout --detach "${{ inputs.baseline }}"
+          cmake -S . -B build-eval -DTENSORTRANSIT_BUILD_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-eval -j"$(nproc)"
+          ctest --test-dir build-eval --output-on-failure
+          git checkout --detach -
+
+      - name: evaluate
+        env:
+          TT_MODEL: ${{ vars.TT_MODEL_PATH }}
+          TT_WORK: ${{ runner.temp }}/tt-eval
+          CMAKE_CUDA_ARCHITECTURES: "120"
+        run: |
+          scripts/trusted_eval.sh \
+            --baseline "${{ inputs.baseline }}" \
+            --candidate "${{ inputs.candidate }}" \
+            --generation "${{ inputs.generation }}" \
+            --repeats "${{ inputs.repeats }}" \
+            ${{ inputs.cells && format('--cells {0}', inputs.cells) || '' }} \
+            ${{ inputs.pr && format('--pr {0}', inputs.pr) || '' }} \
+            | tee "${{ runner.temp }}/eval.log"
+
+      - name: collect the receipt
+        if: always()
+        run: |
+          mkdir -p "${{ runner.temp }}/artifacts"
+          cp -f ${{ runner.temp }}/tt-eval/*/{raw.json,receipt.json,report.md,comment.md} \
+                "${{ runner.temp }}/artifacts/" 2>/dev/null || true
+          cp -f "${{ runner.temp }}/eval.log" "${{ runner.temp }}/artifacts/" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontier-receipt
+          # The RAW results are kept, not only the receipt. A receipt whose inputs were
+          # discarded cannot be re-scored when the evaluator is fixed, and re-scoring is the
+          # only honest way to correct an evaluator bug.
+          path: ${{ runner.temp }}/artifacts
+          retention-days: 90
+
+      - name: summary
+        if: always()
+        run: cat "${{ runner.temp }}/artifacts/report.md" >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: wipe the workspace
+        if: always()
+        # Ephemeral in practice and not only in the label: nothing a candidate wrote survives
+        # into the next evaluation.
+        run: rm -rf "${{ runner.temp }}/tt-eval"

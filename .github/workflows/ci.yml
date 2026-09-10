@@ -78,7 +78,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m compileall -q eval/run_eval.py eval/decide.py eval/sweep.py eval/real_eval.py eval/real_sweep.py eval/traffic_budget.py
+      - run: python3 -m compileall -q eval/ tools/tt-frontier
+      - name: the frontier scorer's golden tests
+        # The scoring math IS the ruler. A change to normalization, dominance, hypervolume,
+        # aggregation or the receipt's status derivation silently redefines every past
+        # receipt, so it has to be a build failure and not a review question.
+        run: python3 eval/test_frontier.py
+      - name: every frozen generation still loads and still hashes
+        run: |
+          python3 - <<'PY'
+          import pathlib, subprocess, sys
+          found = sorted(pathlib.Path("eval/generations").glob("*/generation.json"))
+          assert found, "no TTF generation is defined"
+          for path in found:
+              r = subprocess.run([sys.executable, "tools/tt-frontier", "generation", "show",
+                                  path.parent.name], capture_output=True, text=True)
+              assert r.returncode == 0, r.stderr
+              print(r.stdout.splitlines()[1])
+          PY
+      - name: the cost model still fits the measurements it claims to
+        # The fitted constants live in a header and the measurements live in results/. A
+        # change to either that made the model stop beating the linear one would otherwise
+        # be invisible until somebody re-read the file.
+        run: python3 eval/cost_model_fit.py
       - name: pin.json describes a real integration
         run: |
           python3 - <<'PY'
@@ -151,3 +173,45 @@ jobs:
       - run: cmake -S . -B build-cuda -DTENSORTRANSIT_BUILD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=80
       - run: cmake --build build-cuda -j2
       - run: ctest --test-dir build-cuda --output-on-failure
+
+  anti-gaming:
+    # The property that a submission cannot win by editing the ruler is enforced by a script,
+    # and a script nothing runs is a rule that holds only for honest submissions.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: run_from_base.sh overlays the instrument and reports what was changed
+        run: |
+          set -euo pipefail
+          BASE="$(git rev-parse HEAD)"
+          git worktree add -f /tmp/submission "$BASE"
+          # A submission that quietly relaxes a guard, moves the runtime pin, and edits a
+          # frozen generation. All three must be discarded AND named.
+          sed -i 's/^MIN_COMPLETED_TOKEN_SHARE = 0.90/MIN_COMPLETED_TOKEN_SHARE = 0.10/'               /tmp/submission/eval/real_eval.py
+          python3 - <<'PY'
+          import json, pathlib
+          pin = pathlib.Path("/tmp/submission/adapters/sparkinfer/pin.json")
+          doc = json.load(pin.open()); doc["commit"] = "0" * 40
+          pin.write_text(json.dumps(doc))
+          gen = pathlib.Path("/tmp/submission/eval/generations/TTF-1/generation.json")
+          if gen.exists():
+              d = json.load(gen.open()); d["cell_floor"] = 1.0
+              gen.write_text(json.dumps(d))
+          PY
+          OUT="$(bash eval/run_from_base.sh "$BASE" /tmp/submission -- --help 2>&1)"
+          echo "$OUT"
+          echo "$OUT" | grep -q "eval/real_eval.py" || { echo "::error::the evaluator edit was not reported"; exit 1; }
+          echo "$OUT" | grep -q "pin.json"          || { echo "::error::the pin move was not reported"; exit 1; }
+          echo "$OUT" | grep -q "generation.json"   || { echo "::error::the generation edit was not reported"; exit 1; }
+          # And the overlaid copy must be the BASE's, not the submission's.
+          grep -q "usage: real_eval.py" <<<"$OUT" || { echo "::error::the base evaluator did not run"; exit 1; }
+          echo "anti-gaming overlay ok"
+      - name: the trusted runner refuses a worker carrying a secret
+        run: |
+          set -euo pipefail
+          if SSH_AUTH_SOCK=/tmp/fake-agent bash scripts/trusted_eval.sh                --candidate HEAD --model /dev/null 2>&1 | grep -q "SSH_AUTH_SOCK is set"; then
+            echo "refusal ok"
+          else
+            echo "::error::trusted_eval.sh ran with a credential in scope"; exit 1
+          fi
