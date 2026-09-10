@@ -1,0 +1,443 @@
+{
+ "schema_version": 1,
+ "what_this_is": "The specification's second proof track, answered at MODEL level and NOT measured. Section 38 asks whether one planner arbitrating a shared budget across two tensor classes beats two independent policies. Through 0.2.0 the answer under this repository's own cost model was provably no: the model was linear in the resident share, total saving was a fractional knapsack, greedy-on-density was optimal, and the global arm's one distinguishing action -- telling the weight stream to get out of the way -- was priced at exactly zero. 0.2.1 replaced that model with one fitted to the paired hardware arms in results/, and fixed two independent bugs that made a Stream action unreachable under a cyclic decode graph (emit_stream_hints required a tensor with NO reuse, and the CUDA executor skipped a Stream action under capture). Under the new model the global arm wins on all three golden traces. EVERY NUMBER HERE IS A COST-MODEL OUTPUT: a falsifiable prediction about hardware, not evidence about a speedup. Only eval/decide.py --real and tools/tt-frontier are evidence about a speedup.",
+ "basis": "model",
+ "generated_utc": "2026-09-10T06:58:27+00:00",
+ "how_to_reproduce": {
+  "residency": "tensortransit compare tests/golden/<trace>.json --json",
+  "linear_control": "tensortransit compare tests/golden/<trace>.json --cost-model linear --json",
+  "mechanism_control": "tensortransit compare tests/golden/<trace>.json --stream-relief 0 --json"
+ },
+ "reading": "Under `linear` the global arm cannot beat the best single-role arm -- that is the negative result 0.2.0 published, preserved here as the control. Under `residency` it does. Under `residency` with stream_relief 0 the advantage disappears again, which identifies the mechanism as the Stream action rather than as a number that came out higher. Two tests assert exactly this, and a third asserts the other half: on a workload whose weight traffic IS holdable no Stream action is emitted, and the global arm's advantage there is role_floor arbitration instead.",
+ "traces": {
+  "trace_recurrent": {
+   "linear": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.35799999999999166,
+     "predicted_saved_bytes": 66060285,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "41b00a24d73143e2"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.11000000000001009,
+     "predicted_saved_bytes": 20248320,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 192,
+     "digest": "9757677315a71e03"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.35799999999999166,
+     "predicted_saved_bytes": 66060285,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "41b00a24d73143e2"
+    }
+   },
+   "residency": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.10200000000000209,
+     "predicted_saved_bytes": 18842413,
+     "predicted_gross_saved_bytes": 24062821,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "41b00a24d73143e2"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.0220000000000109,
+     "predicted_saved_bytes": 4084569,
+     "predicted_gross_saved_bytes": 5683920,
+     "reservation_cost_bytes": 1599351,
+     "stream_relieved_bytes": 0,
+     "actions": 192,
+     "digest": "9757677315a71e03"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.17700000000000493,
+     "predicted_saved_bytes": 32746081,
+     "predicted_gross_saved_bytes": 37966489,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 18192111872,
+     "actions": 188,
+     "digest": "35b7c8d5151a4ea2"
+    }
+   },
+   "residency_stream_relief_0": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.10200000000000209,
+     "predicted_saved_bytes": 18842413,
+     "predicted_gross_saved_bytes": 24062821,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "41b00a24d73143e2"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.0220000000000109,
+     "predicted_saved_bytes": 4084569,
+     "predicted_gross_saved_bytes": 5683920,
+     "reservation_cost_bytes": 1599351,
+     "stream_relieved_bytes": 0,
+     "actions": 192,
+     "digest": "9757677315a71e03"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.10200000000000209,
+     "predicted_saved_bytes": 18842413,
+     "predicted_gross_saved_bytes": 24062821,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 18192111872,
+     "actions": 188,
+     "digest": "35b7c8d5151a4ea2"
+    }
+   }
+  },
+  "trace_recurrent_kv": {
+   "linear": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.35799999999999166,
+     "predicted_saved_bytes": 66060285,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "be4e2c001e173c72"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.17899999999999583,
+     "predicted_saved_bytes": 33030142,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 8,
+     "digest": "048f5277a81619e3"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.034000000000000696,
+     "predicted_saved_bytes": 6287856,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 224,
+     "digest": "a30d6922aa0b5ec3"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.33600000000000296,
+     "predicted_saved_bytes": 61931516,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 54,
+     "digest": "31d6455ae9b9e11d"
+    }
+   },
+   "residency": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.10200000000000209,
+     "predicted_saved_bytes": 18842413,
+     "predicted_gross_saved_bytes": 24062821,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "be4e2c001e173c72"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.048000000000003595,
+     "predicted_saved_bytes": 8843117,
+     "predicted_gross_saved_bytes": 14063525,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 8,
+     "digest": "048f5277a81619e3"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.0050000000000105516,
+     "predicted_saved_bytes": 872291,
+     "predicted_gross_saved_bytes": 1564016,
+     "reservation_cost_bytes": 691725,
+     "stream_relieved_bytes": 0,
+     "actions": 224,
+     "digest": "a30d6922aa0b5ec3"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.15499999999999403,
+     "predicted_saved_bytes": 28613874,
+     "predicted_gross_saved_bytes": 33834261,
+     "reservation_cost_bytes": 5220387,
+     "stream_relieved_bytes": 17989212416,
+     "actions": 182,
+     "digest": "21e730bcdf85fd1d"
+    }
+   },
+   "residency_stream_relief_0": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.10200000000000209,
+     "predicted_saved_bytes": 18842413,
+     "predicted_gross_saved_bytes": 24062821,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "be4e2c001e173c72"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.048000000000003595,
+     "predicted_saved_bytes": 8843117,
+     "predicted_gross_saved_bytes": 14063525,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 8,
+     "digest": "048f5277a81619e3"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.0050000000000105516,
+     "predicted_saved_bytes": 872291,
+     "predicted_gross_saved_bytes": 1564016,
+     "reservation_cost_bytes": 691725,
+     "stream_relieved_bytes": 0,
+     "actions": 224,
+     "digest": "a30d6922aa0b5ec3"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.09500000000000064,
+     "predicted_saved_bytes": 17478830,
+     "predicted_gross_saved_bytes": 22699217,
+     "reservation_cost_bytes": 5220387,
+     "stream_relieved_bytes": 17989212416,
+     "actions": 182,
+     "digest": "21e730bcdf85fd1d"
+    }
+   }
+  },
+  "trace_concurrency": {
+   "linear": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.35799999999999166,
+     "predicted_saved_bytes": 66060285,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "b2a253cc86c4ebae"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.17899999999999583,
+     "predicted_saved_bytes": 33030142,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 8,
+     "digest": "fdf4b420e6434bb7"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.33600000000000296,
+     "predicted_saved_bytes": 61931516,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 54,
+     "digest": "233d21d70e058611"
+    }
+   },
+   "residency": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.10200000000000209,
+     "predicted_saved_bytes": 18842413,
+     "predicted_gross_saved_bytes": 24062821,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "b2a253cc86c4ebae"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.048000000000003595,
+     "predicted_saved_bytes": 8843117,
+     "predicted_gross_saved_bytes": 14063525,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 8,
+     "digest": "fdf4b420e6434bb7"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.12900000000000134,
+     "predicted_saved_bytes": 23764567,
+     "predicted_gross_saved_bytes": 28984954,
+     "reservation_cost_bytes": 5220387,
+     "stream_relieved_bytes": 16456849664,
+     "actions": 182,
+     "digest": "5511629510639591"
+    }
+   },
+   "residency_stream_relief_0": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.10200000000000209,
+     "predicted_saved_bytes": 18842413,
+     "predicted_gross_saved_bytes": 24062821,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 60,
+     "digest": "b2a253cc86c4ebae"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.048000000000003595,
+     "predicted_saved_bytes": 8843117,
+     "predicted_gross_saved_bytes": 14063525,
+     "reservation_cost_bytes": 5220408,
+     "stream_relieved_bytes": 0,
+     "actions": 8,
+     "digest": "fdf4b420e6434bb7"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.09500000000000064,
+     "predicted_saved_bytes": 17478830,
+     "predicted_gross_saved_bytes": 22699217,
+     "reservation_cost_bytes": 5220387,
+     "stream_relieved_bytes": 16456849664,
+     "actions": 182,
+     "digest": "5511629510639591"
+    }
+   }
+  }
+ }
+}
