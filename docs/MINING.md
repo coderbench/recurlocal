@@ -154,14 +154,40 @@ optimization issues to claim.
 
 ```text
 clone main
-  -> tensortransit inspect <trace>        # is there room for the policy you have in mind?
-  -> run the benchmark, profile
-  -> change a planner / admission rule / executor / adapter
-  -> ctest                                 # golden plans, schemas, the compat shim
-  -> eval/real_eval.py                     # interleaved A/B on one box
-  -> eval/decide.py --real                 # the bands above, applied mechanically
+  -> tensortransit inspect <trace>         # is there room for the policy you have in mind?
+  -> tools/tt-frontier generation show TTF-1
+                                           # what is scored, and reference.json says what the
+                                           # measured control and the noise floor are per cell
+  -> change a planner / admission rule / cost model / executor / adapter
+  -> tensortransit compare <trace>         # what your plan does, offline, no GPU
+  -> tensortransit replay <plan.json> --trace <trace.json>
+                                           # and that an executor would actually fire it
+  -> ctest                                 # golden plans, schemas, the compat shim,
+                                           # the frontier scorer, the overhead budget
+  -> tools/tt-frontier run ...             # paired interleaved A/B over the generation
+  -> tools/tt-frontier compute ...         # the Frontier Receipt, computed not typed
   -> open a PR
 ```
+
+**Everything above the `tt-frontier run` line needs no GPU**, and that is deliberate: a trace
+is a file, a plan is a function of that file, two plans can be diffed, and a plan can be
+replayed against a recording executor. Write the planner, see exactly what it would do to a
+recorded workload, and only then ask for hardware.
+
+Your configuration reaches the measured path through the adapter's environment:
+
+```bash
+TENSORTRANSIT=persist                       # the mode
+TENSORTRANSIT_WINDOW_ATTACH=capture_node    # without this the window never reaches a captured graph
+TENSORTRANSIT_ENGINE=transit                # Registry -> Graph -> Planner -> Executor (default)
+TENSORTRANSIT_PLANNER=budgeted              # or baseline | recurrent_v0 | greedy | concurrency
+TENSORTRANSIT_ADMISSION=survival            # or density | quota | proportional | reuse_order | role_floor
+TENSORTRANSIT_PRESET=global                 # or baseline | recurrent_only | kv_only | naive_both
+TENSORTRANSIT_TRACE_OUT=/tmp/live.json      # record the real graph, for offline work
+```
+
+`TENSORTRANSIT_ENGINE=v0` runs the 0.1 controller instead, in the same binary. That is the
+control: if a result only appears on one engine, it is about the engine.
 
 The first step is the one people skip. `tensortransit inspect` prints the device-bounded
 ceiling for the roles a policy is allowed to touch, and if that number is under 2% no planner
@@ -199,6 +225,22 @@ arm is renormalised away, not averaged in, so leaving one out changes the score.
 decode; with the default the windows are all deferred to a runtime that never attaches them,
 and `real_eval.py` correctly refuses the arm as a null candidate. The first attempt at this
 repository's own baseline died exactly there.
+
+## What the statuses mean when your receipt comes back
+
+```text
+FRONTIER_GAIN           verified marginal expansion. This is the one that counts.
+NO_FRONTIER_GAIN        confidently no expansion. A result, not a failure -- most of this
+                        repository's own measurements are here.
+INCONCLUSIVE            the observed figure is inside its own confidence interval. Add paired
+                        repeats up to the generation's maximum; if it is still inconclusive
+                        there, the effect is smaller than this instrument can resolve on this
+                        box, and reference.json's per-cell spreads will have told you so.
+CORRECTNESS_FAIL        the output changed. A faster run that changed the output scores nothing.
+REGRESSION_GUARD_FAIL   a protected workload regressed past the generation's limit. A positive
+                        aggregate does not buy that back.
+BUILD_FAIL / EVAL_ERROR the candidate did not build, or the evaluator did not finish.
+```
 
 ## What does not count
 
@@ -457,55 +499,99 @@ known about each.
 
 These are the ones worth taking first, because they are where the current blocker actually is.
 
-### 1. The cost model — the highest-value open problem
+### 1. The cost model — WORKED, and here is what it opened
 
-`saved = reused_bytes x (granted / bytes) x hit_ratio` is linear in the resident share, and
-that makes greedy-on-density **provably optimal**. So the entire admission-rule axis is
-measuring nothing the model can see, and `role_floor` is monotonically worse than `density`
-under it — by construction, not by accident.
+**The problem is closed and the surface it created is open.** Through 0.2.0 the model was
+`saved = reused_bytes x (granted/bytes) x hit_ratio` — linear in the resident share — which
+made greedy-on-density *provably* optimal, so no admission rule could beat `density` and the
+whole admission axis measured nothing.
 
-Three terms are missing, all of them real:
+`CostModel::Residency` carries the three missing terms and is fitted to every paired hardware
+measurement of the `persist` arm in `results/`, across two architectures:
 
-| missing term | why it matters | what represents it today |
-|---|---|---|
-| whole-line residency | a line is resident or it is not; there is no 30% of a byte | `AdmissionRule::Quota`, flattened to 0.001 points by the linear model |
-| survival | a tensor whose reuse distance exceeds the budget is evicted before it pays | `--max-reuse-budgets`, a crude on/off switch |
-| interference | what the streaming half of the cache does to the persisting half | nothing — which is why a `Stream` action is priced at zero |
+```text
+survival(t) = min(1, (resident(t) / reuse_distance_bytes(t)) ^ 0.1108)
+saved(t)    = reused_bytes(t) x (resident(t)/bytes) x survival(t)
+              -  0.00086 x (resident_total / L2) x step_traffic
+```
 
-A cost model carrying those, **validated against the measurements already in `results/`**,
-would move this repository further than another admission rule. Isolate with
-`tensortransit compare` and `tensortransit plan --admission <rule>`.
+It beats the linear model on those points (rms 0.271 against 0.485 points; 8 of 8 arms inside
+their own noise floor against 6 of 8) and predicts both arms that actually *resolved* to within
+a fifth of their noise floor. `eval/cost_model_fit.py` is the fit and it runs in CI.
+
+**What it says, which is a prediction about hardware you can go and test.** `saved` goes as
+`resident^(1+beta)` — superlinear — so for a fixed budget spread over `n` tensors the total
+goes as `n^(-beta)`. Concentrating beats spreading. The shipped recurrent policy *spreads*:
+`recurrent_v0` hardcodes `HotSetPolicy::Proportional`. On the golden KV trace that is 23x worse
+than concentrating under this model against 10.5x under the linear one.
+
+Three things are open here and none needs a GPU to start:
+
+- **`stream_relief` is unmeasured.** How much of a Stream-hinted tensor's traffic actually
+  stops interfering is a dial with an optimistic default of 1.0. The experiment is newly
+  possible: a `Stream` window reaches a captured graph node as of 0.2.1, where before it was
+  skipped under capture and therefore unreachable in the only regime that matters.
+- **A better functional form.** A power law was chosen because an exponential cannot fit the
+  dense and MoE batch-1 arms at once. Two parameters against eight arms is a fit that can fail;
+  a form that fits the concurrency arms as well as it fits batch 1 would be worth more than a
+  new admission rule.
+- **A rule that exploits the convexity.** `AdmissionRule::Survival` stops when the marginal
+  admission stops paying. That is the obvious exploitation; it is not the best one.
+
+### 1b. The model it replaced, kept because it is still the control
+
+`--cost-model linear` is `saved = reused_bytes x (granted / bytes) x hit_ratio`. It is not
+deprecated and it is not going away: it is how you check whether a result is about your policy
+or about the model. If an improvement only appears under `residency`, it is a claim about
+`beta` and `eta`, not about a cache.
+
+A test asserts that `AdmissionRule::Survival` reduces to `density` *exactly* under it, so a
+comparison against `density` is not a comparison against a moving target.
 
 ### 2. A new admission rule
 
-One enumerator plus an implementation in `planners/budgeted/`. It is comparable against every
-other rule on the same trace, in one process, with no hardware. Read the paragraph above
-first: under the current model a rule that is not density-greedy cannot win, so a new rule is
-only interesting alongside a model that can express why it should.
+One enumerator plus an implementation in `planners/budgeted/`. Comparable against every other
+rule on the same trace, in one process, with no hardware — and, as of 0.2.1, comparable **on
+the real model** too, because `TENSORTRANSIT_ADMISSION` is on the measured path.
+
+This used to come with a warning that under the shipped model a rule that was not
+density-greedy could not win. That warning is retired: the model is convex now, so it can.
 
 ### 3. A new reuse metric or a better graph
 
 `ReuseMetric` has three enumerators and they disagree. Nothing yet uses `Time` for prefetch
 placement except `PrefetchTiming::BandwidthAware`, and nothing has measured whether it beats
-`FixedDistance`. `TransitGraph::live_bytes_at` is O(profiles x edges x uses) and is called per
-kernel by `build()`; it is correct and it is not fast.
+`FixedDistance`.
 
-### 4. Trace fidelity
+(`TransitGraph::live_bytes_at` was O(profiles x edges x uses) per call, with `build()` calling
+it once per kernel. Fixed in 0.2.1: `build()` accumulates the whole live-set curve in O(edges)
+and the query is a binary search into it.)
+
+### 4. Trace fidelity — the prerequisite is closed, the work is not
 
 `tests/golden/*.json` carry the **measured** recurrent geometry of Qwen3.8-27B and a
-**synthetic** KV block size, and the weight traffic is the measured 18.5 GB step divided
-evenly across layers. A trace recorded from a real runtime — with real KV block sizes and real
-per-layer weight reads — would make every comparison above sharper, and it needs a runtime
-that exposes its KV blocks to the registry, which no adapter does yet.
+**synthetic** KV block size, with the weight traffic divided evenly across layers. Every
+offline comparison is therefore sharp about the recurrent half and approximate about
+everything else.
+
+The adapter can now record a trace from the LIVE runtime — `TENSORTRANSIT_TRACE_OUT=<path>`
+writes the graph once, after the first compile, with real KV slice sizes and real per-layer
+demand. Recording one on each of the generation's cells and replacing the hand-written traces
+is a contribution that needs one GPU run and then no hardware at all.
 
 ## Surfaces that need a GPU
 
 ### 5. The second proof track, measured
 
-Run the five arms on hardware and settle whether coordination beats independent policies. The
-arms are `tensortransit compare` and `eval/real_eval.py`; what is missing is a runtime that
-registers KV. **Known before starting:** on the pinned dense model this contest is for less
-than a point, and the interesting regime is a model whose decode step moves under **6.42 GB**.
+Run the five arms on hardware and settle whether coordination beats independent policies.
+**The prerequisite is closed**: the adapter registers KV as of 0.2.1, so the arms are
+`TENSORTRANSIT_PRESET=baseline|recurrent_only|kv_only|naive_both|global` on the real model
+through the measured path, and `tools/tt-frontier run` takes them as a portfolio.
+
+**Known before starting:** on the pinned dense model this contest is for less than a point of
+throughput, and the interesting regime is a model whose decode step moves under **6.42 GB**.
+What is *not* known is what any of it does to a p99 tail, which is the frontier's other
+objective and has never been measured.
 
 ### 6. `WindowBinding::Sticky`
 
@@ -520,7 +606,19 @@ everything else falls back to per-consumer. Implemented, plan-validated, **never
 48%. **The crossover is at about half residency.** Concentrating the budget on fewer requests
 is the obvious idea and nobody has run it.
 
-### 8. Prefetch as a graph node
+### 8. `Stream`, which was dead code until 0.2.1
+
+Telling the weight stream to get out of the way was unreachable under graph decode for two
+independent reasons, both now fixed: `emit_stream_hints` required a tensor with *no reuse*, and
+over a cyclic decode window nothing has none; and the CUDA executor *skipped* a Stream action
+under capture, so even an emitted one was absent from every replay.
+
+Both are fixed, so the arm that is supposed to manage the other half of a shared cache budget
+can finally do something. Nobody has measured what. `stream_relief` — how much of a hinted
+tensor's traffic actually stops interfering — is a dial with an optimistic default and no
+measurement behind it.
+
+### 9. Prefetch as a graph node
 
 Window attachment to captured graph nodes works and is verified on hardware
 (`tests/test_cuda_executor.cu` reads the attribute back off the finished graph). Prefetch is
