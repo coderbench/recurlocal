@@ -187,6 +187,32 @@ telemetry, no policy — and stamps the record `runtime`, `candidate` or `unreso
 The probe runs the baseline build deliberately. A candidate that could make its own probe fail
 would get a cell it lost *dropped* rather than scored, which is strictly to its advantage.
 
+### Added — `tt-frontier generation show --reachable`
+
+One command for the question a contributor should ask first: which cells are worth trying to
+win. Per cell it prints where the control sat and how far it moved between repeats of *itself*
+at calibration, names the cells this device could not run at all, and lists every axis whose
+control spread exceeds 10%.
+
+On TTF-1 that is three of twenty cell/objective pairs — `ctx128-c32`'s p99 at **481%** and both
+of `ctx4096-c32`'s at about 40% — plus two cells the pinned runtime cannot batch and two more
+that could not be run at calibration. Nine of twenty pairs a submission cannot move, published
+rather than discovered.
+
+### Added — a frozen generation is stored twice, and a test says they are the same bytes
+
+`eval/generations/TTF-N/` is what the scorer loads and what `eval/run_from_base.sh` overlays
+from the base commit; `frontier/TTF-N/` keeps a copy beside the receipts. Both are the
+definition, the checksum covers it, and a receipt whose generation moved does not verify — so
+two copies that drifted would make a ledger unauditable in a way nothing else here would catch.
+
+### Changed — the authoritative runner defaults to five repeats, not the generation's minimum
+
+Three is a floor and it is not a recommendation. The same arm measured **+0.07%** and **−0.39%**
+at `ctx128-c16` in two sessions two hours apart on the reference box, against a control spread
+that generation published as 0.42% for that cell. `scripts/trusted_eval.sh` and the GPU workflow
+default to five; the generation allows nine and `--repeats` is how you spend them.
+
 ### Added — the receipt says which cells the score is entitled to rest on
 
 `frontier/TTF-1/reference.json` has always published each cell's measured control spread, per
