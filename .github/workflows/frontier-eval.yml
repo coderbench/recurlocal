@@ -67,11 +67,17 @@ jobs:
         # Run BEFORE the candidate is built, from the baseline tree, so a broken scorer is
         # reported as a broken scorer rather than as a verdict on the submission.
         run: |
+          set -euo pipefail
+          # `git checkout -` does not reliably return from a detached HEAD, so remember where
+          # we were rather than relying on it. A workflow that ended up on the wrong commit
+          # would then evaluate the wrong tree and say nothing about it.
+          HERE="$(git rev-parse HEAD)"
           git checkout --detach "${{ inputs.baseline }}"
           cmake -S . -B build-eval -DTENSORTRANSIT_BUILD_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
           cmake --build build-eval -j"$(nproc)"
           ctest --test-dir build-eval --output-on-failure
-          git checkout --detach -
+          git checkout --detach "$HERE"
+          rm -rf build-eval
 
       - name: evaluate
         env:
