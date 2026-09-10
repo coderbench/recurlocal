@@ -129,10 +129,21 @@ already been taken.
 
 **The dense control is not clean either, and this repository said it was.** "On the dense
 checkpoint the same binary is bit-identical" is true at the gate's 64 tokens and false past
-them: at 512 generated tokens, three unhooked replays of Qwen3.8-27B returned two identical
-outputs and one different. The difference between the two models is amplification, not
-presence — a few ULP stay numerical on a dense FFN and flip a discrete top-8 expert choice on
-a sparse one — so the MoE forks by token 2 and the dense model by token ~500.
+them. Four unhooked replays of Qwen3.8-27B from the same prompt, by generation length:
+
+| tokens generated | distinct outputs of 4 replays |
+|--:|--:|
+| 64 | **1** — the length the gate runs at |
+| 256 | 2 |
+| 512 | 1 |
+| 1024 | 3 |
+
+The difference between the two models is amplification, not presence: a few ULP stay numerical
+on a dense FFN and flip a discrete top-8 expert choice on a sparse one, so the MoE forks by
+token 2 and the dense model needs a few hundred. The dense checkpoint is not a reproducible
+runtime either; it is a runtime whose divergence the 64-token gate is too short to see. That
+is the strongest argument for replaying the control more than once, and it is why
+`--gate-control-replays` defaults to 3 rather than 2.
 
 **The conclusion for the exact-locality gate.** It requires a reproducible runtime. On this
 runtime, on this device, there is no sparse-MoE hybrid checkpoint that provides one — and the
