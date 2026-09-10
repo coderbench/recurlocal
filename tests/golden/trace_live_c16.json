@@ -1,5 +1,5 @@
 {
- "active_requests": 1,
+ "active_requests": 16,
  "cyclic": true,
  "device": 0,
  "device_name": "NVIDIA GeForce RTX 5090",
@@ -12,15 +12,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 961
+     "id": 385
     },
     {
      "access": "read_write",
-     "id": 962
+     "id": 386
     },
     {
      "access": "read",
-     "id": 963
+     "id": 387
     }
    ]
   },
@@ -32,15 +32,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 964
+     "id": 388
     },
     {
      "access": "read_write",
-     "id": 965
+     "id": 389
     },
     {
      "access": "read",
-     "id": 966
+     "id": 390
     }
    ]
   },
@@ -52,15 +52,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 967
+     "id": 391
     },
     {
      "access": "read_write",
-     "id": 968
+     "id": 392
     },
     {
      "access": "read",
-     "id": 969
+     "id": 393
     }
    ]
   },
@@ -72,15 +72,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 970
+     "id": 394
     },
     {
      "access": "read",
-     "id": 971
+     "id": 395
     },
     {
      "access": "read",
-     "id": 972
+     "id": 396
     }
    ]
   },
@@ -92,15 +92,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 973
+     "id": 397
     },
     {
      "access": "read_write",
-     "id": 974
+     "id": 398
     },
     {
      "access": "read",
-     "id": 975
+     "id": 399
     }
    ]
   },
@@ -112,15 +112,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 976
+     "id": 400
     },
     {
      "access": "read_write",
-     "id": 977
+     "id": 401
     },
     {
      "access": "read",
-     "id": 978
+     "id": 402
     }
    ]
   },
@@ -132,15 +132,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 979
+     "id": 403
     },
     {
      "access": "read_write",
-     "id": 980
+     "id": 404
     },
     {
      "access": "read",
-     "id": 981
+     "id": 405
     }
    ]
   },
@@ -152,15 +152,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 982
+     "id": 406
     },
     {
      "access": "read",
-     "id": 983
+     "id": 407
     },
     {
      "access": "read",
-     "id": 984
+     "id": 408
     }
    ]
   },
@@ -172,15 +172,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 985
+     "id": 409
     },
     {
      "access": "read_write",
-     "id": 986
+     "id": 410
     },
     {
      "access": "read",
-     "id": 987
+     "id": 411
     }
    ]
   },
@@ -192,15 +192,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 988
+     "id": 412
     },
     {
      "access": "read_write",
-     "id": 989
+     "id": 413
     },
     {
      "access": "read",
-     "id": 990
+     "id": 414
     }
    ]
   },
@@ -212,15 +212,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 991
+     "id": 415
     },
     {
      "access": "read_write",
-     "id": 992
+     "id": 416
     },
     {
      "access": "read",
-     "id": 993
+     "id": 417
     }
    ]
   },
@@ -232,15 +232,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 994
+     "id": 418
     },
     {
      "access": "read",
-     "id": 995
+     "id": 419
     },
     {
      "access": "read",
-     "id": 996
+     "id": 420
     }
    ]
   },
@@ -252,15 +252,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 997
+     "id": 421
     },
     {
      "access": "read_write",
-     "id": 998
+     "id": 422
     },
     {
      "access": "read",
-     "id": 999
+     "id": 423
     }
    ]
   },
@@ -272,15 +272,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1000
+     "id": 424
     },
     {
      "access": "read_write",
-     "id": 1001
+     "id": 425
     },
     {
      "access": "read",
-     "id": 1002
+     "id": 426
     }
    ]
   },
@@ -292,15 +292,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1003
+     "id": 427
     },
     {
      "access": "read_write",
-     "id": 1004
+     "id": 428
     },
     {
      "access": "read",
-     "id": 1005
+     "id": 429
     }
    ]
   },
@@ -312,15 +312,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1006
+     "id": 430
     },
     {
      "access": "read",
-     "id": 1007
+     "id": 431
     },
     {
      "access": "read",
-     "id": 1008
+     "id": 432
     }
    ]
   },
@@ -332,15 +332,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1009
+     "id": 433
     },
     {
      "access": "read_write",
-     "id": 1010
+     "id": 434
     },
     {
      "access": "read",
-     "id": 1011
+     "id": 435
     }
    ]
   },
@@ -352,15 +352,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1012
+     "id": 436
     },
     {
      "access": "read_write",
-     "id": 1013
+     "id": 437
     },
     {
      "access": "read",
-     "id": 1014
+     "id": 438
     }
    ]
   },
@@ -372,15 +372,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1015
+     "id": 439
     },
     {
      "access": "read_write",
-     "id": 1016
+     "id": 440
     },
     {
      "access": "read",
-     "id": 1017
+     "id": 441
     }
    ]
   },
@@ -392,15 +392,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1018
+     "id": 442
     },
     {
      "access": "read",
-     "id": 1019
+     "id": 443
     },
     {
      "access": "read",
-     "id": 1020
+     "id": 444
     }
    ]
   },
@@ -412,15 +412,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1021
+     "id": 445
     },
     {
      "access": "read_write",
-     "id": 1022
+     "id": 446
     },
     {
      "access": "read",
-     "id": 1023
+     "id": 447
     }
    ]
   },
@@ -432,15 +432,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1024
+     "id": 448
     },
     {
      "access": "read_write",
-     "id": 1025
+     "id": 449
     },
     {
      "access": "read",
-     "id": 1026
+     "id": 450
     }
    ]
   },
@@ -452,15 +452,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1027
+     "id": 451
     },
     {
      "access": "read_write",
-     "id": 1028
+     "id": 452
     },
     {
      "access": "read",
-     "id": 1029
+     "id": 453
     }
    ]
   },
@@ -472,15 +472,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1030
+     "id": 454
     },
     {
      "access": "read",
-     "id": 1031
+     "id": 455
     },
     {
      "access": "read",
-     "id": 1032
+     "id": 456
     }
    ]
   },
@@ -492,15 +492,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1033
+     "id": 457
     },
     {
      "access": "read_write",
-     "id": 1034
+     "id": 458
     },
     {
      "access": "read",
-     "id": 1035
+     "id": 459
     }
    ]
   },
@@ -512,15 +512,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1036
+     "id": 460
     },
     {
      "access": "read_write",
-     "id": 1037
+     "id": 461
     },
     {
      "access": "read",
-     "id": 1038
+     "id": 462
     }
    ]
   },
@@ -532,15 +532,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1039
+     "id": 463
     },
     {
      "access": "read_write",
-     "id": 1040
+     "id": 464
     },
     {
      "access": "read",
-     "id": 1041
+     "id": 465
     }
    ]
   },
@@ -552,15 +552,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1042
+     "id": 466
     },
     {
      "access": "read",
-     "id": 1043
+     "id": 467
     },
     {
      "access": "read",
-     "id": 1044
+     "id": 468
     }
    ]
   },
@@ -572,15 +572,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1045
+     "id": 469
     },
     {
      "access": "read_write",
-     "id": 1046
+     "id": 470
     },
     {
      "access": "read",
-     "id": 1047
+     "id": 471
     }
    ]
   },
@@ -592,15 +592,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1048
+     "id": 472
     },
     {
      "access": "read_write",
-     "id": 1049
+     "id": 473
     },
     {
      "access": "read",
-     "id": 1050
+     "id": 474
     }
    ]
   },
@@ -612,15 +612,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1051
+     "id": 475
     },
     {
      "access": "read_write",
-     "id": 1052
+     "id": 476
     },
     {
      "access": "read",
-     "id": 1053
+     "id": 477
     }
    ]
   },
@@ -632,15 +632,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1054
+     "id": 478
     },
     {
      "access": "read",
-     "id": 1055
+     "id": 479
     },
     {
      "access": "read",
-     "id": 1056
+     "id": 480
     }
    ]
   },
@@ -652,15 +652,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1057
+     "id": 481
     },
     {
      "access": "read_write",
-     "id": 1058
+     "id": 482
     },
     {
      "access": "read",
-     "id": 1059
+     "id": 483
     }
    ]
   },
@@ -672,15 +672,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1060
+     "id": 484
     },
     {
      "access": "read_write",
-     "id": 1061
+     "id": 485
     },
     {
      "access": "read",
-     "id": 1062
+     "id": 486
     }
    ]
   },
@@ -692,15 +692,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1063
+     "id": 487
     },
     {
      "access": "read_write",
-     "id": 1064
+     "id": 488
     },
     {
      "access": "read",
-     "id": 1065
+     "id": 489
     }
    ]
   },
@@ -712,15 +712,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1066
+     "id": 490
     },
     {
      "access": "read",
-     "id": 1067
+     "id": 491
     },
     {
      "access": "read",
-     "id": 1068
+     "id": 492
     }
    ]
   },
@@ -732,15 +732,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1069
+     "id": 493
     },
     {
      "access": "read_write",
-     "id": 1070
+     "id": 494
     },
     {
      "access": "read",
-     "id": 1071
+     "id": 495
     }
    ]
   },
@@ -752,15 +752,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1072
+     "id": 496
     },
     {
      "access": "read_write",
-     "id": 1073
+     "id": 497
     },
     {
      "access": "read",
-     "id": 1074
+     "id": 498
     }
    ]
   },
@@ -772,15 +772,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1075
+     "id": 499
     },
     {
      "access": "read_write",
-     "id": 1076
+     "id": 500
     },
     {
      "access": "read",
-     "id": 1077
+     "id": 501
     }
    ]
   },
@@ -792,15 +792,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1078
+     "id": 502
     },
     {
      "access": "read",
-     "id": 1079
+     "id": 503
     },
     {
      "access": "read",
-     "id": 1080
+     "id": 504
     }
    ]
   },
@@ -812,15 +812,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1081
+     "id": 505
     },
     {
      "access": "read_write",
-     "id": 1082
+     "id": 506
     },
     {
      "access": "read",
-     "id": 1083
+     "id": 507
     }
    ]
   },
@@ -832,15 +832,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1084
+     "id": 508
     },
     {
      "access": "read_write",
-     "id": 1085
+     "id": 509
     },
     {
      "access": "read",
-     "id": 1086
+     "id": 510
     }
    ]
   },
@@ -852,15 +852,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1087
+     "id": 511
     },
     {
      "access": "read_write",
-     "id": 1088
+     "id": 512
     },
     {
      "access": "read",
-     "id": 1089
+     "id": 513
     }
    ]
   },
@@ -872,15 +872,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1090
+     "id": 514
     },
     {
      "access": "read",
-     "id": 1091
+     "id": 515
     },
     {
      "access": "read",
-     "id": 1092
+     "id": 516
     }
    ]
   },
@@ -892,15 +892,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1093
+     "id": 517
     },
     {
      "access": "read_write",
-     "id": 1094
+     "id": 518
     },
     {
      "access": "read",
-     "id": 1095
+     "id": 519
     }
    ]
   },
@@ -912,15 +912,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1096
+     "id": 520
     },
     {
      "access": "read_write",
-     "id": 1097
+     "id": 521
     },
     {
      "access": "read",
-     "id": 1098
+     "id": 522
     }
    ]
   },
@@ -932,15 +932,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1099
+     "id": 523
     },
     {
      "access": "read_write",
-     "id": 1100
+     "id": 524
     },
     {
      "access": "read",
-     "id": 1101
+     "id": 525
     }
    ]
   },
@@ -952,15 +952,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1102
+     "id": 526
     },
     {
      "access": "read",
-     "id": 1103
+     "id": 527
     },
     {
      "access": "read",
-     "id": 1104
+     "id": 528
     }
    ]
   },
@@ -972,15 +972,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1105
+     "id": 529
     },
     {
      "access": "read_write",
-     "id": 1106
+     "id": 530
     },
     {
      "access": "read",
-     "id": 1107
+     "id": 531
     }
    ]
   },
@@ -992,15 +992,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1108
+     "id": 532
     },
     {
      "access": "read_write",
-     "id": 1109
+     "id": 533
     },
     {
      "access": "read",
-     "id": 1110
+     "id": 534
     }
    ]
   },
@@ -1012,15 +1012,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1111
+     "id": 535
     },
     {
      "access": "read_write",
-     "id": 1112
+     "id": 536
     },
     {
      "access": "read",
-     "id": 1113
+     "id": 537
     }
    ]
   },
@@ -1032,15 +1032,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1114
+     "id": 538
     },
     {
      "access": "read",
-     "id": 1115
+     "id": 539
     },
     {
      "access": "read",
-     "id": 1116
+     "id": 540
     }
    ]
   },
@@ -1052,15 +1052,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1117
+     "id": 541
     },
     {
      "access": "read_write",
-     "id": 1118
+     "id": 542
     },
     {
      "access": "read",
-     "id": 1119
+     "id": 543
     }
    ]
   },
@@ -1072,15 +1072,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1120
+     "id": 544
     },
     {
      "access": "read_write",
-     "id": 1121
+     "id": 545
     },
     {
      "access": "read",
-     "id": 1122
+     "id": 546
     }
    ]
   },
@@ -1092,15 +1092,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1123
+     "id": 547
     },
     {
      "access": "read_write",
-     "id": 1124
+     "id": 548
     },
     {
      "access": "read",
-     "id": 1125
+     "id": 549
     }
    ]
   },
@@ -1112,15 +1112,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1126
+     "id": 550
     },
     {
      "access": "read",
-     "id": 1127
+     "id": 551
     },
     {
      "access": "read",
-     "id": 1128
+     "id": 552
     }
    ]
   },
@@ -1132,15 +1132,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1129
+     "id": 553
     },
     {
      "access": "read_write",
-     "id": 1130
+     "id": 554
     },
     {
      "access": "read",
-     "id": 1131
+     "id": 555
     }
    ]
   },
@@ -1152,15 +1152,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1132
+     "id": 556
     },
     {
      "access": "read_write",
-     "id": 1133
+     "id": 557
     },
     {
      "access": "read",
-     "id": 1134
+     "id": 558
     }
    ]
   },
@@ -1172,15 +1172,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1135
+     "id": 559
     },
     {
      "access": "read_write",
-     "id": 1136
+     "id": 560
     },
     {
      "access": "read",
-     "id": 1137
+     "id": 561
     }
    ]
   },
@@ -1192,15 +1192,15 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1138
+     "id": 562
     },
     {
      "access": "read",
-     "id": 1139
+     "id": 563
     },
     {
      "access": "read",
-     "id": 1140
+     "id": 564
     }
    ]
   },
@@ -1212,15 +1212,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1141
+     "id": 565
     },
     {
      "access": "read_write",
-     "id": 1142
+     "id": 566
     },
     {
      "access": "read",
-     "id": 1143
+     "id": 567
     }
    ]
   },
@@ -1232,15 +1232,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1144
+     "id": 568
     },
     {
      "access": "read_write",
-     "id": 1145
+     "id": 569
     },
     {
      "access": "read",
-     "id": 1146
+     "id": 570
     }
    ]
   },
@@ -1252,15 +1252,15 @@
    "tensors": [
     {
      "access": "read_write",
-     "id": 1147
+     "id": 571
     },
     {
      "access": "read_write",
-     "id": 1148
+     "id": 572
     },
     {
      "access": "read",
-     "id": 1149
+     "id": 573
     }
    ]
   },
@@ -1272,30 +1272,30 @@
    "tensors": [
     {
      "access": "read",
-     "id": 1150
+     "id": 574
     },
     {
      "access": "read",
-     "id": 1151
+     "id": 575
     },
     {
      "access": "read",
-     "id": 1152
+     "id": 576
     }
    ]
   }
  ],
  "model": "Qwen3.8-27B",
  "model_digest": "",
- "notes": "RECORDED from the live SparkInfer adapter on an RTX 5090, batch 1, ctx 128, 64 new tokens, TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN=18500000000. Nothing here is synthetic: the KV slice sizes are the runtime's, the layer interleaving is the model's, and the weight traffic is the measured step. Beside trace_live_c16.json it is the evidence that the planning path is blind to concurrency -- see results/rtx5090-0.2.1-concurrency-blind-graph.json.",
+ "notes": "RECORDED at SIXTEEN sequences, and kept at the rebuild with the MOST sequences rather than the last one -- a concurrency run rebuilds at 1, 1, 16, 15, 1 as requests arrive and drain, so 'the last rebuild' is the tail of the drain and the first attempt at this file came back byte-identical to the batch-1 trace. Note what it declares: 78.4 MB of recurrent state and 4.7 MB of KV, which are ONE sequence's slices. Sixteen sequences move sixteen times that. The planner cannot tell this workload from the batch-1 one, and that is the finding.",
  "phase": "decode",
  "runtime": "SparkInfer",
  "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
  "schema_version": 1,
  "tensors": [
   {
-   "bytes": 3145728,
-   "id": 961,
+   "bytes": 1572864,
+   "id": 385,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1304,7 +1304,7 @@
   },
   {
    "bytes": 61440,
-   "id": 962,
+   "id": 386,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1313,7 +1313,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 963,
+   "id": 387,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1321,8 +1321,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 964,
+   "bytes": 1572864,
+   "id": 388,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1331,7 +1331,7 @@
   },
   {
    "bytes": 61440,
-   "id": 965,
+   "id": 389,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1340,7 +1340,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 966,
+   "id": 390,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1348,8 +1348,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 967,
+   "bytes": 1572864,
+   "id": 391,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1358,7 +1358,7 @@
   },
   {
    "bytes": 61440,
-   "id": 968,
+   "id": 392,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1367,7 +1367,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 969,
+   "id": 393,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1375,8 +1375,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 970,
+   "bytes": 147456,
+   "id": 394,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1384,116 +1384,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 971,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 972,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 973,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 974,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 975,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 976,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 977,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 978,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 979,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 980,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 981,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 982,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 983,
+   "bytes": 147456,
+   "id": 395,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1502,7 +1394,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 984,
+   "id": 396,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1510,8 +1402,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 985,
+   "bytes": 1572864,
+   "id": 397,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1520,7 +1412,7 @@
   },
   {
    "bytes": 61440,
-   "id": 986,
+   "id": 398,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1529,7 +1421,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 987,
+   "id": 399,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1537,8 +1429,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 988,
+   "bytes": 1572864,
+   "id": 400,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1547,7 +1439,7 @@
   },
   {
    "bytes": 61440,
-   "id": 989,
+   "id": 401,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1556,7 +1448,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 990,
+   "id": 402,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1564,8 +1456,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 991,
+   "bytes": 1572864,
+   "id": 403,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1574,7 +1466,7 @@
   },
   {
    "bytes": 61440,
-   "id": 992,
+   "id": 404,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1583,7 +1475,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 993,
+   "id": 405,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1591,8 +1483,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 994,
+   "bytes": 147456,
+   "id": 406,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1600,116 +1492,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 995,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 996,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 997,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 998,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 999,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1000,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1001,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1002,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1003,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1004,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1005,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1006,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1007,
+   "bytes": 147456,
+   "id": 407,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1718,7 +1502,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1008,
+   "id": 408,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1726,8 +1510,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1009,
+   "bytes": 1572864,
+   "id": 409,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1736,7 +1520,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1010,
+   "id": 410,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1745,7 +1529,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1011,
+   "id": 411,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1753,8 +1537,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1012,
+   "bytes": 1572864,
+   "id": 412,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1763,7 +1547,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1013,
+   "id": 413,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1772,7 +1556,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1014,
+   "id": 414,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1780,8 +1564,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1015,
+   "bytes": 1572864,
+   "id": 415,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1790,7 +1574,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1016,
+   "id": 416,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1799,7 +1583,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1017,
+   "id": 417,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1807,8 +1591,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 1018,
+   "bytes": 147456,
+   "id": 418,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1816,116 +1600,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 1019,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1020,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1021,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1022,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1023,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1024,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1025,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1026,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1027,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1028,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1029,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1030,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1031,
+   "bytes": 147456,
+   "id": 419,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1934,7 +1610,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1032,
+   "id": 420,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1942,8 +1618,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1033,
+   "bytes": 1572864,
+   "id": 421,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1952,7 +1628,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1034,
+   "id": 422,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1961,7 +1637,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1035,
+   "id": 423,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1969,8 +1645,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1036,
+   "bytes": 1572864,
+   "id": 424,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1979,7 +1655,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1037,
+   "id": 425,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -1988,7 +1664,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1038,
+   "id": 426,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -1996,8 +1672,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1039,
+   "bytes": 1572864,
+   "id": 427,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2006,7 +1682,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1040,
+   "id": 428,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2015,7 +1691,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1041,
+   "id": 429,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2023,8 +1699,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 1042,
+   "bytes": 147456,
+   "id": 430,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2032,116 +1708,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 1043,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1044,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1045,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1046,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1047,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1048,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1049,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1050,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1051,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1052,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1053,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1054,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1055,
+   "bytes": 147456,
+   "id": 431,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2150,7 +1718,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1056,
+   "id": 432,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2158,8 +1726,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1057,
+   "bytes": 1572864,
+   "id": 433,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2168,7 +1736,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1058,
+   "id": 434,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2177,7 +1745,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1059,
+   "id": 435,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2185,8 +1753,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1060,
+   "bytes": 1572864,
+   "id": 436,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2195,7 +1763,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1061,
+   "id": 437,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2204,7 +1772,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1062,
+   "id": 438,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2212,8 +1780,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1063,
+   "bytes": 1572864,
+   "id": 439,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2222,7 +1790,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1064,
+   "id": 440,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2231,7 +1799,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1065,
+   "id": 441,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2239,8 +1807,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 1066,
+   "bytes": 147456,
+   "id": 442,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2248,116 +1816,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 1067,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1068,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1069,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1070,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1071,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1072,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1073,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1074,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1075,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1076,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1077,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1078,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1079,
+   "bytes": 147456,
+   "id": 443,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2366,7 +1826,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1080,
+   "id": 444,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2374,8 +1834,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1081,
+   "bytes": 1572864,
+   "id": 445,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2384,7 +1844,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1082,
+   "id": 446,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2393,7 +1853,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1083,
+   "id": 447,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2401,8 +1861,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1084,
+   "bytes": 1572864,
+   "id": 448,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2411,7 +1871,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1085,
+   "id": 449,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2420,7 +1880,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1086,
+   "id": 450,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2428,8 +1888,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1087,
+   "bytes": 1572864,
+   "id": 451,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2438,7 +1898,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1088,
+   "id": 452,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2447,7 +1907,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1089,
+   "id": 453,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2455,8 +1915,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 1090,
+   "bytes": 147456,
+   "id": 454,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2464,116 +1924,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 1091,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1092,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1093,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1094,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1095,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1096,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1097,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1098,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1099,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1100,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1101,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1102,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1103,
+   "bytes": 147456,
+   "id": 455,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2582,7 +1934,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1104,
+   "id": 456,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2590,8 +1942,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1105,
+   "bytes": 1572864,
+   "id": 457,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2600,7 +1952,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1106,
+   "id": 458,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2609,7 +1961,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1107,
+   "id": 459,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2617,8 +1969,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1108,
+   "bytes": 1572864,
+   "id": 460,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2627,7 +1979,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1109,
+   "id": 461,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2636,7 +1988,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1110,
+   "id": 462,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2644,8 +1996,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1111,
+   "bytes": 1572864,
+   "id": 463,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2654,7 +2006,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1112,
+   "id": 464,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2663,7 +2015,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1113,
+   "id": 465,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2671,8 +2023,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 1114,
+   "bytes": 147456,
+   "id": 466,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2680,116 +2032,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 1115,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1116,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1117,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1118,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1119,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1120,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1121,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1122,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1123,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1124,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1125,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1126,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1127,
+   "bytes": 147456,
+   "id": 467,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2798,7 +2042,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1128,
+   "id": 468,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2806,8 +2050,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1129,
+   "bytes": 1572864,
+   "id": 469,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2816,7 +2060,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1130,
+   "id": 470,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2825,7 +2069,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1131,
+   "id": 471,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2833,8 +2077,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1132,
+   "bytes": 1572864,
+   "id": 472,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2843,7 +2087,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1133,
+   "id": 473,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2852,7 +2096,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1134,
+   "id": 474,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2860,8 +2104,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 3145728,
-   "id": 1135,
+   "bytes": 1572864,
+   "id": 475,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2870,7 +2114,7 @@
   },
   {
    "bytes": 61440,
-   "id": 1136,
+   "id": 476,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2879,7 +2123,7 @@
   },
   {
    "bytes": 289062500,
-   "id": 1137,
+   "id": 477,
    "model_global": true,
    "mutable": false,
    "request_id": -1,
@@ -2887,8 +2131,8 @@
    "role": "model_weight"
   },
   {
-   "bytes": 4210688,
-   "id": 1138,
+   "bytes": 147456,
+   "id": 478,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -2896,116 +2140,8 @@
    "role": "kv_cache"
   },
   {
-   "bytes": 4210688,
-   "id": 1139,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1140,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1141,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1142,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1143,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1144,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1145,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1146,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 3145728,
-   "id": 1147,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 61440,
-   "id": 1148,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "recurrent_state"
-  },
-  {
-   "bytes": 289062500,
-   "id": 1149,
-   "model_global": true,
-   "mutable": false,
-   "request_id": -1,
-   "request_local": false,
-   "role": "model_weight"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1150,
-   "model_global": false,
-   "mutable": true,
-   "request_id": -1,
-   "request_local": true,
-   "role": "kv_cache"
-  },
-  {
-   "bytes": 4210688,
-   "id": 1151,
+   "bytes": 147456,
+   "id": 479,
    "model_global": false,
    "mutable": true,
    "request_id": -1,
@@ -3014,7 +2150,871 @@
   },
   {
    "bytes": 289062500,
-   "id": 1152,
+   "id": 480,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 481,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 482,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 483,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 484,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 485,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 486,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 487,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 488,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 489,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 490,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 491,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 492,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 493,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 494,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 495,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 496,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 497,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 498,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 499,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 500,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 501,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 502,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 503,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 504,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 505,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 506,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 507,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 508,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 509,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 510,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 511,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 512,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 513,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 514,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 515,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 516,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 517,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 518,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 519,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 520,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 521,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 522,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 523,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 524,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 525,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 526,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 527,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 528,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 529,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 530,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 531,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 532,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 533,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 534,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 535,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 536,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 537,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 538,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 539,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 540,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 541,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 542,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 543,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 544,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 545,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 546,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 547,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 548,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 549,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 550,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 551,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 552,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 553,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 554,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 555,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 556,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 557,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 558,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 559,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 560,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 561,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 562,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 563,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 564,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 565,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 566,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 567,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 568,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 569,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 570,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 1572864,
+   "id": 571,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 572,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 573,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 147456,
+   "id": 574,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 147456,
+   "id": 575,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 576,
    "model_global": true,
    "mutable": false,
    "request_id": -1,

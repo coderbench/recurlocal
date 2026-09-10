@@ -1,0 +1,60 @@
+{
+ "schema_version": 1,
+ "basis": "model",
+ "what_this_is": "Two graphs RECORDED from the live adapter, at one sequence and at sixteen, and what the planner makes of each. `\"basis\": \"model\"`: nothing here is a measurement of a speedup. It is recorded because the two traces, put side by side, show that the 0.2 planning path plans a batch-1 workload at every concurrency.",
+ "traces": {
+  "c1": {
+   "active_requests": 1,
+   "kernels": 64,
+   "bytes_by_role": {
+    "kv_cache": 134742016,
+    "model_weight": 18500000000,
+    "recurrent_state": 153944064
+   },
+   "tensors_by_role": {
+    "kv_cache": 32,
+    "model_weight": 64,
+    "recurrent_state": 96
+   }
+  },
+  "c16": {
+   "active_requests": 16,
+   "kernels": 64,
+   "bytes_by_role": {
+    "kv_cache": 4718592,
+    "model_weight": 18500000000,
+    "recurrent_state": 78446592
+   },
+   "tensors_by_role": {
+    "kv_cache": 32,
+    "model_weight": 64,
+    "recurrent_state": 96
+   }
+  }
+ },
+ "what_the_planner_sees": {
+  "c1": {
+   "step_traffic_bytes": 18942630144,
+   "peak_live_bytes": 18788686080,
+   "bounded_removable_bytes": 125829120,
+   "ceiling_throughput_ratio": 1.00669,
+   "persist_actions": 29
+  },
+  "c16": {
+   "step_traffic_bytes": 18661611776,
+   "peak_live_bytes": 18583165184,
+   "bounded_removable_bytes": 125829120,
+   "ceiling_throughput_ratio": 1.00679,
+   "persist_actions": 57
+  },
+  "command": "tensortransit plan <trace>.json --planner budgeted --admission density --json"
+ },
+ "findings": [
+  {
+   "finding": "The graph does not scale with concurrency, so the planner sizes everything for one sequence.",
+   "detail": "At sixteen sequences the recorded graph declares 78.4 MB of recurrent state and 4.7 MB of KV -- ONE sequence's slices. Sixteen sequences move 1.26 GB of recurrent state, so the recurrent share of the step is about 11.8% and the graph says 0.8%. `step_traffic_bytes` comes out at 18.66 GB against a real step nearer 21 GB, and the computed ceiling is 1.00679 at sixteen sequences against 1.00669 at one: the planner cannot tell the two workloads apart.\n\nThree separate causes, none in the core:\n  1. `TensorDesc::request_local` -- 'one per in-flight request: footprint scales with      concurrency' -- is set by every adapter, copied into `TensorProfile`, serialized into      traces, and READ NOWHERE. No planner, ceiling or cost model consults it.\n  2. The hook's `declare_kv_cache` hardcodes `tt_kv.rows = 1` and computes live bytes from      the single-sequence `position`, so KV never sees concurrency at all.\n  3. `TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN` is an operator-declared batch-1 constant      with no concurrency term.\n\nOnly `recurrent_v0` reads `RuntimeState::active_requests`. Every arm of the admission axis uses `budgeted`, which does not.",
+   "why_it_matters": "A persisting window covers ONE address range -- row 0's slice -- so at sixteen sequences it saves a sixteenth of the state traffic while sixteen sequences' worth of state flows through the cache between two uses of it. The benefit divides by concurrency and the interference multiplies by it. The residency model's survival term is exactly the ratio of what a tensor holds to what flows past it between uses, so getting concurrency out of both halves is why the model predicts the family helps at concurrency and the measurement says it does not. It is also why `AdmissionRule::Survival` never fires at the fitted beta: with interference counted for one sequence, everything survives.\n\nThis is the reconciliation docs/VERDICT.md section 3.3 calls the highest-value open problem, and it needs no GPU: both traces are committed, and `tensortransit plan` on each is the whole experiment.",
+   "not_yet_fixed": "Deliberately. Scaling a request-local tensor's footprint and reuse distance by `active_requests` changes every plan digest in tests/golden/plans.golden, and a change that large belongs in a release that can measure its effect rather than in one that found it. tests/test_golden.cpp pins the CURRENT behaviour on both recorded traces, so the fix will show up as a digest change nobody can miss."
+  }
+ ]
+}

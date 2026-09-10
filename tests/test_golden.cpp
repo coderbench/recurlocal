@@ -243,7 +243,8 @@ int main(int argc, char** argv) {
     // a digest that changes on the recorded trace and not on the synthetic ones is a fact
     // about the deployment rather than about the planner.
     const char* traces[] = {"trace_recurrent.json", "trace_recurrent_kv.json",
-                            "trace_concurrency.json", "trace_live_c1.json"};
+                            "trace_concurrency.json", "trace_live_c1.json",
+                            "trace_live_c16.json"};
     DeviceProfile device{};
     CHECK(device_profile_by_name("rtx5090", &device));
 

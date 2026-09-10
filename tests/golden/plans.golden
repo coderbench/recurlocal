@@ -22,3 +22,9 @@ trace_live_c1.json/kv_only 09abc140f7510396
 trace_live_c1.json/naive_both 136df0f0ca0390e3
 trace_live_c1.json/global 37f404f13bfe86e5
 trace_live_c1.json/step_traffic_bytes 18942630144
+trace_live_c16.json/baseline 14650fb0739d0383
+trace_live_c16.json/recurrent_only a103a45bd12707af
+trace_live_c16.json/kv_only 40b9ef957697dec3
+trace_live_c16.json/naive_both 7392c639aad3e183
+trace_live_c16.json/global ec8eccd19864a4e7
+trace_live_c16.json/step_traffic_bytes 18661611776
