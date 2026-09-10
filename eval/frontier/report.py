@@ -248,6 +248,19 @@ def markdown(receipt: dict, *, raw_results_path=None) -> str:
         f"Improved {coverage['improved_cells']}, neutral {coverage['neutral_cells']}, "
         f"regressed {coverage['regressed_cells']}, of {coverage['total_cells']} declared.",
     ]
+
+    # Which configuration held the frontier where. A candidate does not have to beat every
+    # existing strategy everywhere -- it has to hold territory somewhere -- and this is the
+    # table that says whether a new one did.
+    holders = {cell: info.get("on_frontier") or {}
+               for cell, info in sorted((receipt.get("cells") or {}).items())}
+    if any(h.get("candidate") for h in holders.values()):
+        out += ["", "### Who held the frontier", "",
+                "| workload | main | candidate |", "|---|---|---|"]
+        for cell, h in holders.items():
+            out.append(f"| `{cell}` | "
+                       f"{', '.join('`' + c + '`' for c in h.get('main', [])) or '—'} | "
+                       f"{', '.join('`' + c + '`' for c in h.get('candidate', [])) or '—'} |")
     if (receipt.get("aggregation") or {}).get("floor_decided"):
         floored = receipt["aggregation"].get("cells_at_floor") or {}
         out += ["",

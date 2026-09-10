@@ -75,7 +75,21 @@
         "partial": {"type": "boolean", "description": "True when the generation declares a cell this run did not measure. A hole is named, never renormalised away."}
       }
     },
-    "cells": {"type": "object"},
+    "cells": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "gain": {"type": "number"},
+          "hypervolume": {"type": "object"},
+          "weight": {"type": "number"},
+          "protected": {"type": "boolean"},
+          "on_frontier": {
+            "type": "object",
+            "description": "Which configurations were non-dominated in this cell, by variant. This is where a new planner earns its place: it does not have to beat every existing strategy everywhere, it has to hold territory somewhere."}
+        }
+      }
+    },
     "configurations": {"type": "object"},
     "failures": {"type": "object", "description": "Measurements that produced no operating point, by variant and reason. A run that lost a region says so."},
     "statistics": {

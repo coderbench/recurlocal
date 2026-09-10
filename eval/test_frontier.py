@@ -323,6 +323,17 @@ def test_compute_cases():
     result = compute_frontier(generation, matrix(portfolio_main, portfolio_candidate))
     check(result.gain > 0, "a new configuration that adds non-dominated territory raises dF "
                            "even though it is worse on one objective")
+    # ...and the receipt says WHICH configuration held that territory. "The candidate gained
+    # 4%" and "the candidate's specialized planner is on the frontier in every cell and its
+    # default is on none" are different facts, and only the second tells a contributor where
+    # their work earned its place.
+    for cell in generation.cells:
+        holders = result.frontier_configurations[cell]["candidate"]
+        check("specialist" in holders,
+              f"{cell}: the specialized configuration is named as a frontier holder")
+        check("base" in holders, f"{cell}: so is the one it did not displace")
+    check(result.frontier_configurations[generation.cells[0]]["main"] == ["base"],
+          "and main's only configuration is named as its own holder")
 
     # a duplicate configuration recreates an existing point and earns nothing
     duplicate = {"ctx128-c1": {"base": (500.0, 50.0, "OK"), "copy": (500.0, 50.0, "OK")},

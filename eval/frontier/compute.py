@@ -61,8 +61,12 @@ def compute_frontier(generation, results, *, allow_partial=False):
     """
     reference = generation.reference_point
 
-    # variant -> repeat -> cell -> [points]
+    # variant -> repeat -> cell -> [points], and the same keyed by config so a receipt can say
+    # WHICH configuration created the territory. "The candidate gained 4%" and "the candidate's
+    # new specialized planner is on the frontier in four cells and its default is on none" are
+    # different facts, and only the second tells a contributor where their work earned a place.
     points = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    labelled = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
     configs = defaultdict(set)
     failures = defaultdict(int)
     seen_cells = set()
@@ -94,6 +98,7 @@ def compute_frontier(generation, results, *, allow_partial=False):
             # a zero would still be a point on the frontier's axis (spec section 49).
             continue
         points[variant][repeat][cell].append(point)
+        labelled[variant][repeat][cell][point] = str(record["config_id"])
 
     for variant in ("main", "candidate"):
         _require(points[variant], f"no usable {variant} measurements at all")
@@ -138,6 +143,21 @@ def compute_frontier(generation, results, *, allow_partial=False):
                 at_floor[variant].add(cell)
             for cell, value in agg["cells"].items():
                 per_cell_detail[cell].setdefault(variant, []).append(value)
+
+    # Which configurations were ever non-dominated in a cell. The union over repeats: a
+    # configuration that held the frontier in one repeat and lost it to noise in another still
+    # created that territory, and a receipt that only reported the last repeat would say
+    # otherwise.
+    from .pareto import pareto_frontier
+    on_frontier = defaultdict(lambda: defaultdict(set))
+    for variant in ("main", "candidate"):
+        for repeat in repeats:
+            for cell in scored_cells:
+                cell_points = points[variant][repeat].get(cell, [])
+                for winner in pareto_frontier(cell_points):
+                    name = labelled[variant][repeat][cell].get(tuple(winner))
+                    if name:
+                        on_frontier[cell][variant].add(name)
 
     stats = paired_bootstrap(per_repeat["main"], per_repeat["candidate"],
                              level=generation.confidence_level,
@@ -198,6 +218,9 @@ def compute_frontier(generation, results, *, allow_partial=False):
         cells_at_floor={variant: sorted(at_floor[variant]) for variant in ("main", "candidate")},
         floor_decided=bool(at_floor["main"] or at_floor["candidate"]),
         configurations={v: sorted(configs[v]) for v in ("main", "candidate")},
+        frontier_configurations={cell: {v: sorted(on_frontier[cell][v])
+                                        for v in ("main", "candidate")}
+                                 for cell in scored_cells},
         failures=dict(failures),
         guard_violations=guard_violations,
         partial=bool(missing_cells),

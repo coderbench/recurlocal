@@ -151,6 +151,10 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
                 "hypervolume": computation.cell_hypervolume[cell],
                 "weight": computation.weights[cell],
                 "protected": cell in generation.protected_cells,
+                # Which configurations were on the frontier in this cell. This is where a new
+                # planner earns its place: it does not have to beat everything everywhere, it
+                # has to hold territory somewhere.
+                "on_frontier": computation.frontier_configurations.get(cell, {}),
             }
             for cell in computation.cells_scored
         },
