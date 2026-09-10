@@ -177,6 +177,47 @@ role-floor arbitration alone, and measures the same as it within noise.
 [`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
 maintainer has to answer before handing this to contributors.
 
+### Found — the planning path is blind to concurrency, and that reconciles the model with the measurement
+
+Recording a trace at sixteen sequences, which took two fixes to get right, produced the thing
+this release had called its highest-value open problem:
+
+| | c=1 | c=16 |
+|---|--:|--:|
+| recurrent state declared | 153.9 MB | **78.4 MB** |
+| KV declared | 134.7 MB | **4.7 MB** |
+| `step_traffic_bytes` | 18.94 GB | **18.66 GB** |
+| computed ceiling | 1.00669 | **1.00679** |
+
+Sixteen sequences move sixteen times the recurrent state. The graph declares one sequence's
+slices at both, so **the planner cannot tell the two workloads apart**. Three causes, none of
+them in the core:
+
+- `TensorDesc::request_local` — "one per in-flight request: footprint scales with concurrency" —
+  is set by every adapter, copied into `TensorProfile`, serialized into traces, and **read
+  nowhere**. No planner, ceiling or cost model consults it.
+- The hook's `declare_kv_cache` hardcodes `rows = 1` and computes live bytes from the
+  single-sequence `position`.
+- `TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN` is an operator-declared batch-1 constant.
+
+Only `recurrent_v0` reads `RuntimeState::active_requests`; every arm of the admission axis uses
+`budgeted`, which does not.
+
+That is enough to explain the whole disagreement between this release's model and its
+measurements. A window covers one address range — row 0's slice — so at sixteen sequences it
+saves a *sixteenth* of the state traffic while *sixteen* sequences' worth flows past between two
+uses of it. The benefit divides by concurrency, the interference multiplies by it, and the
+survival term is the ratio of the two. With concurrency out of both halves the model says the
+family helps at concurrency, the measurement says it does not, and `AdmissionRule::Survival`
+never fires because everything survives when interference is counted for one sequence.
+
+**Not fixed here, on purpose.** Scaling a request-local tensor's footprint and reuse distance by
+`active_requests` moves every digest in `tests/golden/plans.golden`, and a change that large
+belongs in a release that can measure its effect rather than in the one that found it. Both
+recorded traces are committed and pinned by `tests/test_golden.cpp`, so the fix will show up as
+a digest change nobody can miss, and `tensortransit plan` on each is the whole experiment with
+no GPU involved.
+
 ### Added — the 32-sequence collapse has a signature, after three releases of not having one
 
 Nine paired repeats of `ctx128-c32` were run to settle that cell's p99. One of the nine

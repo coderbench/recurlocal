@@ -604,13 +604,25 @@ Three things are open here and none needs a GPU to start:
   little under `beta = 0.2` the first candidate stops paying and it admits **nothing**. There is
   no useful middle. `tests/test_golden.cpp` pins both ends, so a rule that actually differs is a
   contribution that will show up as a changed digest rather than as an argument.
+- **Concurrency, which the graph does not carry at all — and this is the big one.** Two graphs
+  recorded from the live adapter, at one sequence and at sixteen, declare 153.9 MB and 78.4 MB
+  of recurrent state: *one sequence's slices in both*. Sixteen sequences move sixteen times
+  that. `TensorDesc::request_local` says "footprint scales with concurrency", is set by every
+  adapter, and is **read by nothing**; the hook hardcodes `rows = 1` for KV; the step-traffic
+  figure is an operator-declared batch-1 constant; and only `recurrent_v0` reads
+  `active_requests`, while every admission arm uses `budgeted`. A window covers row 0 only, so
+  at sixteen sequences the benefit divides by sixteen while the interference multiplies by it —
+  which is exactly why the model says the family helps at concurrency and the measurement says
+  it does not. Both traces are in `tests/golden/`, `tensortransit plan` on each is the whole
+  experiment, and `results/rtx5090-0.2.1-concurrency-blind-graph.json` has the numbers. **No
+  GPU needed, and it is the most valuable thing on this list.**
 - **A per-window term, which the model does not have.** *And a warning from the attempt to
   settle it:* an arm's plan can differ in action count while attaching the same number of
   windows, because a plan emits one action per consumer and the device carries one
   access-policy window per kernel NODE. `density` and `reuse_order` emit 29 and 15 persist
   actions on the recorded trace — over the same 15 kernels — and both reported
   `windows_attached_to_node: 48` on hardware. Read that counter from a one-token run before
-  designing a comparison around it; the run that did not costs a box-hour
+  designing a comparison around it; the run that did not cost a box-hour
   (`results/rtx5090-0.2.1-null-control.json`). In the five measured arms the gain is
   monotone in `windows_attached_to_node` — 48, 77, 144, 144, 144 — in both the per-cell and the
   aggregated view, and the model prices bytes and residency with no term for how many windows

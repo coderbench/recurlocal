@@ -120,7 +120,7 @@ measures at batch 1 — that is the single-sequence bench, while these cells run
 continuous-batching engine with the generation's long-prefill injection alongside. Two serving
 mixes, two answers, and the frontier scores the one that looks like serving.
 
-### 3.3 The cost model ranks admission rules on an axis the measurement does not separate — and the one it does separate is an axis the model has no term for
+### 3.3 The cost model and the measurement disagree, and the reason is that the graph is blind to concurrency
 
 The residency cost model fits the *magnitude* of the persist family better than the linear one
 it replaced — rms 0.271 against 0.485 points, with both resolved arms predicted to within a
