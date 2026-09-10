@@ -1,5 +1,9 @@
 # Competing on this repository
 
+> Start with [`VERDICT.md`](VERDICT.md): whether there is a surface here worth your week, in
+> numbers, including the parts where the answer is no. This document is the how; that one is
+> the whether.
+
 What is scored, why it is scored there, and what does not count.
 
 This document exists because the obvious answers are the wrong ones, and they have changed

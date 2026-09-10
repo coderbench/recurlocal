@@ -37,7 +37,8 @@ create work for you.
 > Profile the current frontier, find a measurable cross-kernel data-movement bottleneck, and
 > submit a reproducible improvement.
 
-Start with [`docs/MINING.md`](docs/MINING.md) — it is written to talk you out of the two
+Start with [`docs/VERDICT.md`](docs/VERDICT.md) — whether there is a surface here worth your
+week, in numbers — then [`docs/MINING.md`](docs/MINING.md) — it is written to talk you out of the two
 obvious mistakes before you spend a week on them — and with one command:
 
 ```bash

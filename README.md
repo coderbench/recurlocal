@@ -23,6 +23,10 @@ YES  a future-use graph
    + real inference evaluation
 ```
 
+> **[`docs/VERDICT.md`](docs/VERDICT.md) — is there a scorable surface here, and if so which
+> one.** Answered from measurements, with a number for each part. Read it before deciding
+> whether to spend a week here; it is written to talk you out of it if the answer is no.
+
 ## The answer this project already has, before you read the rest
 
 RecurLocal — now the recurrent-state workload inside TensorTransit — asked whether a
