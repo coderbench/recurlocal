@@ -6,13 +6,16 @@ gives a number for each part of the answer, and where the answer is no it says s
 
 Short version:
 
-> **Yes, and it is narrow.** On the scored model and device, the surface is the **admission
-> axis at concurrency**, it is worth about **0.3 to 0.4 points of throughput** against a noise
-> floor of **0.28%**, and it is the only place where a change a contributor can make has been
-> measured to move the end-to-end number outside its own noise. Everything below sixteen
-> sequences is negative. The tail-latency half of the frontier cannot currently be resolved at
-> all. And the largest number anywhere near this project — 5.4x — belongs to the runtime, not
-> to this library.
+> **A surface, yes; a gain over the control, not yet.** On the scored model and device the
+> **admission axis at concurrency** is where a contributor's change shows up: two admission
+> rules differ from each other by more than the noise, with non-overlapping 99% intervals. But
+> **no arm has been measured to beat the control by more than the published spread of the cell
+> it was measured in**, and the shipped default is negative on every cell of the full matrix
+> that the runtime can actually batch. Four of the ten scored cells cannot be batched by this
+> runtime at all, and one more has a p99 whose calibrated control spread is 481%. The largest
+> number anywhere near this project — 5.4x — belongs to the runtime, not to this library.
+>
+> Sections 3 and 8 give each of those a number and say which measurement produced it.
 
 ---
 
@@ -72,16 +75,30 @@ says `PARTIAL`:
 
 Four things follow, and only the first is good news.
 
-### 3.1 The admission axis is real, and it is the surface
+### 3.1 The admission axis separates two policies from each other — and no arm from the control
 
-At sixteen sequences, changing one enumerator moves the measured number by **0.32 points**
-against a **0.283%** floor — `density` at +0.389% resolved against the shipped policy's +0.071%
-unresolved. Aggregated, `density` (+0.056%, CI −0.26…+0.33) and `quota` (−0.642%, CI
-−0.94…−0.39) have **non-overlapping** intervals: one admission rule is confidently worse than
-another, on a real model, end to end.
+Aggregated over c1, c4 and c16, `density` (+0.056%, 99% CI −0.26…+0.33) and `quota` (−0.642%,
+CI −0.94…−0.39) have **non-overlapping** intervals. One admission rule is confidently worse
+than another, on a real model, end to end. That is the first measured evidence in this
+repository that the competition surface is a surface, and it could not have been produced
+before 0.2.1.
 
-That is the first measured evidence in this repository that the competition surface is a
-surface. It could not have been produced before 0.2.1.
+**The per-cell headline does not survive the generation's own calibration, and this corrects an
+earlier version of this document.** The table above reports `density` at +0.389% at ctx128-c16
+against that *run's* floor of 0.283%. `frontier/TTF-1/reference.json` froze that cell's control
+spread at **0.42%** when the generation was calibrated, and 0.389 < 0.42. The run-specific floor
+was smaller only because that session happened to be quieter, and the rule this repository
+applies everywhere else — an axis whose effect sits inside its own noise is open, not solved —
+applies to it too.
+
+The same arm measured twice, two hours apart on the same box, makes the point without any
+statistics: `persist` (which is `recurrent_v0`, the shipped default) came back **+0.071%** in
+the arms sweep and **−0.388%** in the full TTF-1 matrix at that cell. The gap between those two
+is 0.46%, and the cell's published spread is 0.42%.
+
+So the honest statement of what is measured is narrower than the one this section used to make:
+two admission rules differ from each other by more than the noise; **no arm has been shown to
+beat the control by more than the noise of the cell it was measured in.**
 
 ### 3.2 Below sixteen sequences the whole family is negative
 
