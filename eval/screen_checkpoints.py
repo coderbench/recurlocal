@@ -164,10 +164,19 @@ def screen(name: str, config: dict, weight_bytes: int, quant: str,
     # A sparse-MoE checkpoint clears the traffic gate easily and has never cleared the OTHER
     # one: discrete top-k expert routing turns a few ULP of prefill difference into a different
     # token, so two UNHOOKED replays diverge and nothing on it can be scored.
-    out["reproducibility_risk"] = ("high -- sparse-MoE routing; four checkpoints screened and "
-                                   "none reproducible" if geometry["sparse_moe"] else
-                                   "low -- dense, no expert routing; the pinned dense model is "
-                                   "bit-identical across replays")
+    # Dense removes the KNOWN cause and does not guarantee the result, which was found out the
+    # hard way an hour after this file was written: Qwen3.5-9B-Q4_K_M is dense, has no expert
+    # routing, and one replay of three diverges at token 16. Qwen3.5-4B-Q4_K_M is dense and
+    # three of three agree over 64 tokens. So the gate is per checkpoint and the screen is not
+    # entitled to skip it.
+    out["reproducibility_risk"] = ("high -- sparse-MoE top-k routing turns a few ULP of prefill "
+                                   "difference into a different token; four checkpoints "
+                                   "screened and none reproducible"
+                                   if geometry["sparse_moe"] else
+                                   "unknown -- dense removes the known cause, and does not "
+                                   "settle it: Qwen3.5-9B-Q4_K_M is dense and diverges at token "
+                                   "16 in one replay of three, while Qwen3.5-4B-Q4_K_M agrees "
+                                   "three of three. Run the gate.")
     out["basis"] = "model"
     out["note"] = ("predicted_* and ceiling_pct are cost-model outputs, not measurements. The "
                    "second gate -- two unhooked greedy replays agreeing -- needs hardware.")
@@ -237,9 +246,9 @@ def main() -> int:
     print("  `tok/s@BW` is what the step would run at if it were purely bandwidth-bound.")
     print("  Measure the candidate: a rate near it means the ceiling is tight, a rate far below")
     print("  means the step is latency and the ceiling is a loose upper bound.")
-    print("  It is a MODEL output. The other gate -- two unhooked greedy replays agreeing --")
-    print("  needs the runtime and one model load, and is what ruled out every sparse-MoE")
-    print("  checkpoint this project has screened.")
+    print("  It is a MODEL output. The other gate -- unhooked greedy replays agreeing -- needs")
+    print("  the runtime and one model load. `dense` lowers the risk and does not settle it:")
+    print("  Qwen3.5-9B-Q4_K_M is dense and diverged at token 16 in one replay of three.")
     return 0
 
 
