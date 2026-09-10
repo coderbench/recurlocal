@@ -155,7 +155,7 @@ Two different things follow, and they should not be confused:
 Both models ship. `--cost-model linear` is the control, and it is how a contributor checks
 whether a result is about the policy or about the model.
 
-### The second proof track, answered at model level
+### The second proof track, answered at model level — and then retracted by a recorded trace
 
 Specification section 38 asks whether one planner arbitrating a shared budget across two tensor
 classes beats two independent policies. Through 0.2.0 the answer under this repository's own

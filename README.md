@@ -110,7 +110,7 @@ asserting it.
 | the adapter drives Registry -> Graph -> Planner -> Executor | with the 0.1 controller kept as `TENSORTRANSIT_ENGINE=v0`, so the migration is an A/B in one binary. Token-exact, 96 windows on captured graph nodes, 0 capture invalidations, gains overlapping inside their own noise floors |
 | KV is registered | `recurrent_tensors: 48, kv_tensors: 16` on a live run. The second proof track could not be measured before — not "had not been" |
 | a cost model that can express coordination | fitted to the hardware arms in `results/`; superlinear in residency, so concentrating beats spreading and the admission axis measures something |
-| the second proof track, at model level | the global arm beats the best independent arm on all three golden traces, where under the linear model it provably could not — and `--stream-relief 0` makes the advantage disappear, which names the mechanism and would falsify it |
+| the second proof track, at model level | the global arm beats the best independent arm on all three hand-written traces, where under the linear model it provably could not — **and loses on both traces recorded from the runtime** once the planner is held to the one access-policy window a kernel node carries. The positive result was a property of the fixtures. `docs/VERDICT.md` section 4 |
 | Frontier Gain and its ledger | continuous `dF`, frozen generations, paired bootstrap, protected-workload guard, append-only receipts |
 | a trusted, keyless, ephemeral GPU runner | plus the anti-gaming overlay, both proven by CI rather than described |
 | plan replay, a gated overhead budget, live trace recording | the offline loop closes; the 0.5%-of-token budget is asserted on the real 64-layer shape |
@@ -164,24 +164,26 @@ reproducing it, the graph is wrong.
 ### And it found a negative result about its own central claim
 
 The specification's second proof track asks the global planner to beat naive independent
-tensor policies. On a two-role trace:
+tensor policies. On the graph **recorded from the runtime at sixteen sequences**, under the one
+access-policy window a kernel node actually carries:
 
 ```console
-$ tensortransit compare tests/golden/trace_recurrent_kv.json
-  arm                actions  declines    committed B    predicted
-  baseline                 0       176              0      +0.000%
-  recurrent_only          60       146       47185920      +0.358%
-  kv_only                  8       172       47185920      +0.179%
-  naive_both             224        64       47185872      +0.034%
-  global                  54       149       47185920      +0.336%
+$ tensortransit compare tests/golden/trace_live_c16.json
+  arm                actions  declines    committed B    predicted    digest
+  baseline                 0       192              0      +0.000%  739d0383
+  recurrent_only          58       163        3145728      +0.005%  ea0a4abb
+  kv_only                 32       176        2359296      +0.001%  484b7123
+  naive_both             128       128       44174032      +0.040%  8e1f6963
+  global                 128       192        5468160      +0.006%  ba09ed1f
 ```
 
-It beats the naive both-persistent arm by **10x** — that policy shaves thirty hit ratios to a
-third each and the hardware cannot keep a third of a line; under concurrency it declines
-everything and disables itself. It does **not** beat the best single-role arm, and under this
-cost model it cannot: total saving is `sum granted_i x density_i` under a budget, greedy-on-
-density is optimal for that, and any floor that diverts budget to a lower-density role must
-lose by exactly the density difference. The sweep is monotone.
+`naive_both` wins. Under the *linear* cost model 0.2.0 shipped, `global` provably could not win:
+total saving was `sum granted_i x density_i` under a budget, greedy-on-density is optimal for
+that, and any floor diverting budget to a lower-density role loses by exactly the density
+difference. The residency model of 0.2.1 removes that impossibility and `global` does win — on
+all three **hand-written** traces, and on neither of the two **recorded** ones, because its two
+mechanisms compete for the single window each of the runtime's 64 kernels has and the fixtures
+model 176. `docs/VERDICT.md` section 4 has the table and `tests/test_golden.cpp` pins it.
 
 **So the honest state of the multi-tensor claim is: the mechanism is built, tested and
 observable; the arithmetic that would justify it is not in the cost model; and settling it
