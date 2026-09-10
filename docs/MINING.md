@@ -194,10 +194,17 @@ Before any of that, one command tells you which cells are worth trying to win:
 tools/tt-frontier generation show TTF-1 --reachable
 ```
 
-Three of TTF-1's twenty cell/objective pairs have a control spread larger than anything this
-hardware can produce — `ctx128-c32` p99 at 481%, both of `ctx4096-c32`'s at about 40% — and two
-more cells cannot be batched by the pinned runtime at all. That is nine of twenty pairs a
-submission cannot move, published rather than discovered.
+Read the `persist` and `spread` columns together. **Five of TTF-1's ten cells have a control
+spread larger than the ceiling a perfect persisting-L2 policy could reach**, so no admission
+rule, window shape or hot-set heuristic can be measured to win them — including `ctx128-c16`,
+the cell the table further down this page quotes from. Two more cells cannot be batched by the
+pinned runtime at all, and two objectives have control spreads above 40%.
+
+Then read the `any mech.` column, because it is the more useful one: removing *all* recurrent
+traffic is worth 5.2% at sixteen sequences and 8.6% at thirty-two. The traffic is there and it
+is ten to twelve times the noise. What cannot reach it is a 60 MiB carve-out — the per-token
+recurrent footprint at sixteen sequences is 2.46 GB. **If you are looking for the largest
+untouched thing in this repository, that gap is it.**
 
 Your configuration reaches the measured path through the adapter's environment:
 

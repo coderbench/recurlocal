@@ -26,6 +26,17 @@ YES  a future-use graph
 > **[`docs/VERDICT.md`](docs/VERDICT.md) — is there a scorable surface here, and if so which
 > one.** Answered from measurements, with a number for each part. Read it before deciding
 > whether to spend a week here; it is written to talk you out of it if the answer is no.
+>
+> The short version, and it is two halves: **the recurrent traffic at concurrency is 5.2% of a
+> decode step at sixteen sequences and 8.6% at thirty-two, against control spreads of 0.42% and
+> 1.74% — the room is real and it is ten times the noise. A persisting-L2 policy cannot reach
+> it**, and on five of the ten scored cells it provably cannot be measured trying: its ceiling
+> there is `2 x 60 MiB / step traffic`, which is smaller than the control's own run-to-run
+> spread. One command prints the whole table:
+>
+> ```bash
+> tools/tt-frontier generation show TTF-1 --reachable
+> ```
 
 ## The answer this project already has, before you read the rest
 
