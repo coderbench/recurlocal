@@ -117,6 +117,19 @@ matrix every receipt marks as such. One admission rule is confidently worse than
 much could not have been produced before this release: the adapter drove the 0.1 controller, so
 no admission rule was in the measured path at all.
 
+**A null control settles the size of the arm-to-arm floor.** `survival` and `density` compile to
+the same plan — identical digests on all four golden traces, asserted in `tests/test_golden.cpp`
+— so the paired difference between them is noise with the policy held constant. Over five
+interleaved repeats it is a median of −0.145% at `ctx128-c1`, −0.045% at `ctx128-c4` and
+**+0.230% at `ctx128-c16`**, peak-to-peak 1.29%. Against that cell's 0.249% ceiling: two arms
+running the same bytes differ by more than a perfect policy could deliver
+(`results/rtx5090-0.2.1-null-control.json`). At `ctx128-c1` the figure is exactly one
+least-significant digit of the bench's own output, which is the printer rather than the box.
+
+The same five-repeat run measures `density` against the control at −0.289% (c1, five of five
+negative), **−0.544%** (c4, five of five, resolved) and +0.106% (c16, straddling zero). Three
+admission rules, one answer.
+
 Four findings that are not good news and are recorded with the same weight:
 
 - **Below sixteen sequences the whole family is negative** through the continuous-batching
