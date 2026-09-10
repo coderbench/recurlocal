@@ -618,13 +618,14 @@ One enumerator plus an implementation in `planners/budgeted/`. Comparable agains
 rule on the same trace with no hardware, and — as of 0.2.1 — on the real model too, because
 `TENSORTRANSIT_ADMISSION` is on the measured path.
 
-**It moves the number.** At sixteen concurrent sequences, control 564.9 tok/s, noise floor
-0.283% (`results/rtx5090-0.2.1-arms.json`):
+**It moves the number — one arm against another, not against the control.** At sixteen
+concurrent sequences, control 564.9 tok/s, that run's own floor 0.283%
+(`results/rtx5090-0.2.1-arms.json`):
 
 | arm | throughput gain | resolved |
 |---|--:|:--:|
-| `budgeted` / `density` | **+0.389%** | **yes** |
-| `global` preset | **+0.372%** | **yes** |
+| `budgeted` / `density` | **+0.389%** | against that run's floor, yes; against the cell's **published** 0.42%, no |
+| `global` preset | **+0.372%** | same |
 | `budgeted` / `proportional` | +0.142% | no |
 | `budgeted` / `quota` | +0.089% | no |
 | `recurrent_v0` (shipped) | +0.071% | no |
@@ -641,11 +642,14 @@ what orders every arm in both views is the number of windows it attached — not
 rule produced them. docs/VERDICT.md section 3.3 has the table and the experiment that settles
 it.
 
-**Two things to know before you start.** First, everything below sixteen sequences is negative
-for every arm, so a rule that only helps at batch 1 is helping in a regime where the family
-costs 0.3–0.4%. Second, and more useful: **the cost model's ranking is contradicted by this
-measurement.** It predicts `quota` ≈ `density`; measured, `quota` is the worst of the three.
-Reconciling the model with that is worth more than another rule, and it needs no GPU:
+**Three things to know before you start.** First, everything below sixteen sequences is
+negative for every arm, so a rule that only helps at batch 1 is helping in a regime where the
+family costs 0.3–0.4%. Second, the same arm measured **+0.07%** and **−0.39%** at that cell in
+two sessions two hours apart, so spend more than three repeats on anything this size. Third,
+and most useful: **the cost model's ranking is not validated by this measurement, and the axis
+that does order every arm is one the model has no term for** — `windows_attached_to_node`, 48
+for `density` and 144 for the three that are mutually indistinguishable. Reconciling the model
+with that is worth more than another rule, and it needs no GPU:
 
 ```bash
 tensortransit compare tests/golden/trace_recurrent_kv.json                  # what it predicts
