@@ -958,6 +958,12 @@ def test_a_frozen_generation_has_exactly_one_definition():
     ledger = root / "frontier"
     for path in sorted(scored.glob("*/generation.json")):
         name = path.parent.name
+        # A DRAFT has no receipts, so it has no ledger directory to be consistent with. It gets
+        # one when calibration freezes it, and from then on this check applies.
+        if json.loads(path.read_text()).get("_status"):
+            check(not (ledger / name).exists(),
+                  f"{name} is a draft and must not have a ledger directory yet")
+            continue
         for filename in ("generation.json", "reference.json"):
             here, there = scored / name / filename, ledger / name / filename
             if not here.exists():
