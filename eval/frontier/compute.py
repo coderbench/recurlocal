@@ -154,8 +154,15 @@ def compute_frontier(generation, results, *, allow_partial=False):
         for repeat in repeats:
             for cell in scored_cells:
                 cell_points = points[variant][repeat].get(cell, [])
-                for winner in pareto_frontier(cell_points):
-                    name = labelled[variant][repeat][cell].get(tuple(winner))
+                # Clamped to the reference exactly as hypervolume() clamps, so this diagnostic
+                # names the same frontier the score was computed from. With TTF-1's reference
+                # at the origin the clamp is a no-op; a generation that moved it would
+                # otherwise get a table describing a frontier its own number did not use.
+                clamped = {tuple(max(float(v), float(r)) for v, r in zip(p, reference)): p
+                           for p in cell_points}
+                for winner in pareto_frontier(clamped):
+                    original = clamped.get(tuple(winner))
+                    name = labelled[variant][repeat][cell].get(original)
                     if name:
                         on_frontier[cell][variant].add(name)
 
