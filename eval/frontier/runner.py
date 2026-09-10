@@ -47,6 +47,30 @@ class RunnerError(RuntimeError):
     pass
 
 
+def declares_a_policy(env) -> bool:
+    """Does this configuration ASK for a policy, and therefore have to deliver one?
+
+    `real_eval.py` refuses a run whose telemetry reads `windows_applied 0,
+    windows_attached_to_node 0, pre_touch_launches 0` -- the first scored run in this
+    repository was exactly that, and scoring it would have reported the hook's overhead as a
+    locality result. But two legitimate configurations apply no policy on purpose: the true
+    control, and the `baseline` arm, which is the hook installed with no window and is how the
+    hook's own cost is measured. Refusing those would make the control unmeasurable.
+
+    So the question is what the environment ASKED for, not what came back.
+    """
+    if not env:
+        return False
+    mode = env.get("TENSORTRANSIT") or env.get("RECURLOCAL") or ""
+    preset = env.get("TENSORTRANSIT_PRESET") or ""
+    planner = env.get("TENSORTRANSIT_PLANNER") or ""
+    if mode in ("off", "0", "baseline"):
+        return False
+    if preset == "baseline" or planner == "baseline":
+        return False
+    return True
+
+
 def classify_guard(message: str) -> str:
     for pattern, status in GUARD_STATUS:
         if pattern.search(message):

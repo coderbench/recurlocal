@@ -298,7 +298,10 @@ def cmd_run(args):
                 key, _, value = pair.partition("=")
                 env[key] = value
             configs.append({"config_id": config_id, "env": env,
-                            "expect_policy": bool(env)})
+                            # Not `bool(env)`: the `baseline` arm sets an environment and
+                            # applies no policy ON PURPOSE, and it is how the hook's own cost
+                            # is measured. See runner.declares_a_policy.
+                            "expect_policy": runner_mod.declares_a_policy(env)})
         return configs
 
     main_configs = parse_configs(args.main_config, "main") or [
@@ -385,7 +388,10 @@ def cmd_measure(args):
             metrics, status, detail = runner_mod.measure_cell(
                 args.cb_binary, args.model, cell, env, label,
                 max_new=args.max_new, long_prefill=args.long_prefill,
-                expect_policy=bool(env), verbose=not args.quiet)
+                expect_policy=(runner_mod.declares_a_policy(env)
+                               if args.expect_policy == "auto"
+                               else args.expect_policy == "yes"),
+                verbose=not args.quiet)
             records.append({
                 "result_schema_version": runner_mod.RESULT_SCHEMA_VERSION,
                 "generation": generation.name, "workload_id": cell,
@@ -467,6 +473,10 @@ def main(argv=None):
     p.add_argument("--config-id", default="control")
     p.add_argument("--variant", choices=["main", "candidate"], default="main")
     p.add_argument("--env", default="", metavar="K=V,K=V")
+    p.add_argument("--expect-policy", choices=["auto", "yes", "no"], default="auto",
+                   help="whether this configuration must deliver a policy. `auto` reads it "
+                        "from the environment, which is right for every arm including the "
+                        "baseline one.")
     p.add_argument("--cells")
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--max-new", type=int, default=64)
