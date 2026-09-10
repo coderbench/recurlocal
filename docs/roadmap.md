@@ -27,7 +27,10 @@ turned out to be worth more than the policy.
 trace rather than a hand-written geometry file — 293.6 MiB removable, 146.8 MiB footprint, 41%
 residency, +1.69% traffic ceiling, +0.68% persist ceiling. And a negative result worth as much:
 **under a linear cost model no admission rule can beat pure density**, so the global planner
-beats the naive both-persistent arm by 10x and cannot beat the best single-role arm. See
+beat the naive both-persistent arm by 10x and could not beat the best single-role arm.
+
+That negative result was about the MODEL, and 0.2.1 replaced the model. It is preserved as the
+control — `--cost-model linear` still reproduces it exactly — and is no longer the answer. See
 [evaluation.md](evaluation.md).
 
 ## v0.2.1 — The core in the measured path, and a scoring regime that can be reached
@@ -161,6 +164,12 @@ recurrent-persist family. The rest still apply to TensorTransit as a whole:
 6. it turns into a kernel library;
 7. a mature project appears with the same central abstraction.
 
-Rule 3 is currently **unresolved and honestly reported as unresolved**: the model says the
-global planner ties the best independent arm, and the model cannot see the mechanisms by which
-it might win. Resolving it is v0.3 and v0.4.
+Rule 3 is **half resolved, and the half that is resolved is a model result.** Under the
+residency cost model the global arm beats the best independent arm on all three golden traces,
+where under the linear model it provably could not; setting `--stream-relief 0` makes the
+advantage disappear on every one, which identifies the mechanism as the `Stream` action. On
+hardware the arms have now been measured and the global arm ties `density` within noise — but
+that measurement did NOT exercise a `Stream` action at all, because the adapter registers a
+weight tensor only when the operator declares the step traffic. So the mechanism the model
+names is still untested, and the experiment is one environment variable away. See
+[VERDICT.md](VERDICT.md).
