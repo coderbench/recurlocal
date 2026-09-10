@@ -8,7 +8,7 @@
   "linear_control": "tensortransit compare tests/golden/<trace>.json --cost-model linear --json",
   "mechanism_control": "tensortransit compare tests/golden/<trace>.json --stream-relief 0 --json"
  },
- "reading": "Under `linear` the global arm cannot beat the best single-role arm -- that is the negative result 0.2.0 published, preserved here as the control. Under `residency` it does. Under `residency` with stream_relief 0 the advantage disappears again, which identifies the mechanism as the Stream action rather than as a number that came out higher. Two tests assert exactly this, and a third asserts the other half: on a workload whose weight traffic IS holdable no Stream action is emitted, and the global arm's advantage there is role_floor arbitration instead.",
+ "reading": "Under `linear` the global arm cannot beat the best single-role arm -- that is the negative result 0.2.0 published, preserved here as the control. Under `residency` it does. Under `residency` with stream_relief 0 the advantage disappears again, which identifies the mechanism as the Stream action rather than as a number that came out higher. Two tests assert exactly this, and a third asserts the other half: on a workload whose weight traffic IS holdable no Stream action is emitted, and the global arm's advantage there is role_floor arbitration instead. As of the addition of `trace_live_c1`, all three of those hold on geometry RECORDED from the runtime rather than written by hand: linear \u22120.022 behind the best independent arm, residency +0.054 ahead, residency with stream_relief 0 \u22120.008 behind again. The synthetic traces model 176 kernels and a KV block 1.5x too large; this one does not, and the answer does not change.",
  "traces": {
   "trace_recurrent": {
    "linear": {
@@ -438,6 +438,150 @@
      "digest": "5511629510639591"
     }
    }
+  },
+  "trace_live_c1": {
+   "linear": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.35000000000000586,
+     "predicted_saved_bytes": 66060285,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 58,
+     "digest": "cf888fbf8fbdaa60"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.17499999999999183,
+     "predicted_saved_bytes": 33030137,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 24,
+     "digest": "09abc140f7510396"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.043999999999999595,
+     "predicted_saved_bytes": 8277680,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 256,
+     "digest": "136df0f0ca0390e3"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.32799999999999496,
+     "predicted_saved_bytes": 61931516,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 54,
+     "digest": "1ba811085eb79be5"
+    }
+   },
+   "residency": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.09900000000000464,
+     "predicted_saved_bytes": 18667911,
+     "predicted_gross_saved_bytes": 24013222,
+     "reservation_cost_bytes": 5345311,
+     "stream_relieved_bytes": 0,
+     "actions": 58,
+     "digest": "cf888fbf8fbdaa60"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.0380000000000047,
+     "predicted_saved_bytes": 7120079,
+     "predicted_gross_saved_bytes": 12465390,
+     "reservation_cost_bytes": 5345311,
+     "stream_relieved_bytes": 0,
+     "actions": 24,
+     "digest": "09abc140f7510396"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.005999999999994898,
+     "predicted_saved_bytes": 1165053,
+     "predicted_gross_saved_bytes": 2037056,
+     "reservation_cost_bytes": 872003,
+     "stream_relieved_bytes": 0,
+     "actions": 256,
+     "digest": "136df0f0ca0390e3"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.15300000000000313,
+     "predicted_saved_bytes": 28898521,
+     "predicted_gross_saved_bytes": 34243811,
+     "reservation_cost_bytes": 5345290,
+     "stream_relieved_bytes": 18500000000,
+     "actions": 182,
+     "digest": "37f404f13bfe86e5"
+    }
+   },
+   "residency_stream_relief_0": {
+    "baseline": {
+     "predicted_throughput_gain_pct": 0,
+     "predicted_saved_bytes": 0,
+     "predicted_gross_saved_bytes": 0,
+     "reservation_cost_bytes": 0,
+     "stream_relieved_bytes": 0,
+     "actions": 0,
+     "digest": "14650fb0739d0383"
+    },
+    "recurrent_only": {
+     "predicted_throughput_gain_pct": 0.09900000000000464,
+     "predicted_saved_bytes": 18667911,
+     "predicted_gross_saved_bytes": 24013222,
+     "reservation_cost_bytes": 5345311,
+     "stream_relieved_bytes": 0,
+     "actions": 58,
+     "digest": "cf888fbf8fbdaa60"
+    },
+    "kv_only": {
+     "predicted_throughput_gain_pct": 0.0380000000000047,
+     "predicted_saved_bytes": 7120079,
+     "predicted_gross_saved_bytes": 12465390,
+     "reservation_cost_bytes": 5345311,
+     "stream_relieved_bytes": 0,
+     "actions": 24,
+     "digest": "09abc140f7510396"
+    },
+    "naive_both": {
+     "predicted_throughput_gain_pct": 0.005999999999994898,
+     "predicted_saved_bytes": 1165053,
+     "predicted_gross_saved_bytes": 2037056,
+     "reservation_cost_bytes": 872003,
+     "stream_relieved_bytes": 0,
+     "actions": 256,
+     "digest": "136df0f0ca0390e3"
+    },
+    "global": {
+     "predicted_throughput_gain_pct": 0.09099999999999664,
+     "predicted_saved_bytes": 17206054,
+     "predicted_gross_saved_bytes": 22551344,
+     "reservation_cost_bytes": 5345290,
+     "stream_relieved_bytes": 18500000000,
+     "actions": 182,
+     "digest": "37f404f13bfe86e5"
+    }
+   },
+   "_note": "RECORDED from the live SparkInfer adapter rather than written: the runtime's real KV slice sizes and layer interleaving, 64 kernels instead of 176. The conclusion is the same shape as on the three synthetic traces -- global ahead of the best independent arm under residency, and behind it under --stream-relief 0 -- which is the first time the second proof track has been asked of geometry nobody wrote by hand."
   }
  },
  "arm_action_counts": {

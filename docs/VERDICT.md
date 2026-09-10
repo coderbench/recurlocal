@@ -166,6 +166,13 @@ where under the linear model it provably could not — and setting `--stream-rel
 advantage disappear on every one, which identifies the mechanism as the `Stream` action
 (`results/rtx5090-second-proof-track-model.json`).
 
+**It also holds on geometry nobody wrote by hand.** `tests/golden/trace_live_c1.json` is
+recorded from the live adapter — the runtime's real KV slice sizes, its real layer count, the
+measured step traffic — and gives the same three-way answer: linear −0.022 points behind the
+best independent arm, residency **+0.054 ahead**, residency with `--stream-relief 0` −0.008
+behind again. The synthetic fixtures model 176 kernels against the runtime's 64 and a KV block
+1.5x too large; the conclusion does not depend on either.
+
 **That was not tested by the measurement above.** `stream_applied` and `stream_deferred` are
 zero on every measured arm, because the adapter registers a `ModelWeight` tensor only when the
 operator declares `TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN`, and this run did not. The measured
