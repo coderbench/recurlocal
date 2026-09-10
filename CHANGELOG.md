@@ -277,6 +277,13 @@ counts the rest in `window_attach_ambiguous`. `windows_attached_to_node` (attach
 `window_nodes_attached` (nodes) are now separate, so the number that was misread cannot be
 misread again. Registered on `--axis window-attach`.
 
+**Measured, and declining the ambiguous attaches is free.** Batch 1 on the MoE checkpoint,
+three interleaved pairs, control 503.1 tok/s, noise floor 0.053%: `capture_node` +1.268%,
+`capture_node_strict` +1.320%, axis spread 0.053% — **inside the floor, so OPEN and no winner
+named**. `window_attach_ambiguous` was 0 throughout, meaning on this model the two modes made
+the identical choice on every attach, which is why they measure the same. The mode exists for
+the case where they do not, and the counter is how a run says which case it was in.
+
 `Stream` stays the default, but for a smaller reason than before: not that node attachment is
 illegitimate, but that it is a device the host has not asked for.
 
@@ -798,12 +805,14 @@ previously named `launch_gemv_nvfp4_rows` as a chunker. It is not:
 `gemv.cu:3518` reads `if (M < 2 || M > 8) return false;` and there is no loop. See the
 correction below — it changes what the dense model's collapse is.
 
-That also settles that the dense model's collapse is a **different** bug: Qwen3.8-27B is
-uniform NVFP4, so its projections take the NVFP4 path, which has the loop, and never reach the
-refusal. Its intermittent 32-sequence collapse — `prefetch` ratios `[0.932, 0.676, 0.925]`, and
-it hit `baseline`, which installs no window at all — remains unexplained. Same family,
-different cause, and the code says so rather than the two being lumped together. What is new is
-that neither can pass unnoticed again — see the guard below.
+~~That also settles that the dense model's collapse is a different bug~~ — **the conclusion was
+right and the reasoning was not.** The dense collapse IS a different thing from this refusal,
+but not because the NVFP4 path has a chunking loop: `launch_gemv_nvfp4_rows` does not have one.
+It is different because it is not a decode-path fallback at all. It is per-request device
+memory exhaustion, and per-token latency is unchanged through it — see "Solved — the dense
+concurrency-32 collapse" above. The `prefetch` ratios `[0.932, 0.676, 0.925]` that motivated
+this paragraph are an arm that lost requests, not an arm that ran slowly, and the guard that
+now catches it counts tokens rather than reading a rate.
 
 ### Closed — reuse the cache can actually serve, bounded rather than built
 
