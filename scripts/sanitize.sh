@@ -10,6 +10,7 @@
 set -euo pipefail
 BUILD="${1:-build}"
 BIN="$BUILD/test_cuda_controller"
+EXEC="$BUILD/test_cuda_executor"
 BENCH="$BUILD/tensortransit_bench"
 [ -x "$BIN" ] || { echo "!! $BIN not built; cmake -B $BUILD -DTENSORTRANSIT_BUILD_CUDA=ON first"; exit 2; }
 
@@ -25,12 +26,42 @@ for tool in memcheck initcheck synccheck; do
     grep -E "^\[skip\]" /tmp/san.$tool.log || true
     tail -1 /tmp/san.$tool.log
 done
+
+# The TRANSIT executor, which is the half of this library that is now in the measured path.
+# Leaving it out would have meant the sanitizers covered the code a submission cannot change
+# and not the code it can -- and it is the side that manipulates a live graph capture, drops
+# borrowed streams and hands a device-wide L2 partition back.
+if [ -x "$EXEC" ]; then
+    for tool in memcheck initcheck synccheck; do
+        echo ">> $tool (transit executor contract tests)"
+        compute-sanitizer --tool "$tool" --error-exitcode 9 "$EXEC" \
+            > /tmp/san.exec.$tool.log 2>&1 || fail=1
+        tail -1 /tmp/san.exec.$tool.log
+    done
+else
+    echo "!! $EXEC not built; the transit executor is NOT covered by this run"
+    fail=1
+fi
 if [ -x "$BENCH" ]; then
     # racecheck needs kernels doing real concurrent work; the benchmark's pre-touch against a
     # live update kernel is the only place in the repo where two streams touch one buffer.
-    echo ">> racecheck (pre-touch against the update kernel)"
-    compute-sanitizer --tool racecheck --error-exitcode 9 "$BENCH" combined \
-        --layers 4 --tokens 2 --warmup-tokens 1 --state-bytes 262144 > /tmp/san.race.log 2>&1 || fail=1
-    grep -E "RACECHECK SUMMARY" /tmp/san.race.log || true
+    # BOTH engines, because they issue that pre-touch from different code: `v0` from the 0.1
+    # controller, `transit` from the plan an ITransitPlanner produced.
+    for engine in v0 transit; do
+        echo ">> racecheck (pre-touch against the update kernel, engine=$engine)"
+        compute-sanitizer --tool racecheck --error-exitcode 9 "$BENCH" combined \
+            --engine "$engine" --layers 4 --tokens 2 --warmup-tokens 1 --state-bytes 262144 \
+            > "/tmp/san.race.$engine.log" 2>&1 || fail=1
+        grep -E "RACECHECK SUMMARY" "/tmp/san.race.$engine.log" || true
+    done
+    # And memcheck over the transit engine's whole path with a streaming buffer present, which
+    # is what exercises the Stream action and the plan's region arithmetic against real
+    # allocations.
+    echo ">> memcheck (transit engine, with streaming interference)"
+    compute-sanitizer --tool memcheck --error-exitcode 9 "$BENCH" combined \
+        --engine transit --planner budgeted --admission survival --layers 6 --tokens 2 \
+        --warmup-tokens 1 --state-bytes 262144 --stream-bytes 4194304 --stream-mode distinct \
+        > /tmp/san.transit.log 2>&1 || fail=1
+    tail -1 /tmp/san.transit.log
 fi
 [ "$fail" = 0 ] && echo "sanitizers clean" || { echo "!! sanitizer findings; see /tmp/san.*.log"; exit 1; }
