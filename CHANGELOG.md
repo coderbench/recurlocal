@@ -47,7 +47,43 @@ surface here rather than the dead end it is on the dense model.
 `results/rtx5090-moe-matrix.json` carries the data.
 
 It does **not** rescue concurrency, and measuring concurrency on this checkpoint first required
-finding a runtime defect — below.
+finding a runtime defect (below). With that worked around, all four arms are measurable:
+
+| | control | floor | footprint vs cache | persist ceiling | `persist` |
+|---|--:|--:|--:|--:|--:|
+| batch 1 | 503.2 tok/s | 0.08% | **1.02x** | **3.66%** | **+1.26%** |
+| concurrency 4 | 912.2 | 0.46% | 2.09x | 1.63% | -0.46% |
+| concurrency 16 | 1206.9 | 0.57% | 8.38x | 0.53% | -0.17% |
+| concurrency 32 | 1230.7 | 0.26% | 16.75x | 0.27% | -0.22% |
+
+**The crossover is where residency crosses one half.** `persist` pays at batch 1, where 98% of
+the footprint is resident, and is negative from four sequences on, where 48% is. The traffic
+ceiling still rises across the matrix (3.75% → 4.74%); the fraction a persisting window can
+hold falls faster (3.66% → 0.27%). Past the crossover the set-aside costs the weight stream
+more than residency returns, and `persist` sits a few hundredths below `baseline` — the hook's
+own overhead and nothing else.
+
+### The number that decides the project
+
+Weighted across the section 44 matrix, both models, both bounds:
+
+| | dense Qwen3.8-27B | sparse-MoE Qwen3.6-35B-A3B |
+|---|--:|--:|
+| weighted traffic ceiling | 5.22% | **4.07%** |
+| weighted persist-family ceiling | **0.52%** | **1.94%** |
+| share of removable traffic a persisting cache can address | 10% | **48%** |
+
+The MoE's total room is *smaller* — its concurrency steps are short and weight-light, so there
+is less traffic to recover. But the persist family reaches **48% of that room instead of 10%**,
+which is the whole content of the residency thesis, and it lands at **1.94% against the 2.0%
+significance floor**.
+
+Six hundredths of a point short, on the best model this project has found, with both
+persistence dials at their maximum and a bound that already assumes every resident byte hits
+and the set-aside costs its neighbours nothing. No policy closes that gap: the numerator is the
+device's 60 MiB of persisting L2 and the denominator is what the workload moves. **A larger
+persisting cache, or a model that moves less per step than 3.56 GB, would; nothing in this
+repository will.**
 
 ### Measured — the set-aside is the dial, and the shipped default was not it
 
