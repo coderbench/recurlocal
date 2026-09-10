@@ -6,6 +6,74 @@ No performance claim appears here without a measurement behind it. See `docs/FRO
 
 ## [Unreleased]
 
+### The verdict, and what this repository should become
+
+Three sessions have now asked whether software-directed L2 residency for recurrent state can
+produce a scorable end-to-end speedup on reachable hardware. It cannot, and the reason is
+arithmetic rather than implementation. The bound is
+
+```
+persist ceiling  =  2 x min(persisting capacity, recurrent footprint) / decode step traffic
+```
+
+The numerator is pinned at **60 MiB** by the device and cannot be raised. The denominator is
+what the workload moves. On the best model this project has found — a sparse-MoE hybrid whose
+decode step moves 3.56 GB instead of 18.5 — the weighted ceiling across the section 44 matrix
+is **1.94% against the project's own 2.0% significance floor**, with both persistence dials at
+maximum and a bound that already assumes every resident byte hits and the set-aside costs its
+neighbours nothing. Six hundredths of a point short, and no policy closes it.
+
+This session tried to close the three things standing between that and "production ready".
+None of them closed the way it was hoped, and two of them closed *better* than hoped by being
+answered rather than removed:
+
+1. **The MoE result is not scorable, and now that is a surveyed fact rather than an open
+   question.** Four checkpoints screened on hardware; the runtime accepts only six expert
+   tensor types, which rules out every MXFP4 and IQ variant at load; the two files that would
+   be genuinely different quantizations exceed 32 GB of VRAM; and eight environment
+   configurations on the checkpoint that does load — including one that replaces the batched
+   prefill the runtime's own header blames, and a pin of every split-K, PDL and n-splits
+   switch at once — leave it forking on every replay. **The dense control is not clean either**;
+   it is reproducible at the gate's 64 tokens and forks by 256. There is no reproducible
+   sparse-MoE hybrid on this runtime and this device, and the only surface where the persist
+   family pays is a sparse-MoE hybrid.
+2. **The undocumented mechanism was documented all along.** `capture_node` is sanctioned by
+   the CUDA header this project was reading around, has been since 11.3, and a probe now reads
+   the attribute back off the finished graph at every node count from 1 to 128,
+   memcheck-clean. That blocker was a misreading of a header, and correcting it costs the
+   project a caveat it had been carrying for three releases.
+3. **The device matrix and the stability contract are done, and they found seven real
+   defects** — including a rationing policy that over-admitted by up to 6.5x, an overflow that
+   turned it into its opposite, and a capability field the planner queried and never read.
+   Those are real, and none of them moves the ceiling.
+
+And the largest effects measured this session are **not this library's**. SparkInfer's
+`launch_mmvq_rows` cliff is worth 2.7x of aggregate throughput on the checkpoint that matters
+(`docs/UPSTREAM-SPARKINFER-MMVQ.md`), and a dense 32-sequence run intermittently loses a third
+of its wall time to something that is *not* its decode path — per-token latency is identical
+through the collapse. Against those, the best replicated thing RecurLocal does is **+1.4% at
+batch 1 on one unscorable checkpoint**, and the best thing this session added to it is
+**+0.1 points over a constant**.
+
+**What the repository should become.** Not a locality library that is waiting for a bigger
+persisting cache. Its most valuable output has consistently been the *instrument*, not the
+policy: the traffic-budget calculator that says "do not start" before anyone spends a week;
+the null-candidate guard that caught this project's own first result measuring its own
+overhead; the packed-path guard; the control-self-replay guard, which this session had to
+strengthen because one agreeing pair had certified a runtime that forks half its replays; and
+the checkpoint reproducibility screen, which found that a runtime's own determinism header
+claims 36-of-36 bit-identical runs on a model where the truth is 0 of 4. Every one of those
+found something. The library found 1.4% on a checkpoint that cannot be scored.
+
+The recommendation is to keep the enumerators and the measured results exactly as they are —
+they are the demonstration that the instrument works — and to describe the project as what it
+has turned out to be: **a locality-measurement harness for recurrent-state inference, with a
+reference policy that is honestly bounded below its own significance floor on every device
+this project can reach.** Say the 1.94% in the README's first paragraph rather than in section
+44. A reader deciding whether to spend a week here should learn the ceiling before they learn
+the mechanism.
+
+
 ### Added, and measured — the set-aside is sized from the workload, not from a constant
 
 `SetAsidePolicy`. Every number this repository has published reserved
@@ -56,12 +124,22 @@ points, inside the floor, which is the consistency check this measurement had to
 resident fraction of 0.977 the two rules compute the *same* reservation, so any difference
 between them is noise and it is.
 
-Two further runs of the same sweep, across two rebuilds, resolve the same way and order the
-values the same way, at a smaller margin: `fixed` +1.32 / `fit_footprint` +1.37 /
-`residency` +1.41, spread 0.10% against a 0.043% floor. **The advantage is real and replicated;
-its size is bounded to 0.05-0.22 points rather than pinned**, because the between-run drift on
-one configuration (0.14 points) is larger than any single run's noise floor. Quote the range,
-not the best of the three.
+**Three independent runs of that sweep, across two rebuilds. All three resolve, and all three
+put the shipped constant last:**
+
+| run | `fixed` | `fit_footprint` | `residency` | axis spread | floor |
+|---|--:|--:|--:|--:|--:|
+| 1 | +1.285% | **+1.509%** | +1.441% | 0.224% | 0.071% |
+| 2 | +1.32% | +1.37% | **+1.41%** | 0.100% | 0.043% |
+| 3 | +1.30% | +1.40% | **+1.46%** | 0.160% | 0.077% |
+
+**The advantage is real and replicated; its size is bounded rather than pinned.** Against
+`fixed`, `residency` is +0.11 to +0.16 points and `fit_footprint` +0.09 to +0.22, in every run,
+with no dial touched by the operator. But the between-run drift on a single configuration
+(`fit_footprint` moved 0.14 points between runs 1 and 3) is larger than any one run's noise
+floor, so quote the range and not the best of the three. Only same-run interleaved deltas are
+trustworthy here, which is what this repository has said about this box all along; three runs
+is what makes the ordering a result rather than one of them.
 
 **At concurrency the axis does not resolve, and the one run that did resolve did not
 replicate.** Four sequences, `SPARKINFER_PACKED_MAX_ROWS=8` on both arms, one warm-up

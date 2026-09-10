@@ -1,5 +1,12 @@
 # Frontier model
 
+**Read this first.** The frontier described below is real but it is bounded, and the bound is
+now measured rather than argued: weighted across the section 44 matrix, on the best model this
+project has found, a persisting L2 window tops out at **1.94% against a 2.0% significance
+floor**. That is with both dials at maximum, on a device whose 60 MiB of persisting L2 is the
+numerator and cannot be raised. No contributor effort moves it. The surfaces below are worth
+working because they are *measurable*, not because they are worth two percent.
+
 RecurLocal is intended for self-directed optimization. Contributors profile current `main`, find a bottleneck, and demonstrate an improvement.
 
 Primary release metrics should be real-model decode throughput, concurrency throughput, recurrent-state HBM traffic, recurrent-kernel time, and energy.

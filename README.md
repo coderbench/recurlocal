@@ -10,6 +10,27 @@ RecurLocal is intentionally **not** another inference engine, KV-cache manager, 
 
 The project starts with a small, measurable primitive and is designed to integrate with runtimes such as SparkInfer.
 
+## The answer, before the mechanism
+
+**No, not on any device this project can reach — and the reason is arithmetic, not
+implementation.** A persisting window cannot save traffic it cannot hold, so the ceiling is
+`2 x min(persisting capacity, recurrent footprint) / decode step traffic`. The numerator is
+pinned at 60 MiB by the hardware. Weighted across the full workload matrix, on the best model
+found — a sparse-MoE hybrid whose decode step moves 3.56 GB instead of a dense hybrid's 18.5 —
+that ceiling is **1.94% against this project's own 2.0% significance floor**, with both
+persistence dials at maximum and a bound that already assumes every resident byte hits.
+
+The best measured real-model gain is **+1.4% at batch 1**, on a checkpoint that **cannot be
+scored** because the runtime is not reproducible on it (four checkpoints screened; see the
+changelog). Concurrency has four to seven times the room and a persisting window reaches less
+of it, not more, because the footprint grows faster than the cache.
+
+Read `docs/MINING.md` before spending a week here. What this repository has actually been good
+at is the *instrument* — the traffic-budget calculator that says "do not start", and a set of
+evaluator guards each of which encodes a measurement that fooled somebody. Those found a 2.7x
+defect in the host runtime (`docs/UPSTREAM-SPARKINFER-MMVQ.md`) and a checkpoint whose runtime
+claims bit-reproducibility it does not have. The locality policy found 1.4%.
+
 ## Why this exists
 
 Hybrid LLMs increasingly combine full attention with recurrent / linear-attention layers. Qwen3.8-27B, for example, has 64 language layers with a repeating pattern of three linear-attention layers followed by one full-attention layer. Its recurrent state uses FP32 and has 48 value heads of dimension 128×128, which is 3 MiB of matrix state per recurrent layer.

@@ -1,0 +1,407 @@
+{
+  "schema_version": 1,
+  "what_this_is": "SetAsidePolicy, measured. The question is whether sizing the L2 set-aside from the workload beats the constant fraction every prior number in this repository was measured under. At batch 1 it does, resolved and replicated across three runs and two rebuilds. At four concurrent sequences the axis does not resolve, and the one run that did resolve did not replicate -- that run is kept here because half the design was built on it. NOT SCORABLE: this checkpoint is not reproducible against itself (see results/rtx5090-moe-scored.json and the changelog's checkpoint survey), so these are throughput numbers and evidence for a planner rule, and decide.py refuses them, correctly.",
+  "provenance": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "driver": "595.84",
+    "cuda": "13.3",
+    "model": "/root/models/qwen36-moe/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+    "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+    "note": "One box for every arm; graphics clocks cannot be pinned in this container, so only same-run interleaved deltas are trustworthy. Runs 1-3 span two rebuilds of the library, which is why the between-run drift is reported alongside each run's own noise floor rather than averaged away.",
+    "candidate_common_env": {
+      "RECURLOCAL": "persist",
+      "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+      "RECURLOCAL_HOT_SET_MODEL": "token_footprint"
+    },
+    "concurrency_extra_env": {
+      "SPARKINFER_PACKED_MAX_ROWS": "8"
+    }
+  },
+  "what_changed_between_runs": {
+    "run1": "FitFootprint/Residency sized from the TOKEN footprint (every sequence), so both reserved the whole 60 MiB at four sequences.",
+    "run2": "Sized from the WINDOWED footprint (one sequence) -- a persisting window is an address range and this library places one per layer over row 0's slice, so set-aside beyond one sequence's footprint holds nothing. No settling, so the reservation alternated with the packed/unpacked geometry.",
+    "run3": "A target must now hold for eight consecutive declarations before it is acted on, so the reservation latches once instead of being re-carved several times a second. At four sequences it latches at 60 MiB during the opening unpacked tokens and holds there."
+  },
+  "batch1": {
+    "workload": "batch 1, ctx 128, 128 decode tokens, 3 interleaved pairs",
+    "verdict": "RESOLVED in all three runs, and all three put the shipped constant last. Against `fixed`: residency +0.11 to +0.16 points, fit_footprint +0.09 to +0.22. The size is bounded, not pinned: fit_footprint moved 0.14 points between runs 1 and 3, which is larger than any single run's noise floor.",
+    "runs": [
+      {
+        "axis": "set-aside-policy",
+        "variable": "RECURLOCAL_SET_ASIDE_POLICY",
+        "workload": "batch 1, ctx 128, 128 tokens",
+        "concurrency": null,
+        "context": 128,
+        "tokens": 128,
+        "repeats": 3,
+        "warmup_runs_discarded": 0,
+        "fixed": {
+          "RECURLOCAL": "persist",
+          "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+          "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+          "RECURLOCAL_STATS": "1"
+        },
+        "control_tps": [
+          503.3608,
+          503.6681,
+          503.309
+        ],
+        "control_noise_floor_pct": 0.07134047784411407,
+        "values": {
+          "fixed": {
+            "paired_ratios": [
+              1.0128549938731821,
+              1.0122447699189208,
+              1.013614499244003
+            ],
+            "gain_pct": 1.285499387318212,
+            "spread_pct": 0.13523449391747602
+          },
+          "fit_footprint": {
+            "paired_ratios": [
+              1.0150939445423641,
+              1.0143753396333817,
+              1.0152147090554708
+            ],
+            "gain_pct": 1.5093944542364124,
+            "spread_pct": 0.08268884142221826
+          },
+          "residency": {
+            "paired_ratios": [
+              1.0148630962124983,
+              1.0143241154244234,
+              1.0144058620052492
+            ],
+            "gain_pct": 1.4405862005249181,
+            "spread_pct": 0.05313265708160077
+          }
+        },
+        "spread_across_axis_pct": 0.2238950669182005,
+        "control_noise_floor_estimable": true,
+        "quantisation_floor_pct": 0.0009933232782528953,
+        "effective_floor_pct": 0.07134047784411407,
+        "resolved": true,
+        "best": "fit_footprint"
+      },
+      {
+        "axis": "set-aside-policy",
+        "variable": "RECURLOCAL_SET_ASIDE_POLICY",
+        "workload": "batch 1, ctx 128, 128 tokens",
+        "concurrency": null,
+        "context": 128,
+        "tokens": 128,
+        "repeats": 3,
+        "warmup_runs_discarded": 0,
+        "fixed": {
+          "RECURLOCAL": "persist",
+          "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+          "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+          "RECURLOCAL_STATS": "1"
+        },
+        "control_tps": [
+          503.6279,
+          503.7126,
+          503.8423
+        ],
+        "control_noise_floor_pct": 0.042563954127812546,
+        "values": {
+          "fixed": {
+            "paired_ratios": [
+              1.0131547517522361,
+              1.0134765340394503,
+              1.0123393768248516
+            ],
+            "gain_pct": 1.3154751752236127,
+            "spread_pct": 0.11223924209326559
+          },
+          "fit_footprint": {
+            "paired_ratios": [
+              1.0141648228781606,
+              1.0131884729506468,
+              1.0137015093810107
+            ],
+            "gain_pct": 1.3701509381010668,
+            "spread_pct": 0.09631532738960816
+          },
+          "residency": {
+            "paired_ratios": [
+              1.0151953456113134,
+              1.0141284931129377,
+              1.01385711362464
+            ],
+            "gain_pct": 1.4128493112937734,
+            "spread_pct": 0.13195881939631657
+          }
+        },
+        "spread_across_axis_pct": 0.09737413607016077,
+        "control_noise_floor_estimable": true,
+        "quantisation_floor_pct": 0.0009926295272343793,
+        "effective_floor_pct": 0.042563954127812546,
+        "resolved": true,
+        "best": "residency"
+      },
+      {
+        "axis": "set-aside-policy",
+        "variable": "RECURLOCAL_SET_ASIDE_POLICY",
+        "workload": "batch 1, ctx 128, 128 tokens",
+        "concurrency": null,
+        "context": 128,
+        "tokens": 128,
+        "repeats": 3,
+        "warmup_runs_discarded": 0,
+        "fixed": {
+          "RECURLOCAL": "persist",
+          "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+          "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+          "RECURLOCAL_STATS": "1"
+        },
+        "control_tps": [
+          503.3998,
+          503.0136,
+          503.0942
+        ],
+        "control_noise_floor_pct": 0.07676494779705882,
+        "values": {
+          "fixed": {
+            "paired_ratios": [
+              1.012968221282567,
+              1.0139797413032172,
+              1.0127815029471618
+            ],
+            "gain_pct": 1.2968221282567027,
+            "spread_pct": 0.11828982695411942
+          },
+          "fit_footprint": {
+            "paired_ratios": [
+              1.0134169699709852,
+              1.0156934126631965,
+              1.0140258027224325
+            ],
+            "gain_pct": 1.4025802722432479,
+            "spread_pct": 0.22449553907795428
+          },
+          "residency": {
+            "paired_ratios": [
+              1.0145891992805718,
+              1.0148431374420095,
+              1.0142303369826167
+            ],
+            "gain_pct": 1.4589199280571785,
+            "spread_pct": 0.06039887471967498
+          }
+        },
+        "spread_across_axis_pct": 0.16209779980047578,
+        "control_noise_floor_estimable": true,
+        "quantisation_floor_pct": 0.0009938496607593567,
+        "effective_floor_pct": 0.07676494779705882,
+        "resolved": true,
+        "best": "residency"
+      }
+    ]
+  },
+  "concurrency4": {
+    "workload": "concurrency 4 aggregate, 3 interleaved pairs, 1 warm-up discarded",
+    "verdict": "OPEN. Two of three runs do not resolve. Runs 1 and 3 held the SAME 60 MiB reservation and measured -0.99% and -0.28%, so the between-run spread on one configuration is about 0.7 points against per-run floors of 0.13-0.41%: this arm is not reproducible across rebuilds on this checkpoint. The -0.99% is one unreplicated observation and must not be quoted as the cost of the policy.",
+    "residency_excluded": "At four sequences the resident fraction is 0.478, below the 0.50 threshold, so Residency declines the reservation outright and real_eval.py's null-candidate guard refuses the arm BY NAME. That is correct -- a policy whose response to pressure is to install nothing IS baseline -- so its value here is baseline by construction, and the refusal is the observation that it declined.",
+    "runs": [
+      {
+        "axis": "set-aside-policy",
+        "variable": "RECURLOCAL_SET_ASIDE_POLICY",
+        "workload": "concurrency 4 (aggregate)",
+        "concurrency": 4,
+        "context": 128,
+        "tokens": 128,
+        "repeats": 3,
+        "warmup_runs_discarded": 1,
+        "fixed": {
+          "RECURLOCAL": "persist",
+          "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+          "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+          "SPARKINFER_PACKED_MAX_ROWS": "8",
+          "RECURLOCAL_STATS": "1"
+        },
+        "control_tps": [
+          544.8,
+          544.3,
+          546.3
+        ],
+        "control_noise_floor_pct": 0.3671071953010279,
+        "values": {
+          "fixed": {
+            "paired_ratios": [
+              0.9939427312775331,
+              1.0005511666360465,
+              0.9992678015742267
+            ],
+            "gain_pct": -0.07321984257733227,
+            "spread_pct": 0.6613277589953975
+          },
+          "fit_footprint": {
+            "paired_ratios": [
+              0.9924743024963291,
+              0.9900790005511667,
+              0.989383122826286
+            ],
+            "gain_pct": -0.992099944883329,
+            "spread_pct": 0.3122154563749148
+          }
+        },
+        "spread_across_axis_pct": 0.9188801023059967,
+        "control_noise_floor_estimable": true,
+        "quantisation_floor_pct": 0.0009177679882525699,
+        "effective_floor_pct": 0.3671071953010279,
+        "resolved": true,
+        "best": "fixed"
+      },
+      {
+        "axis": "set-aside-policy",
+        "variable": "RECURLOCAL_SET_ASIDE_POLICY",
+        "workload": "concurrency 4 (aggregate)",
+        "concurrency": 4,
+        "context": 128,
+        "tokens": 128,
+        "repeats": 3,
+        "warmup_runs_discarded": 1,
+        "fixed": {
+          "RECURLOCAL": "persist",
+          "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+          "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+          "SPARKINFER_PACKED_MAX_ROWS": "8",
+          "RECURLOCAL_STATS": "1"
+        },
+        "control_tps": [
+          544.0,
+          542.1,
+          541.8
+        ],
+        "control_noise_floor_pct": 0.40582918280760844,
+        "values": {
+          "fixed": {
+            "paired_ratios": [
+              0.9992647058823529,
+              1.0042427596384431,
+              1.0007382798080475
+            ],
+            "gain_pct": 0.07382798080475261,
+            "spread_pct": 0.4974381270840381
+          },
+          "fit_footprint": {
+            "paired_ratios": [
+              1.0014705882352941,
+              0.9992621287585317,
+              0.9976005906238465
+            ],
+            "gain_pct": -0.07378712414682909,
+            "spread_pct": 0.387285527998104
+          }
+        },
+        "spread_across_axis_pct": 0.1476151049515817,
+        "control_noise_floor_estimable": true,
+        "quantisation_floor_pct": 0.0009223390518354546,
+        "effective_floor_pct": 0.40582918280760844,
+        "resolved": false,
+        "best": null
+      },
+      {
+        "axis": "set-aside-policy",
+        "variable": "RECURLOCAL_SET_ASIDE_POLICY",
+        "workload": "concurrency 4 (aggregate)",
+        "concurrency": 4,
+        "context": 128,
+        "tokens": 128,
+        "repeats": 3,
+        "warmup_runs_discarded": 1,
+        "fixed": {
+          "RECURLOCAL": "persist",
+          "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+          "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+          "SPARKINFER_PACKED_MAX_ROWS": "8",
+          "RECURLOCAL_STATS": "1"
+        },
+        "control_tps": [
+          543.6,
+          543.9,
+          543.2
+        ],
+        "control_noise_floor_pct": 0.12877115526120894,
+        "values": {
+          "fixed": {
+            "paired_ratios": [
+              0.9981604120676968,
+              1.003493289207575,
+              0.9979749631811488
+            ],
+            "gain_pct": -0.18395879323032105,
+            "spread_pct": 0.5528496181285089
+          },
+          "fit_footprint": {
+            "paired_ratios": [
+              0.9955849889624725,
+              0.9972421400992829,
+              0.9994477172312223
+            ],
+            "gain_pct": -0.27578599007170856,
+            "spread_pct": 0.3873410592501856
+          }
+        },
+        "spread_across_axis_pct": 0.09182719684138752,
+        "control_noise_floor_estimable": true,
+        "quantisation_floor_pct": 0.000919793966151582,
+        "effective_floor_pct": 0.12877115526120894,
+        "resolved": false,
+        "best": null
+      }
+    ]
+  },
+  "window_attach_strict": {
+    "what_it_settles": "WindowAttach::CaptureNodeStrict declines to mark a node when more than one kernel node is pending, so the window cannot land on a kernel the hook did not fire for. The question was whether that costs anything. It does not: the axis does not resolve, so declining the ambiguous attaches is free at batch 1. window_attach_ambiguous was 0 on this model, so the two modes made the identical choice every time.",
+    "run": {
+      "axis": "window-attach",
+      "variable": "RECURLOCAL_WINDOW_ATTACH",
+      "workload": "batch 1, ctx 128, 128 tokens",
+      "concurrency": null,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "warmup_runs_discarded": 0,
+      "fixed": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+        "RECURLOCAL_STATS": "1"
+      },
+      "control_tps": [
+        502.9892,
+        502.9991,
+        503.2535
+      ],
+      "control_noise_floor_pct": 0.0525448256269229,
+      "values": {
+        "capture_node": {
+          "paired_ratios": [
+            1.0136183838539674,
+            1.0126767622447037,
+            1.012672142369601
+          ],
+          "gain_pct": 1.267676224470371,
+          "spread_pct": 0.09343963638199337
+        },
+        "capture_node_strict": {
+          "paired_ratios": [
+            1.0132020727284006,
+            1.0133230854687414,
+            1.0125527194545096
+          ],
+          "gain_pct": 1.3202072728400571,
+          "spread_pct": 0.07603281072622262
+        }
+      },
+      "spread_across_axis_pct": 0.05253104836968614,
+      "control_noise_floor_estimable": true,
+      "quantisation_floor_pct": 0.0009940375638843092,
+      "effective_floor_pct": 0.0525448256269229,
+      "resolved": false,
+      "best": null
+    }
+  }
+}
