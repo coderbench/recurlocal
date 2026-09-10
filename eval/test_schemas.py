@@ -254,6 +254,33 @@ def check_documented_numbers():
             failures.append(f"docs/VERDICT.md quotes {cell} at {want:+.3f}% and "
                             f"{results.name} says {got:+.3f}%")
 
+    # Section 7's reachability table is a THIRD kind of documented number: not measured, not
+    # copied from a result file, but computed by the tool from the frozen calibration. Checked
+    # against the tool rather than against a stored copy, so the prose, the CLI and the
+    # calibration cannot disagree in any pair.
+    tool = root / "tools" / "tt-frontier"
+    if tool.exists():
+        done = subprocess.run([sys.executable, str(tool), "generation", "show", "TTF-1",
+                               "--reachable"], capture_output=True, text=True, cwd=root)
+        if done.returncode == 0:
+            printed = {}
+            for line in done.stdout.splitlines():
+                found = re.match(r"\s+(ctx\d+-c\d+)\s+([\d.]+)%\s+([\d.]+)%", line)
+                if found:
+                    printed[found.group(1)] = (float(found.group(2)), float(found.group(3)))
+            for cell, quoted_persist, quoted_any in re.findall(
+                    r"^\s+(ctx\d+-c\d+)\s+([\d.]+)%\s+([\d.]+)%", text, re.M):
+                checked += 1
+                got = printed.get(cell)
+                if not got:
+                    failures.append(f"docs/VERDICT.md quotes a reachability row for {cell} that "
+                                    f"`tt-frontier generation show --reachable` does not print")
+                elif (abs(got[0] - float(quoted_persist)) > 0.001
+                      or abs(got[1] - float(quoted_any)) > 0.001):
+                    failures.append(
+                        f"docs/VERDICT.md quotes {cell} at persist {quoted_persist}% / any "
+                        f"{quoted_any}% and the tool computes {got[0]:.3f}% / {got[1]:.3f}%")
+
     scaling = (doc.get("main_concurrency_scaling") or {}).get("cells") or {}
     for cell, record in scaling.items():
         found = re.search(rf"`{re.escape(cell)}` \| [\d.]+ \| \*?\*?([\d.]+)x", text)
