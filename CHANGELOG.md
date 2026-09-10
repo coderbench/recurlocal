@@ -6,6 +6,262 @@ No performance claim appears here without a measurement behind it. See `docs/FRO
 
 ## [Unreleased]
 
+### Corrected — `capture_node` is documented as safe, and this repository said otherwise
+
+Every persist number here comes from `WindowAttach::CaptureNode`, which sets an access-policy
+attribute on a kernel node of a graph that is **still being captured**. Four files asserted
+that CUDA does not sanction that. CUDA's own header, on the very call the mechanism is built
+out of, says the opposite:
+
+```
+ * \param graph_out - Optional location to return the graph being captured into. All
+ *           operations other than destroy and node removal are permitted on the graph
+ *           while the capture sequence is in progress.
+ ...
+ *           The node handles may be copied out and are valid until they or the graph is
+ *           destroyed. The driver-owned array may also be passed directly to APIs that
+ *           operate on the graph (not the stream) without copying.
+        -- /usr/local/cuda/include/cuda_runtime_api.h:2743 and :2755, CUDA 13.3;
+           identically cuda.h:16885, and unchanged since CUDA 11.3
+```
+
+Setting a kernel-node attribute is neither destroying the graph nor removing a node, and
+`cudaGraphKernelNodeSetAttribute` is an API that operates on the graph.
+`cudaLaunchAttributeAccessPolicyWindow` is declared "Valid for streams, graph nodes, launches"
+(`driver_types.h:4017`). Neither setter carries a capture-related caveat or error code. The
+same sentence is on NVIDIA's live documentation site and in the 11.3 archive, and the
+Programming Guide's "Prohibited and Unhandled Operations" list contains no entry for it —
+every item there is a stream-side operation.
+
+**And nothing had ever checked that the attribute survives.** `windows_attached_to_node`
+counts attach CALLS that marked at least one node; "48 of 48 nodes" was read off a counter
+that was counting calls. `grep` for `cudaGraphGetNodes`, `cudaGraphKernelNodeGetAttribute` or
+`cudaGraphExecGetNodes` over the whole repository returned nothing.
+
+`tools/capture_attr_probe.cu` closes it. It captures N kernels, sets the window mid-capture
+exactly as `CudaLocalityController::attach_window_to_captured_node` does, ends the capture,
+and reads the attribute back off the finished graph and off a clone:
+
+| nodes | attribute set | capture invalidated | present on the finished graph | matches what was set | clone carries it |
+|--:|--:|--:|--:|--:|--:|
+| 1, 4, 8, 16, 32, 48, 64, 128 | N of N | never | **N of N** | **N of N** | **N of N** |
+
+`compute-sanitizer --tool memcheck` reports **0 errors** at 48 nodes, and `racecheck` likewise.
+
+The instantiated graph cannot be inspected — CUDA 13.3 has no `cudaGraphExecGetNodes` and no
+exec-level attribute getter, so the last link is necessarily behavioural. The same capture
+attached with a **persisting** window and with a **streaming** window over the same buffer,
+timed against each other: at 48 nodes, SparkInfer's own batch-1 decode capture size,
+**+3.00% and +2.86%** on two independent runs. A policy absent from the replay cannot do that.
+At 8 and 16 nodes the microbenchmark does not resolve — that is its sensitivity, not the
+mechanism's, and the API half passes at every node count.
+
+**What survives is a precision defect, not a legality one.** `CaptureNode` marks *every*
+kernel node in the capture's pending dependency set, and that set is not always one node: on
+the non-fused convolution branch the launch immediately before the hook is
+`l2_norm_qk_kernel`, which reads no convolution state and inherits a persisting window over
+memory it never touches.
+
+### Added — `WindowAttach::CaptureNodeStrict`, and two counters that were one
+
+`CaptureNodeStrict` marks the node only when the capture has exactly one kernel node pending
+— when the node it is about to mark is unambiguously the kernel the hook fired for — and
+counts the rest in `window_attach_ambiguous`. `windows_attached_to_node` (attach calls) and
+`window_nodes_attached` (nodes) are now separate, so the number that was misread cannot be
+misread again. Registered on `--axis window-attach`.
+
+`Stream` stays the default, but for a smaller reason than before: not that node attachment is
+illegitimate, but that it is a device the host has not asked for.
+
+**And one correction that cuts against the library.** Under `Stream` this integration delivers
+nothing at all. The controller hands the window back in `LayerActions`; the SparkInfer adapter
+keeps the boolean and drops `actions.window` on the floor, and no adapter entry point returns
+it. `Stream`'s measured -0.019% is the hook's overhead, not a policy. The sanctioned
+launch-site path (`cudaLaunchKernelEx` with `cudaLaunchAttributeAccessPolicyWindow`) would
+need that accessor before it could be built: 5 launchers, 8 triple-chevron sites and 5 runtime
+call sites in the pinned SparkInfer tree, about 130 lines across 4 files, all of it inside the
+kernel library the hook was designed to stay out of. A cheaper sanctioned route exists and is
+recorded in `docs/DESIGN.md`: copy the node handles out during capture — which the same header
+paragraph explicitly blesses — and set the attributes after `cudaStreamEndCapture`, which is
+three inserted lines in two files because SparkInfer's `EndCapture` and `Instantiate` are
+adjacent statements. Attaching to an already-instantiated graph is **not** available at all:
+CUDA 13.3 has no exec-level attribute setter and `cudaGraphExecUpdate` rejects attribute
+changes outright.
+
+### Measured — no reproducible sparse-MoE hybrid checkpoint fits this device
+
+The MoE result was unscorable because two unhooked control runs diverge. The task was to find
+a checkpoint that does not. Four were screened on hardware, and the answer is no.
+
+| checkpoint | size | loads on the pinned runtime | two unhooked greedy replays agree |
+|---|--:|---|---|
+| `Qwen3.6-35B-A3B-UD-Q4_K_M` | 22.1 GB | yes | **no** — 4 of 4 replays distinct |
+| `Qwen3.6-35B-A3B-MXFP4_MOE` | 21.7 GB | **no** — `unsupported ggml type 39 for blk.0.ffn_gate_exps.weight` | — |
+| `Qwen3.6-35B-A3B-UD-Q5_K_M` | 26.5 GB | loads, then emits `0 0 0 0 0 0 0 0` — `layer 34 expert qtypes 13/13/8 unsupported -> token loop` | unusable |
+| `Qwen3.6-35B-A3B-UD-Q4_K_XL` | 22.4 GB | yes | **no** — 4 of 4 distinct, with and without `SPARKINFER_DETERMINISTIC=1` |
+| `Qwen3.6-35B-A3B-Q8_0` | 36.9 GB | exceeds 32 GB of VRAM | — |
+| every `IQ*`, `Q2_K`, `Q3_K` variant | — | **no** — `ggml_dequant_supported` accepts only F32, F16, Q8_0, Q4_K, Q5_K, Q6_K (`qwen35.cpp:114`) | — |
+| `BF16` | ~70 GB | exceeds 32 GB of VRAM | — |
+
+**It is the runtime, not the checkpoint.** Six configurations were tried on the Q4_K_M
+checkpoint and none is reproducible:
+
+| configuration | replays |
+|---|---|
+| default | distinct |
+| `SPARKINFER_DETERMINISTIC=1` | distinct |
+| `SPARKINFER_DETERMINISTIC=1` + `SPARKINFER_PREFILL_BATCHED=0` (the token-loop prefill) | distinct |
+| `SPARKINFER_PREFILL_BATCHED=0` alone | distinct |
+| `SPARKINFER_DETERMINISTIC=1` + `SPARKINFER_PREFILL_MOE_QB=0` | distinct |
+| `SPARKINFER_DETERMINISTIC=1` + `SPARKINFER_PREFILL_LEGACY=1` | distinct |
+| `SPARKINFER_MUSE_FFN_Q3A=0` (± `DETERMINISTIC=1`) | distinct |
+| every split-K, PDL and n-splits switch pinned at once | distinct |
+
+The runtime's own `kernels/include/sparkinfer/kernels/deterministic.h` claims 36 of 36 runs of
+**this exact model** are bit-identical with the mode on. They are not. What the mode *does*
+fix is narrower and worth reporting upstream: with every split switch pinned, the prefill seed
+token becomes stable — five single-token replays of a 256-token prompt returned `25001` five
+times where the unpinned run returned `8894, 8894, 25001, 25001, 8894`. A 64-token generation
+from the same prompt still forks in every replay. **The residual nondeterminism is in the
+per-token decode loop**, which `deterministic_mode()` does not reach: its only decode call
+site (`qwen35.cpp:880`) recomputes a logprob normaliser on the host after the argmax has
+already been taken.
+
+**The dense control is not clean either, and this repository said it was.** "On the dense
+checkpoint the same binary is bit-identical" is true at the gate's 64 tokens and false past
+them: at 512 generated tokens, three unhooked replays of Qwen3.8-27B returned two identical
+outputs and one different. The difference between the two models is amplification, not
+presence — a few ULP stay numerical on a dense FFN and flip a discrete top-8 expert choice on
+a sparse one — so the MoE forks by token 2 and the dense model by token ~500.
+
+**The conclusion for the exact-locality gate.** It requires a reproducible runtime. On this
+runtime, on this device, there is no sparse-MoE hybrid checkpoint that provides one — and the
+only surface where the persist family pays is a sparse-MoE hybrid. The MoE throughput numbers
+stand as throughput and remain unscorable, and that is now a surveyed result rather than an
+open question.
+
+### Fixed — seven planner defects a device-capability matrix finds and one device never could
+
+RecurLocal has run on exactly one device: sm_120, one RTX 5090, 60 MiB of persisting L2 out of
+96, `accessPolicyMaxWindowSize` 128 MiB — a cap that has never once bound. `DeviceCaps` is
+queried rather than hardcoded, but nothing had ever asked what the policies do when the
+numbers come back different. Fabricating the caps needs no GPU: `DeviceCaps` is a plain struct
+and `LocalityPlanner` is arithmetic. Doing it found seven defects, two of them reachable on the
+RTX 5090 itself.
+
+1. **`HotSetPolicy::Quota` over-admitted by up to 6.5x.** Its even-spread pattern
+   `(i * admissible) % units` selects exactly `admissible` of `units` ordinals — over ONE
+   period of `units`. Where the window spans more than one layer's slice, `units` falls below
+   the number of recurrent layers the runtime walks, the pattern repeats, and the policy
+   admits a multiple of the budget. `WindowScope::Ahead` produces exactly that today, from the
+   shipped integration, through an environment variable. The period is now the recurrent-layer
+   count the geometry declares — falling back to the byte-derived count, which is right
+   whenever the window is one layer's slice — and the ordinal is reduced modulo it. The
+   admitted count is now `budget / window` (whole windows the set-aside holds) rather than an
+   ordinal share of the hot set; the two are the same number only while the window is one
+   slice, and where they differ the share-derived count spends `admitted x window` bytes
+   against a budget sized for something smaller.
+2. **A saturated hot set made `Quota` decline everything.** `hot + window - 1` is unchecked, and
+   `hot` saturates to `SIZE_MAX` by design — "a wrong answer here must never be a small one".
+   The addition wrapped, `units` became 0, and the largest representable hot set produced the
+   smallest possible admission: Quota silently became Cliff. Written as a division plus a
+   remainder, it does not.
+3. **`Quota` with no layer ordinal was `Fixed` and denied it.** Both public `plan_for_layer`
+   overloads default `layer_index = -1`; ordinal 0 is always admitted, so every layer of an
+   unindexed caller got a full-hit-ratio window with `hit_ratio_reduced = false` — the naive
+   control, under the rationing policy's name, with the telemetry saying nothing had backed
+   off. `LayerPlan::hot_set_policy` now reports the policy that was **applied**, in the idiom
+   `hot_set_model` already uses, and a caller who cannot be rationed is told so.
+4. **The `min_hit_ratio` floor could ask for more residency than the set-aside holds.** The
+   header documents it as "below this a window is not worth asking for"; the code implemented
+   it as a `std::clamp` lower bound that raises the request back up and installs the window
+   anyway. On a device whose persisting L2 is smaller than one layer's state that asked for
+   **77x** the reservation. The request is now capped at what the reservation can physically
+   hold. It does not bind on any arm this repository has measured — the RTX 5090's budget is
+   22 windows wide — so no published number moves.
+5. **`hot_set_oversubscribed` gave opposite answers for identical outcomes.** For the same
+   148 MiB footprint it read **false** on a device with no persisting L2 — the maximally
+   oversubscribed case — and **true** on one that merely refused the access-policy window. The
+   guard was `budget > 0 &&`. The comment above it already said these numbers describe the
+   workload rather than the policy; now they do. *Telemetry contract change*: a zero-budget arm
+   that used to emit `hot_set_oversubscribed: 0` now emits the truth, so that field is not
+   comparable across this change on such an arm.
+6. **`recommended_l2_set_aside()` was undefined behaviour at `SIZE_MAX` capacity.**
+   `static_cast<std::size_t>` of a double that rounds to 2^64 is UB; the observed answer was
+   **0**, i.e. persist silently off on the most capable device the type can express. Real
+   hardware cannot reach it — `cudaDeviceProp` reports an `int` — but a fabricated `DeviceCaps`
+   can, and a policy that is undefined on an input a test can construct is a policy nobody can
+   check.
+7. **`DeviceCaps::l2_bytes` was queried, printed, and read by nothing.** Zero policy sites
+   consumed it, so a device whose two capacity numbers disagree — an emulator, a MIG slice, a
+   stubbed query — got a request for a set-aside larger than its entire cache with nothing to
+   say so. A set-aside is carved out of L2 and is now clamped to it when it is reported.
+
+Not defects, checked and cleared: `saturating_mul`/`saturating_add` are arithmetically exact,
+so the footprint product does **not** overflow — the suspected multiplication bug was one line
+downstream, in Quota's unit count. The window **is** clamped to `access_policy_max_window_bytes`
+and the clamp survives to the driver. `hit_ratio` can never exceed 1.0 or go negative.
+
+The tests fabricate an A100-like device (40 MiB L2, 30 MiB persisting), an H100-like one
+(50/40), a consumer part whose persisting L2 is smaller than one layer's state, a device with
+more persisting L2 than the whole footprint, one that reports zero, and one whose numbers are
+incoherent. They land either side of the residency threshold and the arithmetic says which:
+the batch-1 MoE footprint is 61.4 MiB, so the A100's 30 MiB holds 0.489 of it and is declined
+while the H100's 40 MiB holds 0.651 and is admitted. 296 planner checks, up from 178.
+
+### Added — an API and ABI stability contract, and the code changes that make it true
+
+`docs/STABILITY.md`. The library is embedded by inference runtimes and its contract is a set
+of enumerator values other people switch on; there was no statement of what survives a version
+bump. The document says, per symbol class, what a consumer may rely on — enumerator names,
+enumerator values, and the strings they round-trip through, since those strings are the
+sweep-axis and environment-variable vocabulary that every result file in `results/` names —
+what it may not, and, in its last section, **where the contract is only advice rather than
+something the build enforces**.
+
+The checkable claims were made checkable:
+
+- Every public enum now says `: int` outright. A scoped enumeration already has that
+  underlying type by the language rule, so this changes nothing the compiler does and turns
+  the guarantee into a line anyone can grep and a future edit cannot silently undo. The
+  suspected "adding an enumerator changes `sizeof`" defect is **not present**.
+- `static_assert`s in `planner.h` pin the size of all six by-value structs and the offsets of
+  three fields. `PlannerConfig` has interior padding at offsets 4, 52 and 92, so a four-byte
+  enum dropped into a hole would change no size at all and move no offset — which is why the
+  rule is "append after the last member" rather than "keep `sizeof` stable", and why offsets
+  are asserted and not only sizes. These fire in a **consumer's** build, not only in ours.
+- The two counters added this release were appended to the end of `ControllerStats` rather
+  than grouped by meaning in the middle, which is where they were first written — that had
+  moved `sizeof` from 128 to 144 and shifted four offsets, with nothing in the build to notice.
+- `RECURLOCAL_VERSION_AT_LEAST(maj, min, pat)`, so a consumer can guard a new enumerator.
+- `to_string(SetAsidePolicy)` returned `"fixed"` — the **control arm's own name** — for a value
+  outside the enumeration, where every other `to_string` returns `"unknown"`. It would have put
+  the control's label on a candidate nobody could identify.
+- `include/recurlocal/sparkinfer.h` declared `GdnStateLayout` and `GdnPackedLayout` twice, with
+  `cudaStream_t compute` in the CUDA branch and `void* compute` in the fallback: two different
+  types with the same name, an ODR violation that nothing would diagnose if a CUDA-built and a
+  non-CUDA-built translation unit were linked together. Both branches now name the same type.
+
+What the document does **not** claim: there is no shared library, so no `SOVERSION` is promised
+(and the `VERSION` property is set on a target CMake ignores it for). `PlannerConfig` is passed
+**by value** into three entry points, so adding a field is an ABI break; the answer is not a
+`cbSize` field but a narrow one — build from source, in the same build as the runtime that
+embeds you, which is exactly what `integrations/sparkinfer/build.sh` already does. Section 9
+says plainly that today that is a convention rather than something the linker enforces, and
+names the inline-namespace ABI tag that would make it enforceable.
+
+### Fixed — one agreeing control replay is a sample, not evidence
+
+`real_eval.py` replayed the control against itself **once** and called the runtime reproducible
+if that pair agreed. The measurement above shows why that is not enough: at a 256-token prompt
+the unhooked runtime returned `8894, 8894, 25001, 25001, 8894`, so a single pair drawn from
+that agrees more often than not, and the gate would have certified a runtime that is not
+reproducible at all. `--gate-control-replays` (default 3, floor 2) replays until one disagrees
+or all agree, and `runtime_reproducible` now requires **all** of them. The result records how
+many replays it took to find out — a 2 means the runtime forked immediately, a 5 means four
+agreed first, which is exactly the case the old check would have passed.
+
+
 ### Measured — the MoE thesis, tested on hardware, and the batch-1 bound moves
 
 The open problem this repository handed over was whether *a model with less weight traffic per
