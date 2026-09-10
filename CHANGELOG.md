@@ -60,6 +60,51 @@ $ tensortransit_bench persist --engine transit --planner budgeted --admission qu
   budgeted/proportional    ms/tok=1.0703 actions=96 declines=48 digest=a24d47d772c47fa3
 ```
 
+### Found — a checkpoint that clears both gates, on the device the answer was "no" for
+
+`docs/VERDICT.md` said what would change its answer: *a model whose decode step moves under
+6.42 GB **and** is reproducible against itself. Four were screened and none is.* All four were
+sparse MoE, because that is the textbook route to a small decode step. **A small dense hybrid
+reaches one too, without the top-k expert routing that breaks reproducibility, and nobody had
+looked.**
+
+On the same RTX 5090 and the same pinned SparkInfer commit:
+
+| | pinned Qwen3.8-27B | **Qwen3.5-4B-Q4_K_M** |
+|---|--:|--:|
+| decode step | 18.21 GB | **2.84 GB** |
+| recurrent footprint | 153.9 MB (2.4x the partition) | **51.5 MB — it fits** |
+| persist-family ceiling | 0.696% | **3.760%** |
+| ten unhooked greedy replays | identical | **identical, 128 tokens** |
+| measured `persist`, batch 1 | +0.10% | **+0.695%** |
+| that arm's noise floor | — | **0.112% — resolved at 6.2x** |
+
+**The first result in this repository that is both positive and scorable.** The sparse MoE
+measured +1.26% and can never be scored, because its own unhooked replays disagree.
+
+Two independent reasons for the ceiling, and only one of them is the step size: the 4B's
+footprint *fits* inside the 60 MiB partition, while 61% of the pinned model's can never be
+resident whatever the policy does.
+
+Three qualifications, all measured: the step runs at **55% of peak bandwidth**, so 3.760% is a
+loose upper bound and +0.695% is about 18% of it; concurrency is negative here too (−1.819% at
+sixteen), exactly as the concurrency-blind graph predicts; and **dense is not sufficient** —
+`Qwen3.5-9B-Q4_K_M` is dense, has no expert routing, and one replay of three diverges at token
+16.
+
+### Added — `eval/screen_checkpoints.py`, the traffic gate before the download
+
+`ceiling = 2 x min(persisting-L2, recurrent footprint) / decode step traffic`, computed from a
+`config.json` and a file size — kilobytes instead of a 20 GB download. It reproduces the pinned
+model's measured `lin_state_bytes_per_layer` exactly, and fed the MoE's measured 3.56 GB step it
+returns 3.53% against the 3.67% this project published.
+
+It also caught its own defect within the hour. Parallel `--config` / `--weight-bytes` /
+`--active-weight-bytes` lists paired by position put the MoE's override on the first candidate,
+and the 2B's ceiling came out 1.098% instead of 3.053% with nothing in the output saying so. One
+`--candidate name=config:bytes:quant[:active]` spec now carries every field, so they cannot
+desynchronise. A screen that can silently describe a different model is worse than no screen.
+
 ### Added — `tt-frontier generation show --reachable`, and the answer it gives is no
 
 One command for the question a contributor should ask first: which cells are worth trying to
