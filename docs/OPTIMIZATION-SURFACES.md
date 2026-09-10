@@ -10,8 +10,8 @@ instead of adding an enumerator cannot be compared against what it replaced.
 Sweep one axis with everything else fixed:
 
 ```bash
-python3 eval/sweep.py --binary ./build/recur_local_cuda_bench --axis prefetch-distance
-python3 eval/sweep.py --binary ./build/recur_local_cuda_bench --axis hot-set-policy -- --sequences 32
+python3 eval/sweep.py --binary ./build/tensortransit_bench --axis prefetch-distance
+python3 eval/sweep.py --binary ./build/tensortransit_bench --axis hot-set-policy -- --sequences 32
 ```
 
 `sweep.py` compares the spread across an axis to that axis's own noise floor and **refuses to
@@ -19,14 +19,14 @@ name a winner inside it**, exiting non-zero. An axis that will not resolve is op
 
 Two benchmarks appear below and they are not interchangeable. The **real** section is
 Qwen3.8-27B on a pinned SparkInfer commit; it is the one the go/no-go gate reads. The
-**synthetic** section is `bench/cuda_bench.cu`, which explains mechanism and decides nothing
+**synthetic** section is `workloads/recurrent/synthetic/cuda_bench.cu`, which explains mechanism and decides nothing
 (sections 17 and 28).
 
 ---
 
 # Real model: Qwen3.8-27B, pinned SparkInfer, RTX 5090
 
-`integrations/sparkinfer/` · NVFP4 checkpoint, 64 layers (48 recurrent), CUDA 13.3, sm_120 ·
+`adapters/sparkinfer/` · NVFP4 checkpoint, 64 layers (48 recurrent), CUDA 13.3, sm_120 ·
 control 96.08 tok/s at ctx 128 · every number is a control/candidate pair measured minutes
 apart on the same box.
 
@@ -111,7 +111,7 @@ result:
 
 - "48 of 48 nodes" was read off `windows_attached_to_node`, which counts attach CALLS that hit
   at least one node, not nodes. The counters are now separate (`window_nodes_attached`).
-- Nothing had ever read an attribute back. `tools/capture_attr_probe.cu` does: it captures N
+- Nothing had ever read an attribute back. `profiling/capture_attr_probe.cu` does: it captures N
   kernels, sets the window mid-capture exactly as the controller does, ends the capture, and
   reads it back off the finished graph and off a clone. Present and byte-correct on every
   kernel node at 1, 4, 8, 16, 32, 48, 64 and 128 nodes; zero capture invalidations;
@@ -334,7 +334,7 @@ replayed graph there", and that was an inference the counter does not support.**
 `windows_attached_to_node` counts attach CALLS that marked at least one node, not nodes — the
 48 was a count of hook invocations that happened to equal the node count. A counter that says
 a setter returned success says nothing about what survives into a replayed graph.
-`window_nodes_attached` now counts nodes, and `tools/capture_attr_probe.cu` answers the
+`window_nodes_attached` now counts nodes, and `profiling/capture_attr_probe.cu` answers the
 question the inference was standing in for by reading the attribute back off the finished
 graph. See the section above.
 
@@ -437,7 +437,7 @@ and all three put the shipped constant last:**
 
 Worth **+0.09 to +0.22 points over the constant with no dial touched by the operator**, and it
 reaches the +1.5% that previously required someone to know to set
-`RECURLOCAL_BUDGET_FRACTION=1.00` by hand. Quote the range: between-run drift on one
+`TENSORTRANSIT_BUDGET_FRACTION=1.00` by hand. Quote the range: between-run drift on one
 configuration (0.14 points) exceeds any single run's floor.
 
 At four sequences the axis **does not resolve** — two of three runs are inside their floor, and
@@ -605,7 +605,7 @@ the weight stream more once it does not. Batch 1 is +1.74% across all three cont
 
 **A planner that chose the set-aside from the measured footprint-to-capacity ratio, rather than
 from a constant, is an open item** — and this is the evidence for it. Nothing in the library
-currently varies `budget_fraction` with the workload; the runtime declares `RECURLOCAL_SEQUENCES`
+currently varies `budget_fraction` with the workload; the runtime declares `TENSORTRANSIT_SEQUENCES`
 and the hot-set model already computes the footprint, so the input is there and only the policy
 is missing. `results/rtx5090-moe-scored.json` carries the run.
 
@@ -682,7 +682,7 @@ corrected number should make the *policy* do at each concurrency is still open.
 
 ## Surface: hot-set policy
 
-**`src/planner.cpp` · `--hot-set-policy` · 5 policies · frontier: `cliff`, and `quota` is untried here**
+**`src/recurrent_planner.cpp` · `--hot-set-policy` · 5 policies · frontier: `cliff`, and `quota` is untried here**
 
 At 32 sequences (96 MiB hot against a 48 MiB set-aside):
 
@@ -722,7 +722,7 @@ counters is a real contribution.
 
 ## Surface: cache interference and QoS
 
-**`bench/cuda_bench.cu` · `--stream-bytes`, `--qos` · frontier: unexplained**
+**`workloads/recurrent/synthetic/cuda_bench.cu` · `--stream-bytes`, `--qos` · frontier: unexplained**
 
 Attention and MoE weights stream through the same L2 the recurrent state wants to sit in.
 
@@ -757,7 +757,7 @@ run time, is an open problem and nothing in the planner currently even asks.
 
 ## Surface: prefetch distance
 
-**`src/planner.cpp` · `--prefetch-distance 0..8` · frontier: +21.0% at d=6**
+**`src/recurrent_planner.cpp` · `--prefetch-distance 0..8` · frontier: +21.0% at d=6**
 
 | distance | 1 | 2 | 3 | 4 | 6 | 8 |
 |---|--:|--:|--:|--:|--:|--:|
@@ -770,7 +770,7 @@ model. A planner that derives it instead of taking a constant is an open problem
 
 ## Surface: prefetch schedule
 
-**`src/planner.cpp` · `--prefetch-schedule` · 4 schedules · frontier: `uniform`, at batch 1**
+**`src/recurrent_planner.cpp` · `--prefetch-schedule` · 4 schedules · frontier: `uniform`, at batch 1**
 
 | schedule | uniform | ramp | alternating | sparse |
 |---|--:|--:|--:|--:|
@@ -783,7 +783,7 @@ prefetch collapsed — 32 concurrent sequences — and that has not been measure
 
 ## Surface: prefetch implementation
 
-**`bench/cuda_bench.cu` · `--prefetch-impl` · frontier: `stream`, decisively**
+**`workloads/recurrent/synthetic/cuda_bench.cu` · `--prefetch-impl` · frontier: `stream`, decisively**
 
 | distance | 1 | 2 | 4 | 6 |
 |---|--:|--:|--:|--:|
@@ -802,7 +802,7 @@ after the update, is untried and is where the roadmap's intuition might still be
 
 ## Surface: pre-touch kernel
 
-**`src/cuda/prefetch.cu` · `--pre-touch` · 6 strategies · frontier: unresolved**
+**`executors/cuda/prefetch.cu` · `--pre-touch` · 6 strategies · frontier: unresolved**
 
 | strategy | gain |
 |---|--:|
@@ -824,7 +824,7 @@ touching only the tiles the recurrent kernel reads first.
 
 ## Surface: prefetch implementation
 
-**`bench/cuda_bench.cu` · `--prefetch-impl stream|fused`**
+**`workloads/recurrent/synthetic/cuda_bench.cu` · `--prefetch-impl stream|fused`**
 
 `fused` performs the pre-touch inside the compute kernel: no second stream, no extra launch,
 no cross-stream ordering. Section 34.4, and the v0.5 roadmap item. It also removes the SM
@@ -833,7 +833,7 @@ pre-touch axis resolvable at all.
 
 ## Surface: state layout
 
-**`bench/cuda_bench.cu` · `--state-layout` · 3 layouts · the largest single effect measured**
+**`workloads/recurrent/synthetic/cuda_bench.cu` · `--state-layout` · 3 layouts · the largest single effect measured**
 
 | layout | baseline | persist | prefetch | combined |
 |---|--:|--:|--:|--:|

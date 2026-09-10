@@ -78,18 +78,34 @@ class GpuLock:
 LOAD_FAILURE_MARKERS = ("[FAIL] load", "out of memory", "cudaErrorMemoryAllocation")
 
 
-# Every RECURLOCAL_* name the adapter reads. The control arm must have all of them scrubbed
-# from the inherited environment, not merely left unset by the caller: an operator with
+# Every name the adapter reads. The control arm must have all of them scrubbed from the
+# inherited environment, not merely left unset by the caller: an operator with
 # `export RECURLOCAL=combined` in their shell would otherwise run a hooked "control", and the
 # harness would report ~0% for a comparison of the candidate against itself.
+#
+# BOTH prefixes, and this is not belt-and-braces. As of 0.2.0 the adapter reads
+# TENSORTRANSIT_X in preference to RECURLOCAL_X, so a scrub that knew only the old prefix
+# would leave exactly the hole this guard exists to close -- and it would leave it silently,
+# because a contaminated control produces a plausible number rather than an error.
+ADAPTER_ENV_PREFIXES = ("TENSORTRANSIT", "RECURLOCAL")
+# The 0.1 name, kept because it is referenced from docs and from run_from_base.sh.
 ADAPTER_ENV_PREFIX = "RECURLOCAL"
 
 
+def scrubbed_environment(base=None):
+    """A copy of `base` with every adapter-controlled name removed.
+
+    Exposed as a function rather than inlined so eval/test_decide.py can assert it, which is
+    the only way a guard like this stays correct: nothing about a contaminated control looks
+    wrong in the output."""
+    env = dict(os.environ if base is None else base)
+    for key in [k for k in env if k.startswith(ADAPTER_ENV_PREFIXES)]:
+        del env[key]
+    return env
+
+
 def run(cmd, env_extra, timeout=1800, scrub_adapter_env=False):
-    env = dict(os.environ)
-    if scrub_adapter_env:
-        for k in [k for k in env if k.startswith(ADAPTER_ENV_PREFIX)]:
-            del env[k]
+    env = scrubbed_environment() if scrub_adapter_env else dict(os.environ)
     env.update(env_extra)
     t0 = time.time()
     time.sleep(SETTLE_SECONDS)
@@ -113,12 +129,14 @@ def parse_sweep(text):
 def parse_adapter_stats(text):
     """The hook's own JSON, printed to stderr. Absent for the control, which is the point:
     it is how a result file records that the control really was unhooked."""
-    m = re.search(r"RECURLOCAL_STATS (\{.*\})", text)
+    m = re.search(r"(?:TENSORTRANSIT|RECURLOCAL)_STATS (\{.*\})", text)
     return json.loads(m.group(1)) if m else None
 
 
 def is_control(env_extra):
-    return env_extra.get("RECURLOCAL", "off") in ("off", "0")
+    """A control arm is one that names no mode under EITHER spelling."""
+    mode = env_extra.get("TENSORTRANSIT", env_extra.get("RECURLOCAL", "off"))
+    return mode in ("off", "0")
 
 
 def policy_applied(stats):
@@ -464,8 +482,8 @@ def main():
     ctrl_env = as_env(a.control)
     # The control must not carry the hook. Otherwise the comparison is between two
     # RecurLocal configurations and the result file would still call one of them "baseline".
-    if ctrl_env.get("RECURLOCAL", "off") not in ("off", "0"):
-        raise SystemExit("the control arm must have RECURLOCAL off; it is the unhooked runtime")
+    if not is_control(ctrl_env):
+        raise SystemExit("the control arm must have the hook off; it is the unhooked runtime")
     cand_env.setdefault("RECURLOCAL_STATS", "1")
     ctxs = [int(c) for c in a.contexts.split(",") if c.strip()]
     verbose = not a.quiet
@@ -484,7 +502,7 @@ def main():
         "label": a.label,
         "note": a.note,
     }
-    pin = Path(__file__).resolve().parent.parent / "integrations" / "sparkinfer" / "pin.json"
+    pin = Path(__file__).resolve().parent.parent / "adapters" / "sparkinfer" / "pin.json"
     if pin.exists():
         doc = json.loads(pin.read_text())
         provenance["runtime_repository"] = doc.get("repository")

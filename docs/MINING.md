@@ -48,6 +48,27 @@ go/no-go "promising". The bands above it — `M`, `L`, `XL` — are unreachable 
 this device however good the policy, and no amount of contributor effort changes that. Know it
 before you spend a week here.
 
+### The impact bands
+
+| weighted real gain | impact |
+|---|---|
+| <2% | none |
+| 2–4% | XS |
+| 4–7% | S |
+| 7–10% | M |
+| 10–18% | L |
+| >18% | XL |
+
+These are applied by `eval/decide.py`, not by a reviewer's judgement — the table is
+`IMPACT` in that file and drift there would silently redefine every past verdict, so it is
+covered by the same `ctest` run as the planner. The weighted score is a geometric mean over
+the workload matrix (C1 0.40, C4 0.20, C16 0.20, C32 0.20), so one cherry-picked win cannot
+carry a submission that loses elsewhere, and **no important case may regress more than 2%**.
+
+A result below 2% is reported with its noise floor and labelled `none`. That is not a failure
+of the submission; most of this repository's own results are in that band, and saying so is
+the point.
+
 ### The ceiling that actually binds
 
 The traffic ceiling assumes all the recurrent traffic can be removed. A **persisting window
@@ -98,21 +119,50 @@ the one to read first: 30 recurrent layers x (2 MiB + 48 KiB) x 2 = 123 MiB agai
 step is 3.62%, a 3.75% throughput ceiling, and the footprint fits the cache. Batch 1 is the live
 surface there and the only one that can currently be measured.
 
+## The workflow
+
+No maintainer-created issue is required, and there are deliberately no bounty-style
+optimization issues to claim.
+
+```text
+clone main
+  -> tensortransit inspect <trace>        # is there room for the policy you have in mind?
+  -> run the benchmark, profile
+  -> change a planner / admission rule / executor / adapter
+  -> ctest                                 # golden plans, schemas, the compat shim
+  -> eval/real_eval.py                     # interleaved A/B on one box
+  -> eval/decide.py --real                 # the bands above, applied mechanically
+  -> open a PR
+```
+
+The first step is the one people skip. `tensortransit inspect` prints the device-bounded
+ceiling for the roles a policy is allowed to touch, and if that number is under 2% no planner
+in this repository can help you. It costs one command and no hardware.
+
+Evaluation runs on an **ephemeral** GPU worker with a fresh workspace, no SSH keys, no cloud
+credentials, read-only model artifacts and a limited token. Performance PRs contain arbitrary
+code and the runner is treated as a hostile execution environment.
+
 ## Reproducing the measurement
 
 ```bash
-integrations/sparkinfer/build.sh $WORK        # pinned commit, patched, one binary
+adapters/sparkinfer/build.sh $WORK        # pinned commit, patched, one binary
 eval/real_eval.py --binary  $WORK/sparkinfer/build/runtime/qwen3_gguf_bench \
                   --generate $WORK/sparkinfer/build/runtime/qwen3_gguf_generate \
                   --cb-binary $WORK/sparkinfer/build/runtime/qwen3_gguf_cb_bench \
                   --model $MODEL --contexts 128,4096,16384 --concurrency 4,16,32 --repeats 3 \
-                  --candidate RECURLOCAL=<your mode> RECURLOCAL_WINDOW_ATTACH=capture_node \
+                  --candidate TENSORTRANSIT=<your mode> TENSORTRANSIT_WINDOW_ATTACH=capture_node \
                   --output real-result.json
 eval/decide.py --real real-result.json
 ```
 
-One binary runs both arms: the hook is inert unless `RECURLOCAL` names a mode, so control and
-candidate differ only by environment. Never compare two separately linked binaries.
+One binary runs both arms: the hook is inert unless `TENSORTRANSIT` names a mode, so control
+and candidate differ only by environment. Never compare two separately linked binaries.
+
+Every setting is readable under the deprecated `RECURLOCAL_` prefix too, and the commands in
+`results/*.json` still reproduce verbatim for that reason. The evaluator scrubs **both**
+prefixes from the control environment; a scrub that knew only one would leave an operator with
+`export TENSORTRANSIT=combined` comparing the candidate against itself.
 
 Two flags there are not decoration. **`--concurrency 4,16,32` and the three contexts fill the
 whole section 44 matrix**, and `decide.py` will not call a partial one significant — a missing
@@ -138,7 +188,7 @@ repository's own baseline died exactly there.
   absent and the weight that went with it, and refuses to call a partial matrix significant.
   It says so even when the document claims full coverage.
 
-- **A synthetic gain with no real-model number.** `bench/cuda_bench.cu` has disagreed with the
+- **A synthetic gain with no real-model number.** `workloads/recurrent/synthetic/cuda_bench.cu` has disagreed with the
   real model on four axes, for one structural reason: it does not capture a CUDA graph and
   production decode does. `decide.py` refuses to turn a synthetic result into a verdict.
 - **Any change to model output.** The gate is token-exact greedy replay. A faster run that
@@ -365,3 +415,93 @@ Not code, and not optional:
 
 Ledgers, dashboards, attestation and copycat detection (overview section 42). None of them is
 what stands between this repository and a working competition.
+
+---
+
+# The TensorTransit surfaces (0.2.0)
+
+Everything above is about **one policy family on one tensor class**, and it is bounded. The
+0.2 generalization does not repeal that bound — it widens the frontier so the bound applies to
+`recurrent_v0` rather than to the project. These are the surfaces that opened, and what is
+known about each.
+
+## Surfaces that need no GPU
+
+These are the ones worth taking first, because they are where the current blocker actually is.
+
+### 1. The cost model — the highest-value open problem
+
+`saved = reused_bytes x (granted / bytes) x hit_ratio` is linear in the resident share, and
+that makes greedy-on-density **provably optimal**. So the entire admission-rule axis is
+measuring nothing the model can see, and `role_floor` is monotonically worse than `density`
+under it — by construction, not by accident.
+
+Three terms are missing, all of them real:
+
+| missing term | why it matters | what represents it today |
+|---|---|---|
+| whole-line residency | a line is resident or it is not; there is no 30% of a byte | `AdmissionRule::Quota`, flattened to 0.001 points by the linear model |
+| survival | a tensor whose reuse distance exceeds the budget is evicted before it pays | `--max-reuse-budgets`, a crude on/off switch |
+| interference | what the streaming half of the cache does to the persisting half | nothing — which is why a `Stream` action is priced at zero |
+
+A cost model carrying those, **validated against the measurements already in `results/`**,
+would move this repository further than another admission rule. Isolate with
+`tensortransit compare` and `tensortransit plan --admission <rule>`.
+
+### 2. A new admission rule
+
+One enumerator plus an implementation in `planners/budgeted/`. It is comparable against every
+other rule on the same trace, in one process, with no hardware. Read the paragraph above
+first: under the current model a rule that is not density-greedy cannot win, so a new rule is
+only interesting alongside a model that can express why it should.
+
+### 3. A new reuse metric or a better graph
+
+`ReuseMetric` has three enumerators and they disagree. Nothing yet uses `Time` for prefetch
+placement except `PrefetchTiming::BandwidthAware`, and nothing has measured whether it beats
+`FixedDistance`. `TransitGraph::live_bytes_at` is O(profiles x edges x uses) and is called per
+kernel by `build()`; it is correct and it is not fast.
+
+### 4. Trace fidelity
+
+`tests/golden/*.json` carry the **measured** recurrent geometry of Qwen3.8-27B and a
+**synthetic** KV block size, and the weight traffic is the measured 18.5 GB step divided
+evenly across layers. A trace recorded from a real runtime — with real KV block sizes and real
+per-layer weight reads — would make every comparison above sharper, and it needs a runtime
+that exposes its KV blocks to the registry, which no adapter does yet.
+
+## Surfaces that need a GPU
+
+### 5. The second proof track, measured
+
+Run the five arms on hardware and settle whether coordination beats independent policies. The
+arms are `tensortransit compare` and `eval/real_eval.py`; what is missing is a runtime that
+registers KV. **Known before starting:** on the pinned dense model this contest is for less
+than a point, and the interesting regime is a model whose decode step moves under **6.42 GB**.
+
+### 6. `WindowBinding::Sticky`
+
+Bind once for the whole step instead of once per consumer. Only one window can be bound to a
+stream at a time, so the planner gives it to the single densest admitted candidate and
+everything else falls back to per-consumer. Implemented, plan-validated, **never measured**.
+
+### 7. Concurrency arbitration
+
+`ConcurrencyPlanner` implements even-share and concentrate. The measured fact to beat:
+`persist` pays at 98% residency and is negative from four sequences on, where residency is
+48%. **The crossover is at about half residency.** Concentrating the budget on fewer requests
+is the obvious idea and nobody has run it.
+
+### 8. Prefetch as a graph node
+
+Window attachment to captured graph nodes works and is verified on hardware
+(`tests/test_cuda_executor.cu` reads the attribute back off the finished graph). Prefetch is
+still a stream fork, and a fork plus a join is a permanent graph node pair costing ~0.027% of
+a decode step each — 1.20 points of the 1.29 that `prefetch` lost on the real model was that
+ordering, not the memory.
+
+## What still does not count
+
+Unchanged from 0.1, and now with a second clause: a submission that improves a **predicted**
+figure has improved a model, not a runtime. Say so in the PR. `tensortransit plan` output is
+evidence about a planner; only `eval/decide.py --real` is evidence about a speedup.

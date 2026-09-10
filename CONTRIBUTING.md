@@ -1,16 +1,17 @@
 # Contributing
 
-RecurLocal is a frontier-optimization project. You do not need a maintainer-created issue to contribute.
+TensorTransit is a frontier-optimization project. You do not need a maintainer-created issue
+to contribute.
 
 A performance PR should include the exact baseline commit, GPU/CUDA versions, benchmark command, raw result, real-runtime result when relevant, correctness evidence, and why the change should generalize. State them in the PR description.
 
 Before opening a PR:
 
 ```bash
-cmake -S . -B build -DRECURLOCAL_BUILD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=120
+cmake -S . -B build -DTENSORTRANSIT_BUILD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build build -j
-ctest --test-dir build --output-on-failure          # planner + label bands must pass
-python3 eval/run_eval.py --binary ./build/recur_local_cuda_bench --repeats 5
+ctest --test-dir build --output-on-failure   # planners, golden plans, schemas, compat shim
+python3 eval/run_eval.py --binary ./build/tensortransit_bench --repeats 5
 ```
 
 Your kernels must be sanitizer-clean: `scripts/sanitize.sh build` runs memcheck, initcheck,
@@ -19,15 +20,48 @@ controller destroyed mid-capture issuing 14 illegal CUDA calls) the first time i
 
 Do not change model math in the exact-locality track.
 
+A CPU-only build is enough for most of the frontier — the planners, the graph, the plan
+schema and the golden tests all run without a GPU:
+
+```bash
+cmake -S . -B build -DTENSORTRANSIT_BUILD_CUDA=OFF
+cmake --build build -j && ctest --test-dir build --output-on-failure
+```
+
+
+## You do not need an issue
+
+There are deliberately no bounty-style optimization issues to claim, and no maintainer has to
+create work for you.
+
+> Profile the current frontier, find a measurable cross-kernel data-movement bottleneck, and
+> submit a reproducible improvement.
+
+Start with [`docs/MINING.md`](docs/MINING.md) — it is written to talk you out of the two
+obvious mistakes before you spend a week on them — and with one command:
+
+```bash
+tensortransit inspect <trace.json> --device rtx5090
+```
+
+If the device-bounded ceiling for the roles your policy is allowed to touch is under the 2%
+significance floor, nothing in this repository can help you, and you have found that out for
+free. Several of the surfaces worth taking need **no GPU at all**: the cost model, a new
+admission rule, a reuse metric, trace fidelity. `docs/MINING.md` says which.
+
+Impact is applied by `eval/decide.py`, mechanically, from the bands in that document — not by
+a reviewer's judgement. Most of this repository's own results land in the `none` band, and
+saying so is the point rather than an embarrassment.
+
 ## The synthetic benchmark is not the score
 
-`bench/cuda_bench.cu` explains mechanism. It has now disagreed with the real model on three
+`workloads/recurrent/synthetic/cuda_bench.cu` explains mechanism. It has now disagreed with the real model on three
 separate axes — prefetch distance, hot-set policy, and whether a pre-touch helps at all — for
 one structural reason: it does not capture a CUDA graph, and production decode does. If your
 change moves a synthetic number, say so, and then measure it where it counts:
 
 ```bash
-integrations/sparkinfer/build.sh $WORK          # pinned commit, patched, one binary
+adapters/sparkinfer/build.sh $WORK          # pinned commit, patched, one binary
 eval/real_sweep.py --binary $WORK/sparkinfer/build/runtime/qwen3_gguf_bench \
                    --model $MODEL --axis <your axis> --repeats 3
 eval/real_eval.py  ... --candidate RECURLOCAL=<your mode> --output real-result.json

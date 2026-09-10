@@ -1,9 +1,28 @@
 @PACKAGE_INIT@
 
-include(CMakeFindDependencyMacro)
-if(@RECURLOCAL_BUILD_CUDA@)
-    find_dependency(CUDAToolkit)
+# Compatibility package. RecurLocal is the recurrent-state workload inside TensorTransit as
+# of 0.2.0; this file exists so `find_package(RecurLocal)` and the RecurLocal:: targets keep
+# resolving through the deprecation window. See docs/STABILITY.md section 8.
+message(DEPRECATION
+    "find_package(RecurLocal) is deprecated; use find_package(TensorTransit) and the "
+    "TensorTransit:: targets. The RecurLocal package will be removed no earlier than 0.3.0.")
+
+include("${CMAKE_CURRENT_LIST_DIR}/../TensorTransit/TensorTransitTargets.cmake" OPTIONAL
+        RESULT_VARIABLE _tt_targets)
+if(NOT _tt_targets)
+    find_package(TensorTransit REQUIRED CONFIG)
 endif()
 
-include("${CMAKE_CURRENT_LIST_DIR}/RecurLocalTargets.cmake")
+foreach(_pair "recurlocal:tensortransit" "recurlocal_cuda:tensortransit_cuda"
+              "recurlocal_sparkinfer:tensortransit_sparkinfer")
+    string(REPLACE ":" ";" _parts "${_pair}")
+    list(GET _parts 0 _old)
+    list(GET _parts 1 _new)
+    if(TARGET TensorTransit::${_new} AND NOT TARGET RecurLocal::${_old})
+        add_library(RecurLocal::${_old} INTERFACE IMPORTED)
+        set_target_properties(RecurLocal::${_old} PROPERTIES
+            INTERFACE_LINK_LIBRARIES TensorTransit::${_new})
+    endif()
+endforeach()
+
 check_required_components(RecurLocal)

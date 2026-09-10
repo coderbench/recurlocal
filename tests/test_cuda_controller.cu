@@ -11,13 +11,13 @@
 //
 // Requires a GPU. Registered with ctest only when RECURLOCAL_BUILD_CUDA=ON; skips cleanly
 // (exit 0) on a machine with no device, so a CUDA build on a device-less CI box still passes.
-#include "recurlocal/cuda_api.h"
+#include "tensortransit/cuda_recurrent.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
 
-using namespace recurlocal;
+using namespace tensortransit;
 
 static int g_failures = 0;
 static int g_checks = 0;

@@ -1,0 +1,25 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+if(@TENSORTRANSIT_BUILD_CUDA@)
+    find_dependency(CUDAToolkit)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/TensorTransitTargets.cmake")
+
+# The 0.1 target names, so a consumer that has not migrated its target_link_libraries keeps
+# resolving. ALIAS is not available for IMPORTED targets across a config file, so these are
+# INTERFACE shims that carry nothing of their own.
+foreach(_pair "recurlocal:tensortransit" "recurlocal_cuda:tensortransit_cuda"
+              "recurlocal_sparkinfer:tensortransit_sparkinfer")
+    string(REPLACE ":" ";" _parts "${_pair}")
+    list(GET _parts 0 _old)
+    list(GET _parts 1 _new)
+    if(TARGET TensorTransit::${_new} AND NOT TARGET RecurLocal::${_old})
+        add_library(RecurLocal::${_old} INTERFACE IMPORTED)
+        set_target_properties(RecurLocal::${_old} PROPERTIES
+            INTERFACE_LINK_LIBRARIES TensorTransit::${_new})
+    endif()
+endforeach()
+
+check_required_components(TensorTransit)

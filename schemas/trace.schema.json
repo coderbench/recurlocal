@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/tensortransit/schemas/trace.schema.json",
+  "title": "TensorTransit trace",
+  "description": "One recorded window of kernel execution and tensor demand. Deliberately carries no pointers, no prompts, no tokens and no request bodies: a trace records tensor ids, sizes, roles, kernel ids, ordering and timing, and there is nowhere in this schema to put anything else (spec section 45).",
+  "type": "object",
+  "required": ["schema_version", "tensors", "events"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "device": {"type": "integer"},
+    "device_name": {"type": "string"},
+    "model": {"type": "string"},
+    "model_digest": {"type": "string"},
+    "runtime": {"type": "string"},
+    "runtime_commit": {"type": "string"},
+    "phase": {"enum": ["unknown", "prefill", "decode", "speculative_draft", "speculative_verify"]},
+    "active_requests": {"type": "integer", "minimum": 1},
+    "cyclic": {
+      "type": "boolean",
+      "description": "The window is one iteration of a loop, so the last use of a tensor is followed by its first. True for decode, false for prefill. Getting this wrong makes every recurrent state look unreused."
+    },
+    "notes": {"type": "string"},
+    "tensors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "bytes"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "integer", "minimum": 1},
+          "role": {"enum": ["unknown", "recurrent_state", "kv_cache", "model_weight",
+                            "expert_weight", "activation", "workspace", "speculative_state",
+                            "multimodal_feature"]},
+          "bytes": {"type": "integer", "minimum": 1},
+          "bytes_per_use": {"type": "integer", "minimum": 0},
+          "mutable": {"type": "boolean"},
+          "request_local": {"type": "boolean"},
+          "model_global": {"type": "boolean"},
+          "request_id": {"type": "integer"}
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kernel_id"],
+        "additionalProperties": false,
+        "properties": {
+          "kernel_id": {"type": "integer", "minimum": 1},
+          "name": {"type": "string"},
+          "stream": {"type": "integer"},
+          "order": {"type": "integer", "minimum": 0},
+          "start_ns": {"type": "integer", "minimum": 0},
+          "duration_ns": {"type": "integer", "minimum": 0},
+          "tensors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "additionalProperties": false,
+              "properties": {
+                "id": {"type": "integer", "minimum": 1},
+                "access": {"enum": ["read", "write", "read_write"]},
+                "bytes": {"type": "integer", "minimum": 0}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

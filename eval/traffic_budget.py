@@ -354,7 +354,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--pin", type=Path,
-                    default=Path(__file__).resolve().parent.parent / "integrations" / "sparkinfer" / "pin.json",
+                    default=Path(__file__).resolve().parent.parent / "adapters" / "sparkinfer" / "pin.json",
                     help="state geometry comes from the pinned integration")
     ap.add_argument("--matrix", type=Path, metavar="ARMS_JSON",
                     help="score the whole section 44 matrix instead of one arm: the highest "

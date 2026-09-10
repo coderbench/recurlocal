@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/tensortransit/schemas/plan.schema.json",
+  "title": "TensorTransit plan",
+  "description": "A compiled Transit Plan: the locality actions a planner chose, the tensors it declined and why, and what its cost model believes the plan is worth. Nothing in cost_model is a measurement; `basis` says so in the document itself so that anything printing a predicted figure next to a measured one has to distinguish them.",
+  "type": "object",
+  "required": ["plan_schema_version", "planner", "digest", "cost_model", "actions", "declines"],
+  "additionalProperties": false,
+  "properties": {
+    "plan_schema_version": {"const": 1},
+    "planner": {"type": "string"},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "cost_model": {
+      "type": "object",
+      "required": ["step_traffic_bytes", "removable_bytes", "predicted_saved_bytes", "basis"],
+      "additionalProperties": false,
+      "properties": {
+        "step_traffic_bytes": {"type": "integer", "minimum": 0},
+        "removable_bytes": {"type": "integer", "minimum": 0},
+        "bounded_removable_bytes": {"type": "integer", "minimum": 0},
+        "ceiling_saturated": {"type": "boolean"},
+        "predicted_saved_bytes": {"type": "integer", "minimum": 0},
+        "budget_bytes": {"type": "integer", "minimum": 0},
+        "committed_bytes": {"type": "integer", "minimum": 0},
+        "peak_live_bytes": {"type": "integer", "minimum": 0},
+        "predicted_traffic_share": {"type": "number", "minimum": 0, "maximum": 1},
+        "predicted_throughput_ratio": {"type": "number", "minimum": 0},
+        "ceiling_throughput_ratio": {"type": "number", "minimum": 0},
+        "basis": {"const": "model"},
+        "note": {"type": "string"}
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "tensor", "role", "bytes"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {"enum": ["normal", "persist", "stream", "prefetch", "rotate_window",
+                            "clear_policy", "record_event", "wait_event"]},
+          "tensor": {"type": "integer"},
+          "role": {"type": "string"},
+          "before_kernel": {"type": "integer"},
+          "after_kernel": {"type": "integer"},
+          "bytes": {"type": "integer", "minimum": 0},
+          "hit_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+          "event_id": {"type": "integer", "minimum": 0},
+          "stream": {"type": "integer"},
+          "expected_saved_bytes": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "declines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tensor", "role", "reason", "bytes"],
+        "additionalProperties": false,
+        "properties": {
+          "tensor": {"type": "integer"},
+          "role": {"type": "string"},
+          "reason": {"enum": ["none", "no_reuse", "budget_exhausted", "too_large",
+                              "reuse_too_far", "role_excluded", "below_min_hit_ratio",
+                              "not_supported"]},
+          "bytes": {"type": "integer", "minimum": 0},
+          "forgone_saved_bytes": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  }
+}

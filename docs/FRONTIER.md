@@ -77,6 +77,6 @@ because it explains mechanism cheaply, but it decides nothing:
 | hot-set policy | a 40-point swing at 16 sequences | 0.01% across all four at batch 1 |
 
 The structural reason is one thing: production decode is captured into a CUDA graph and
-replayed, and `bench/cuda_bench.cu` is not. Under capture every fork and join the pre-touch
+replayed, and `workloads/recurrent/synthetic/cuda_bench.cu` is not. Under capture every fork and join the pre-touch
 needs is a permanent graph node, and on this model those nodes cost more than the locality
 they buy.

@@ -1,0 +1,11089 @@
+{
+ "schema_version": 1,
+ "device": 0,
+ "device_name": "NVIDIA GeForce RTX 5090",
+ "model": "Qwen3.8-27B",
+ "model_digest": "",
+ "runtime": "SparkInfer",
+ "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+ "phase": "decode",
+ "active_requests": 4,
+ "cyclic": true,
+ "notes": "Four concurrent requests, both tensor classes. Request-local state scales with concurrency and the weight stream does not, which is the whole reason the locality question changes shape here. Sizes as in trace_recurrent_kv.",
+ "tensors": [
+  {
+   "id": 1,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 2,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 3,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 4,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 5,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 6,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 7,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 8,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 9,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 10,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 11,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 12,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 13,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 14,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 15,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 16,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 17,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 18,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 19,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 20,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 21,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 22,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 23,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 24,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 25,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 26,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 27,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 28,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 29,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 30,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 31,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 32,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 33,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 34,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 35,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 36,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 37,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 38,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 39,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 40,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 41,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 42,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 43,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 44,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 45,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 46,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 47,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 48,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 49,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 50,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 51,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 52,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 53,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 54,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 55,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 56,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 57,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 58,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 59,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 60,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 61,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 62,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 63,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 64,
+   "mutable": false,
+   "request_local": false,
+   "model_global": true,
+   "request_id": -1,
+   "role": "model_weight",
+   "bytes": 257138276
+  },
+  {
+   "id": 65,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 66,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 67,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 68,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 69,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 70,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 71,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 72,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 73,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 74,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 75,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 76,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 77,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 78,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 79,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 80,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 81,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 82,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 83,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 84,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 85,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 86,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 87,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 88,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 89,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 90,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 91,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 92,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 93,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 94,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 95,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 96,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 97,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 98,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 99,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 100,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 101,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 102,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 103,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 104,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 105,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 106,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 107,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 108,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 109,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 110,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 111,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 112,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 113,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 114,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 115,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 116,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 117,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 118,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 119,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 120,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 121,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 122,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 123,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 124,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 125,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 126,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 127,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 128,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 129,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 130,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 131,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 132,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 133,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 134,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 135,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 136,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 137,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 138,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 139,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 140,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 141,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 142,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 143,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 144,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 145,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 146,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 147,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 148,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 149,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 150,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 151,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 152,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 153,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 154,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 155,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 156,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 157,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 158,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 159,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 160,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 161,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 162,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 163,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 164,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 165,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 166,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 167,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 168,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 169,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 170,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 171,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 172,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 173,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 174,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 175,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 176,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 0,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 177,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 178,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 179,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 180,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 181,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 182,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 183,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 184,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 185,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 186,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 187,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 188,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 189,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 190,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 191,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 192,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 193,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 194,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 195,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 196,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 197,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 198,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 199,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 200,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 201,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 202,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 203,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 204,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 205,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 206,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 207,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 208,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 209,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 210,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 211,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 212,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 213,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 214,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 215,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 216,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 217,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 218,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 219,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 220,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 221,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 222,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 223,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 224,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 225,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 226,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 227,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 228,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 229,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 230,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 231,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 232,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 233,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 234,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 235,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 236,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 237,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 238,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 239,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 240,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 241,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 242,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 243,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 244,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 245,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 246,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 247,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 248,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 249,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 250,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 251,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 252,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 253,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 254,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 255,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 256,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 257,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 258,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 259,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 260,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 261,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 262,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 263,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 264,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 265,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 266,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 267,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 268,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 269,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 270,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 271,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 272,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 273,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 274,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 275,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 276,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 277,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 278,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 279,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 280,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 281,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 282,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 283,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 284,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 285,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 286,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 287,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 288,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 1,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 289,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 290,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 291,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 292,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 293,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 294,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 295,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 296,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 297,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 298,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 299,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 300,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 301,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 302,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 303,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 304,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 305,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 306,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 307,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 308,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 309,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 310,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 311,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 312,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 313,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 314,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 315,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 316,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 317,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 318,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 319,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 320,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 321,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 322,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 323,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 324,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 325,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 326,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 327,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 328,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 329,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 330,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 331,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 332,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 333,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 334,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 335,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 336,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 337,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 338,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 339,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 340,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 341,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 342,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 343,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 344,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 345,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 346,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 347,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 348,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 349,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 350,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 351,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 352,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 353,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 354,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 355,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 356,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 357,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 358,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 359,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 360,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 361,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 362,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 363,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 364,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 365,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 366,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 367,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 368,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 369,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 370,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 371,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 372,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 373,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 374,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 375,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 376,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 377,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 378,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 379,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 380,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 381,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 382,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 383,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 384,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 385,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 386,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 387,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 388,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 389,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 390,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 391,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 392,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 393,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 394,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 395,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 396,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 397,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 398,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 399,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 400,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 2,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 401,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 402,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 403,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 404,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 405,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 406,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 407,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 408,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 409,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 410,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 411,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 412,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 413,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 414,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 415,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 416,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 417,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 418,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 419,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 420,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 421,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 422,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 423,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 424,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 425,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 426,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 427,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 428,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 429,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 430,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 431,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 432,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 433,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 434,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 435,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 436,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 437,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 438,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 439,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 440,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 441,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 442,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 443,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 444,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 445,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 446,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 447,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 448,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 449,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 450,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 451,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 452,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 453,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 454,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 455,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 456,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 457,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 458,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 459,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 460,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 461,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 462,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 463,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 464,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 465,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 466,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 467,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 468,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 469,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 470,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 471,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 472,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 473,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 474,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 475,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 476,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 477,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 478,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 479,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 480,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 481,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 482,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 483,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 484,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 485,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 486,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 487,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 488,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 489,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 490,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 491,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 492,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 493,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 494,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 495,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 3145728
+  },
+  {
+   "id": 496,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "recurrent_state",
+   "bytes": 61440
+  },
+  {
+   "id": 497,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 498,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 499,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 500,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 501,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 502,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 503,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 504,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 505,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 506,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 507,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 508,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 509,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 510,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 511,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  },
+  {
+   "id": 512,
+   "mutable": true,
+   "request_local": true,
+   "model_global": false,
+   "request_id": 3,
+   "role": "kv_cache",
+   "bytes": 12582912
+  }
+ ],
+ "events": [
+  {
+   "kernel_id": 1,
+   "name": "proj_0",
+   "stream": 0,
+   "order": 1,
+   "tensors": [
+    {
+     "id": 1,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 2,
+   "name": "gdn_conv_0_r0",
+   "stream": 0,
+   "order": 2,
+   "tensors": [
+    {
+     "id": 66,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 3,
+   "name": "gdn_state_0_r0",
+   "stream": 0,
+   "order": 3,
+   "tensors": [
+    {
+     "id": 65,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 4,
+   "name": "gdn_conv_0_r1",
+   "stream": 0,
+   "order": 4,
+   "tensors": [
+    {
+     "id": 178,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 5,
+   "name": "gdn_state_0_r1",
+   "stream": 0,
+   "order": 5,
+   "tensors": [
+    {
+     "id": 177,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 6,
+   "name": "gdn_conv_0_r2",
+   "stream": 0,
+   "order": 6,
+   "tensors": [
+    {
+     "id": 290,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 7,
+   "name": "gdn_state_0_r2",
+   "stream": 0,
+   "order": 7,
+   "tensors": [
+    {
+     "id": 289,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 8,
+   "name": "gdn_conv_0_r3",
+   "stream": 0,
+   "order": 8,
+   "tensors": [
+    {
+     "id": 402,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 9,
+   "name": "gdn_state_0_r3",
+   "stream": 0,
+   "order": 9,
+   "tensors": [
+    {
+     "id": 401,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 10,
+   "name": "proj_1",
+   "stream": 0,
+   "order": 10,
+   "tensors": [
+    {
+     "id": 2,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 11,
+   "name": "gdn_conv_1_r0",
+   "stream": 0,
+   "order": 11,
+   "tensors": [
+    {
+     "id": 68,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 12,
+   "name": "gdn_state_1_r0",
+   "stream": 0,
+   "order": 12,
+   "tensors": [
+    {
+     "id": 67,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 13,
+   "name": "gdn_conv_1_r1",
+   "stream": 0,
+   "order": 13,
+   "tensors": [
+    {
+     "id": 180,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 14,
+   "name": "gdn_state_1_r1",
+   "stream": 0,
+   "order": 14,
+   "tensors": [
+    {
+     "id": 179,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 15,
+   "name": "gdn_conv_1_r2",
+   "stream": 0,
+   "order": 15,
+   "tensors": [
+    {
+     "id": 292,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 16,
+   "name": "gdn_state_1_r2",
+   "stream": 0,
+   "order": 16,
+   "tensors": [
+    {
+     "id": 291,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 17,
+   "name": "gdn_conv_1_r3",
+   "stream": 0,
+   "order": 17,
+   "tensors": [
+    {
+     "id": 404,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 18,
+   "name": "gdn_state_1_r3",
+   "stream": 0,
+   "order": 18,
+   "tensors": [
+    {
+     "id": 403,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 19,
+   "name": "proj_2",
+   "stream": 0,
+   "order": 19,
+   "tensors": [
+    {
+     "id": 3,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 20,
+   "name": "gdn_conv_2_r0",
+   "stream": 0,
+   "order": 20,
+   "tensors": [
+    {
+     "id": 70,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 21,
+   "name": "gdn_state_2_r0",
+   "stream": 0,
+   "order": 21,
+   "tensors": [
+    {
+     "id": 69,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 22,
+   "name": "gdn_conv_2_r1",
+   "stream": 0,
+   "order": 22,
+   "tensors": [
+    {
+     "id": 182,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 23,
+   "name": "gdn_state_2_r1",
+   "stream": 0,
+   "order": 23,
+   "tensors": [
+    {
+     "id": 181,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 24,
+   "name": "gdn_conv_2_r2",
+   "stream": 0,
+   "order": 24,
+   "tensors": [
+    {
+     "id": 294,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 25,
+   "name": "gdn_state_2_r2",
+   "stream": 0,
+   "order": 25,
+   "tensors": [
+    {
+     "id": 293,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 26,
+   "name": "gdn_conv_2_r3",
+   "stream": 0,
+   "order": 26,
+   "tensors": [
+    {
+     "id": 406,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 27,
+   "name": "gdn_state_2_r3",
+   "stream": 0,
+   "order": 27,
+   "tensors": [
+    {
+     "id": 405,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 28,
+   "name": "proj_3",
+   "stream": 0,
+   "order": 28,
+   "tensors": [
+    {
+     "id": 4,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 29,
+   "name": "attn_3_r0",
+   "stream": 0,
+   "order": 29,
+   "tensors": [
+    {
+     "id": 161,
+     "access": "read"
+    },
+    {
+     "id": 161,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 30,
+   "name": "attn_3_r1",
+   "stream": 0,
+   "order": 30,
+   "tensors": [
+    {
+     "id": 273,
+     "access": "read"
+    },
+    {
+     "id": 273,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 31,
+   "name": "attn_3_r2",
+   "stream": 0,
+   "order": 31,
+   "tensors": [
+    {
+     "id": 385,
+     "access": "read"
+    },
+    {
+     "id": 385,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 32,
+   "name": "attn_3_r3",
+   "stream": 0,
+   "order": 32,
+   "tensors": [
+    {
+     "id": 497,
+     "access": "read"
+    },
+    {
+     "id": 497,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 33,
+   "name": "proj_4",
+   "stream": 0,
+   "order": 33,
+   "tensors": [
+    {
+     "id": 5,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 34,
+   "name": "gdn_conv_4_r0",
+   "stream": 0,
+   "order": 34,
+   "tensors": [
+    {
+     "id": 72,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 35,
+   "name": "gdn_state_4_r0",
+   "stream": 0,
+   "order": 35,
+   "tensors": [
+    {
+     "id": 71,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 36,
+   "name": "gdn_conv_4_r1",
+   "stream": 0,
+   "order": 36,
+   "tensors": [
+    {
+     "id": 184,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 37,
+   "name": "gdn_state_4_r1",
+   "stream": 0,
+   "order": 37,
+   "tensors": [
+    {
+     "id": 183,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 38,
+   "name": "gdn_conv_4_r2",
+   "stream": 0,
+   "order": 38,
+   "tensors": [
+    {
+     "id": 296,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 39,
+   "name": "gdn_state_4_r2",
+   "stream": 0,
+   "order": 39,
+   "tensors": [
+    {
+     "id": 295,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 40,
+   "name": "gdn_conv_4_r3",
+   "stream": 0,
+   "order": 40,
+   "tensors": [
+    {
+     "id": 408,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 41,
+   "name": "gdn_state_4_r3",
+   "stream": 0,
+   "order": 41,
+   "tensors": [
+    {
+     "id": 407,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 42,
+   "name": "proj_5",
+   "stream": 0,
+   "order": 42,
+   "tensors": [
+    {
+     "id": 6,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 43,
+   "name": "gdn_conv_5_r0",
+   "stream": 0,
+   "order": 43,
+   "tensors": [
+    {
+     "id": 74,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 44,
+   "name": "gdn_state_5_r0",
+   "stream": 0,
+   "order": 44,
+   "tensors": [
+    {
+     "id": 73,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 45,
+   "name": "gdn_conv_5_r1",
+   "stream": 0,
+   "order": 45,
+   "tensors": [
+    {
+     "id": 186,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 46,
+   "name": "gdn_state_5_r1",
+   "stream": 0,
+   "order": 46,
+   "tensors": [
+    {
+     "id": 185,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 47,
+   "name": "gdn_conv_5_r2",
+   "stream": 0,
+   "order": 47,
+   "tensors": [
+    {
+     "id": 298,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 48,
+   "name": "gdn_state_5_r2",
+   "stream": 0,
+   "order": 48,
+   "tensors": [
+    {
+     "id": 297,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 49,
+   "name": "gdn_conv_5_r3",
+   "stream": 0,
+   "order": 49,
+   "tensors": [
+    {
+     "id": 410,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 50,
+   "name": "gdn_state_5_r3",
+   "stream": 0,
+   "order": 50,
+   "tensors": [
+    {
+     "id": 409,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 51,
+   "name": "proj_6",
+   "stream": 0,
+   "order": 51,
+   "tensors": [
+    {
+     "id": 7,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 52,
+   "name": "gdn_conv_6_r0",
+   "stream": 0,
+   "order": 52,
+   "tensors": [
+    {
+     "id": 76,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 53,
+   "name": "gdn_state_6_r0",
+   "stream": 0,
+   "order": 53,
+   "tensors": [
+    {
+     "id": 75,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 54,
+   "name": "gdn_conv_6_r1",
+   "stream": 0,
+   "order": 54,
+   "tensors": [
+    {
+     "id": 188,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 55,
+   "name": "gdn_state_6_r1",
+   "stream": 0,
+   "order": 55,
+   "tensors": [
+    {
+     "id": 187,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 56,
+   "name": "gdn_conv_6_r2",
+   "stream": 0,
+   "order": 56,
+   "tensors": [
+    {
+     "id": 300,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 57,
+   "name": "gdn_state_6_r2",
+   "stream": 0,
+   "order": 57,
+   "tensors": [
+    {
+     "id": 299,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 58,
+   "name": "gdn_conv_6_r3",
+   "stream": 0,
+   "order": 58,
+   "tensors": [
+    {
+     "id": 412,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 59,
+   "name": "gdn_state_6_r3",
+   "stream": 0,
+   "order": 59,
+   "tensors": [
+    {
+     "id": 411,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 60,
+   "name": "proj_7",
+   "stream": 0,
+   "order": 60,
+   "tensors": [
+    {
+     "id": 8,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 61,
+   "name": "attn_7_r0",
+   "stream": 0,
+   "order": 61,
+   "tensors": [
+    {
+     "id": 162,
+     "access": "read"
+    },
+    {
+     "id": 162,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 62,
+   "name": "attn_7_r1",
+   "stream": 0,
+   "order": 62,
+   "tensors": [
+    {
+     "id": 274,
+     "access": "read"
+    },
+    {
+     "id": 274,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 63,
+   "name": "attn_7_r2",
+   "stream": 0,
+   "order": 63,
+   "tensors": [
+    {
+     "id": 386,
+     "access": "read"
+    },
+    {
+     "id": 386,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 64,
+   "name": "attn_7_r3",
+   "stream": 0,
+   "order": 64,
+   "tensors": [
+    {
+     "id": 498,
+     "access": "read"
+    },
+    {
+     "id": 498,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 65,
+   "name": "proj_8",
+   "stream": 0,
+   "order": 65,
+   "tensors": [
+    {
+     "id": 9,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 66,
+   "name": "gdn_conv_8_r0",
+   "stream": 0,
+   "order": 66,
+   "tensors": [
+    {
+     "id": 78,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 67,
+   "name": "gdn_state_8_r0",
+   "stream": 0,
+   "order": 67,
+   "tensors": [
+    {
+     "id": 77,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 68,
+   "name": "gdn_conv_8_r1",
+   "stream": 0,
+   "order": 68,
+   "tensors": [
+    {
+     "id": 190,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 69,
+   "name": "gdn_state_8_r1",
+   "stream": 0,
+   "order": 69,
+   "tensors": [
+    {
+     "id": 189,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 70,
+   "name": "gdn_conv_8_r2",
+   "stream": 0,
+   "order": 70,
+   "tensors": [
+    {
+     "id": 302,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 71,
+   "name": "gdn_state_8_r2",
+   "stream": 0,
+   "order": 71,
+   "tensors": [
+    {
+     "id": 301,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 72,
+   "name": "gdn_conv_8_r3",
+   "stream": 0,
+   "order": 72,
+   "tensors": [
+    {
+     "id": 414,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 73,
+   "name": "gdn_state_8_r3",
+   "stream": 0,
+   "order": 73,
+   "tensors": [
+    {
+     "id": 413,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 74,
+   "name": "proj_9",
+   "stream": 0,
+   "order": 74,
+   "tensors": [
+    {
+     "id": 10,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 75,
+   "name": "gdn_conv_9_r0",
+   "stream": 0,
+   "order": 75,
+   "tensors": [
+    {
+     "id": 80,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 76,
+   "name": "gdn_state_9_r0",
+   "stream": 0,
+   "order": 76,
+   "tensors": [
+    {
+     "id": 79,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 77,
+   "name": "gdn_conv_9_r1",
+   "stream": 0,
+   "order": 77,
+   "tensors": [
+    {
+     "id": 192,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 78,
+   "name": "gdn_state_9_r1",
+   "stream": 0,
+   "order": 78,
+   "tensors": [
+    {
+     "id": 191,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 79,
+   "name": "gdn_conv_9_r2",
+   "stream": 0,
+   "order": 79,
+   "tensors": [
+    {
+     "id": 304,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 80,
+   "name": "gdn_state_9_r2",
+   "stream": 0,
+   "order": 80,
+   "tensors": [
+    {
+     "id": 303,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 81,
+   "name": "gdn_conv_9_r3",
+   "stream": 0,
+   "order": 81,
+   "tensors": [
+    {
+     "id": 416,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 82,
+   "name": "gdn_state_9_r3",
+   "stream": 0,
+   "order": 82,
+   "tensors": [
+    {
+     "id": 415,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 83,
+   "name": "proj_10",
+   "stream": 0,
+   "order": 83,
+   "tensors": [
+    {
+     "id": 11,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 84,
+   "name": "gdn_conv_10_r0",
+   "stream": 0,
+   "order": 84,
+   "tensors": [
+    {
+     "id": 82,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 85,
+   "name": "gdn_state_10_r0",
+   "stream": 0,
+   "order": 85,
+   "tensors": [
+    {
+     "id": 81,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 86,
+   "name": "gdn_conv_10_r1",
+   "stream": 0,
+   "order": 86,
+   "tensors": [
+    {
+     "id": 194,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 87,
+   "name": "gdn_state_10_r1",
+   "stream": 0,
+   "order": 87,
+   "tensors": [
+    {
+     "id": 193,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 88,
+   "name": "gdn_conv_10_r2",
+   "stream": 0,
+   "order": 88,
+   "tensors": [
+    {
+     "id": 306,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 89,
+   "name": "gdn_state_10_r2",
+   "stream": 0,
+   "order": 89,
+   "tensors": [
+    {
+     "id": 305,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 90,
+   "name": "gdn_conv_10_r3",
+   "stream": 0,
+   "order": 90,
+   "tensors": [
+    {
+     "id": 418,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 91,
+   "name": "gdn_state_10_r3",
+   "stream": 0,
+   "order": 91,
+   "tensors": [
+    {
+     "id": 417,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 92,
+   "name": "proj_11",
+   "stream": 0,
+   "order": 92,
+   "tensors": [
+    {
+     "id": 12,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 93,
+   "name": "attn_11_r0",
+   "stream": 0,
+   "order": 93,
+   "tensors": [
+    {
+     "id": 163,
+     "access": "read"
+    },
+    {
+     "id": 163,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 94,
+   "name": "attn_11_r1",
+   "stream": 0,
+   "order": 94,
+   "tensors": [
+    {
+     "id": 275,
+     "access": "read"
+    },
+    {
+     "id": 275,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 95,
+   "name": "attn_11_r2",
+   "stream": 0,
+   "order": 95,
+   "tensors": [
+    {
+     "id": 387,
+     "access": "read"
+    },
+    {
+     "id": 387,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 96,
+   "name": "attn_11_r3",
+   "stream": 0,
+   "order": 96,
+   "tensors": [
+    {
+     "id": 499,
+     "access": "read"
+    },
+    {
+     "id": 499,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 97,
+   "name": "proj_12",
+   "stream": 0,
+   "order": 97,
+   "tensors": [
+    {
+     "id": 13,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 98,
+   "name": "gdn_conv_12_r0",
+   "stream": 0,
+   "order": 98,
+   "tensors": [
+    {
+     "id": 84,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 99,
+   "name": "gdn_state_12_r0",
+   "stream": 0,
+   "order": 99,
+   "tensors": [
+    {
+     "id": 83,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 100,
+   "name": "gdn_conv_12_r1",
+   "stream": 0,
+   "order": 100,
+   "tensors": [
+    {
+     "id": 196,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 101,
+   "name": "gdn_state_12_r1",
+   "stream": 0,
+   "order": 101,
+   "tensors": [
+    {
+     "id": 195,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 102,
+   "name": "gdn_conv_12_r2",
+   "stream": 0,
+   "order": 102,
+   "tensors": [
+    {
+     "id": 308,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 103,
+   "name": "gdn_state_12_r2",
+   "stream": 0,
+   "order": 103,
+   "tensors": [
+    {
+     "id": 307,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 104,
+   "name": "gdn_conv_12_r3",
+   "stream": 0,
+   "order": 104,
+   "tensors": [
+    {
+     "id": 420,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 105,
+   "name": "gdn_state_12_r3",
+   "stream": 0,
+   "order": 105,
+   "tensors": [
+    {
+     "id": 419,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 106,
+   "name": "proj_13",
+   "stream": 0,
+   "order": 106,
+   "tensors": [
+    {
+     "id": 14,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 107,
+   "name": "gdn_conv_13_r0",
+   "stream": 0,
+   "order": 107,
+   "tensors": [
+    {
+     "id": 86,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 108,
+   "name": "gdn_state_13_r0",
+   "stream": 0,
+   "order": 108,
+   "tensors": [
+    {
+     "id": 85,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 109,
+   "name": "gdn_conv_13_r1",
+   "stream": 0,
+   "order": 109,
+   "tensors": [
+    {
+     "id": 198,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 110,
+   "name": "gdn_state_13_r1",
+   "stream": 0,
+   "order": 110,
+   "tensors": [
+    {
+     "id": 197,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 111,
+   "name": "gdn_conv_13_r2",
+   "stream": 0,
+   "order": 111,
+   "tensors": [
+    {
+     "id": 310,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 112,
+   "name": "gdn_state_13_r2",
+   "stream": 0,
+   "order": 112,
+   "tensors": [
+    {
+     "id": 309,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 113,
+   "name": "gdn_conv_13_r3",
+   "stream": 0,
+   "order": 113,
+   "tensors": [
+    {
+     "id": 422,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 114,
+   "name": "gdn_state_13_r3",
+   "stream": 0,
+   "order": 114,
+   "tensors": [
+    {
+     "id": 421,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 115,
+   "name": "proj_14",
+   "stream": 0,
+   "order": 115,
+   "tensors": [
+    {
+     "id": 15,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 116,
+   "name": "gdn_conv_14_r0",
+   "stream": 0,
+   "order": 116,
+   "tensors": [
+    {
+     "id": 88,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 117,
+   "name": "gdn_state_14_r0",
+   "stream": 0,
+   "order": 117,
+   "tensors": [
+    {
+     "id": 87,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 118,
+   "name": "gdn_conv_14_r1",
+   "stream": 0,
+   "order": 118,
+   "tensors": [
+    {
+     "id": 200,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 119,
+   "name": "gdn_state_14_r1",
+   "stream": 0,
+   "order": 119,
+   "tensors": [
+    {
+     "id": 199,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 120,
+   "name": "gdn_conv_14_r2",
+   "stream": 0,
+   "order": 120,
+   "tensors": [
+    {
+     "id": 312,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 121,
+   "name": "gdn_state_14_r2",
+   "stream": 0,
+   "order": 121,
+   "tensors": [
+    {
+     "id": 311,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 122,
+   "name": "gdn_conv_14_r3",
+   "stream": 0,
+   "order": 122,
+   "tensors": [
+    {
+     "id": 424,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 123,
+   "name": "gdn_state_14_r3",
+   "stream": 0,
+   "order": 123,
+   "tensors": [
+    {
+     "id": 423,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 124,
+   "name": "proj_15",
+   "stream": 0,
+   "order": 124,
+   "tensors": [
+    {
+     "id": 16,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 125,
+   "name": "attn_15_r0",
+   "stream": 0,
+   "order": 125,
+   "tensors": [
+    {
+     "id": 164,
+     "access": "read"
+    },
+    {
+     "id": 164,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 126,
+   "name": "attn_15_r1",
+   "stream": 0,
+   "order": 126,
+   "tensors": [
+    {
+     "id": 276,
+     "access": "read"
+    },
+    {
+     "id": 276,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 127,
+   "name": "attn_15_r2",
+   "stream": 0,
+   "order": 127,
+   "tensors": [
+    {
+     "id": 388,
+     "access": "read"
+    },
+    {
+     "id": 388,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 128,
+   "name": "attn_15_r3",
+   "stream": 0,
+   "order": 128,
+   "tensors": [
+    {
+     "id": 500,
+     "access": "read"
+    },
+    {
+     "id": 500,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 129,
+   "name": "proj_16",
+   "stream": 0,
+   "order": 129,
+   "tensors": [
+    {
+     "id": 17,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 130,
+   "name": "gdn_conv_16_r0",
+   "stream": 0,
+   "order": 130,
+   "tensors": [
+    {
+     "id": 90,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 131,
+   "name": "gdn_state_16_r0",
+   "stream": 0,
+   "order": 131,
+   "tensors": [
+    {
+     "id": 89,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 132,
+   "name": "gdn_conv_16_r1",
+   "stream": 0,
+   "order": 132,
+   "tensors": [
+    {
+     "id": 202,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 133,
+   "name": "gdn_state_16_r1",
+   "stream": 0,
+   "order": 133,
+   "tensors": [
+    {
+     "id": 201,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 134,
+   "name": "gdn_conv_16_r2",
+   "stream": 0,
+   "order": 134,
+   "tensors": [
+    {
+     "id": 314,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 135,
+   "name": "gdn_state_16_r2",
+   "stream": 0,
+   "order": 135,
+   "tensors": [
+    {
+     "id": 313,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 136,
+   "name": "gdn_conv_16_r3",
+   "stream": 0,
+   "order": 136,
+   "tensors": [
+    {
+     "id": 426,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 137,
+   "name": "gdn_state_16_r3",
+   "stream": 0,
+   "order": 137,
+   "tensors": [
+    {
+     "id": 425,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 138,
+   "name": "proj_17",
+   "stream": 0,
+   "order": 138,
+   "tensors": [
+    {
+     "id": 18,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 139,
+   "name": "gdn_conv_17_r0",
+   "stream": 0,
+   "order": 139,
+   "tensors": [
+    {
+     "id": 92,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 140,
+   "name": "gdn_state_17_r0",
+   "stream": 0,
+   "order": 140,
+   "tensors": [
+    {
+     "id": 91,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 141,
+   "name": "gdn_conv_17_r1",
+   "stream": 0,
+   "order": 141,
+   "tensors": [
+    {
+     "id": 204,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 142,
+   "name": "gdn_state_17_r1",
+   "stream": 0,
+   "order": 142,
+   "tensors": [
+    {
+     "id": 203,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 143,
+   "name": "gdn_conv_17_r2",
+   "stream": 0,
+   "order": 143,
+   "tensors": [
+    {
+     "id": 316,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 144,
+   "name": "gdn_state_17_r2",
+   "stream": 0,
+   "order": 144,
+   "tensors": [
+    {
+     "id": 315,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 145,
+   "name": "gdn_conv_17_r3",
+   "stream": 0,
+   "order": 145,
+   "tensors": [
+    {
+     "id": 428,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 146,
+   "name": "gdn_state_17_r3",
+   "stream": 0,
+   "order": 146,
+   "tensors": [
+    {
+     "id": 427,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 147,
+   "name": "proj_18",
+   "stream": 0,
+   "order": 147,
+   "tensors": [
+    {
+     "id": 19,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 148,
+   "name": "gdn_conv_18_r0",
+   "stream": 0,
+   "order": 148,
+   "tensors": [
+    {
+     "id": 94,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 149,
+   "name": "gdn_state_18_r0",
+   "stream": 0,
+   "order": 149,
+   "tensors": [
+    {
+     "id": 93,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 150,
+   "name": "gdn_conv_18_r1",
+   "stream": 0,
+   "order": 150,
+   "tensors": [
+    {
+     "id": 206,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 151,
+   "name": "gdn_state_18_r1",
+   "stream": 0,
+   "order": 151,
+   "tensors": [
+    {
+     "id": 205,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 152,
+   "name": "gdn_conv_18_r2",
+   "stream": 0,
+   "order": 152,
+   "tensors": [
+    {
+     "id": 318,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 153,
+   "name": "gdn_state_18_r2",
+   "stream": 0,
+   "order": 153,
+   "tensors": [
+    {
+     "id": 317,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 154,
+   "name": "gdn_conv_18_r3",
+   "stream": 0,
+   "order": 154,
+   "tensors": [
+    {
+     "id": 430,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 155,
+   "name": "gdn_state_18_r3",
+   "stream": 0,
+   "order": 155,
+   "tensors": [
+    {
+     "id": 429,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 156,
+   "name": "proj_19",
+   "stream": 0,
+   "order": 156,
+   "tensors": [
+    {
+     "id": 20,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 157,
+   "name": "attn_19_r0",
+   "stream": 0,
+   "order": 157,
+   "tensors": [
+    {
+     "id": 165,
+     "access": "read"
+    },
+    {
+     "id": 165,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 158,
+   "name": "attn_19_r1",
+   "stream": 0,
+   "order": 158,
+   "tensors": [
+    {
+     "id": 277,
+     "access": "read"
+    },
+    {
+     "id": 277,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 159,
+   "name": "attn_19_r2",
+   "stream": 0,
+   "order": 159,
+   "tensors": [
+    {
+     "id": 389,
+     "access": "read"
+    },
+    {
+     "id": 389,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 160,
+   "name": "attn_19_r3",
+   "stream": 0,
+   "order": 160,
+   "tensors": [
+    {
+     "id": 501,
+     "access": "read"
+    },
+    {
+     "id": 501,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 161,
+   "name": "proj_20",
+   "stream": 0,
+   "order": 161,
+   "tensors": [
+    {
+     "id": 21,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 162,
+   "name": "gdn_conv_20_r0",
+   "stream": 0,
+   "order": 162,
+   "tensors": [
+    {
+     "id": 96,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 163,
+   "name": "gdn_state_20_r0",
+   "stream": 0,
+   "order": 163,
+   "tensors": [
+    {
+     "id": 95,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 164,
+   "name": "gdn_conv_20_r1",
+   "stream": 0,
+   "order": 164,
+   "tensors": [
+    {
+     "id": 208,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 165,
+   "name": "gdn_state_20_r1",
+   "stream": 0,
+   "order": 165,
+   "tensors": [
+    {
+     "id": 207,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 166,
+   "name": "gdn_conv_20_r2",
+   "stream": 0,
+   "order": 166,
+   "tensors": [
+    {
+     "id": 320,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 167,
+   "name": "gdn_state_20_r2",
+   "stream": 0,
+   "order": 167,
+   "tensors": [
+    {
+     "id": 319,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 168,
+   "name": "gdn_conv_20_r3",
+   "stream": 0,
+   "order": 168,
+   "tensors": [
+    {
+     "id": 432,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 169,
+   "name": "gdn_state_20_r3",
+   "stream": 0,
+   "order": 169,
+   "tensors": [
+    {
+     "id": 431,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 170,
+   "name": "proj_21",
+   "stream": 0,
+   "order": 170,
+   "tensors": [
+    {
+     "id": 22,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 171,
+   "name": "gdn_conv_21_r0",
+   "stream": 0,
+   "order": 171,
+   "tensors": [
+    {
+     "id": 98,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 172,
+   "name": "gdn_state_21_r0",
+   "stream": 0,
+   "order": 172,
+   "tensors": [
+    {
+     "id": 97,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 173,
+   "name": "gdn_conv_21_r1",
+   "stream": 0,
+   "order": 173,
+   "tensors": [
+    {
+     "id": 210,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 174,
+   "name": "gdn_state_21_r1",
+   "stream": 0,
+   "order": 174,
+   "tensors": [
+    {
+     "id": 209,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 175,
+   "name": "gdn_conv_21_r2",
+   "stream": 0,
+   "order": 175,
+   "tensors": [
+    {
+     "id": 322,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 176,
+   "name": "gdn_state_21_r2",
+   "stream": 0,
+   "order": 176,
+   "tensors": [
+    {
+     "id": 321,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 177,
+   "name": "gdn_conv_21_r3",
+   "stream": 0,
+   "order": 177,
+   "tensors": [
+    {
+     "id": 434,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 178,
+   "name": "gdn_state_21_r3",
+   "stream": 0,
+   "order": 178,
+   "tensors": [
+    {
+     "id": 433,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 179,
+   "name": "proj_22",
+   "stream": 0,
+   "order": 179,
+   "tensors": [
+    {
+     "id": 23,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 180,
+   "name": "gdn_conv_22_r0",
+   "stream": 0,
+   "order": 180,
+   "tensors": [
+    {
+     "id": 100,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 181,
+   "name": "gdn_state_22_r0",
+   "stream": 0,
+   "order": 181,
+   "tensors": [
+    {
+     "id": 99,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 182,
+   "name": "gdn_conv_22_r1",
+   "stream": 0,
+   "order": 182,
+   "tensors": [
+    {
+     "id": 212,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 183,
+   "name": "gdn_state_22_r1",
+   "stream": 0,
+   "order": 183,
+   "tensors": [
+    {
+     "id": 211,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 184,
+   "name": "gdn_conv_22_r2",
+   "stream": 0,
+   "order": 184,
+   "tensors": [
+    {
+     "id": 324,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 185,
+   "name": "gdn_state_22_r2",
+   "stream": 0,
+   "order": 185,
+   "tensors": [
+    {
+     "id": 323,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 186,
+   "name": "gdn_conv_22_r3",
+   "stream": 0,
+   "order": 186,
+   "tensors": [
+    {
+     "id": 436,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 187,
+   "name": "gdn_state_22_r3",
+   "stream": 0,
+   "order": 187,
+   "tensors": [
+    {
+     "id": 435,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 188,
+   "name": "proj_23",
+   "stream": 0,
+   "order": 188,
+   "tensors": [
+    {
+     "id": 24,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 189,
+   "name": "attn_23_r0",
+   "stream": 0,
+   "order": 189,
+   "tensors": [
+    {
+     "id": 166,
+     "access": "read"
+    },
+    {
+     "id": 166,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 190,
+   "name": "attn_23_r1",
+   "stream": 0,
+   "order": 190,
+   "tensors": [
+    {
+     "id": 278,
+     "access": "read"
+    },
+    {
+     "id": 278,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 191,
+   "name": "attn_23_r2",
+   "stream": 0,
+   "order": 191,
+   "tensors": [
+    {
+     "id": 390,
+     "access": "read"
+    },
+    {
+     "id": 390,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 192,
+   "name": "attn_23_r3",
+   "stream": 0,
+   "order": 192,
+   "tensors": [
+    {
+     "id": 502,
+     "access": "read"
+    },
+    {
+     "id": 502,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 193,
+   "name": "proj_24",
+   "stream": 0,
+   "order": 193,
+   "tensors": [
+    {
+     "id": 25,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 194,
+   "name": "gdn_conv_24_r0",
+   "stream": 0,
+   "order": 194,
+   "tensors": [
+    {
+     "id": 102,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 195,
+   "name": "gdn_state_24_r0",
+   "stream": 0,
+   "order": 195,
+   "tensors": [
+    {
+     "id": 101,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 196,
+   "name": "gdn_conv_24_r1",
+   "stream": 0,
+   "order": 196,
+   "tensors": [
+    {
+     "id": 214,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 197,
+   "name": "gdn_state_24_r1",
+   "stream": 0,
+   "order": 197,
+   "tensors": [
+    {
+     "id": 213,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 198,
+   "name": "gdn_conv_24_r2",
+   "stream": 0,
+   "order": 198,
+   "tensors": [
+    {
+     "id": 326,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 199,
+   "name": "gdn_state_24_r2",
+   "stream": 0,
+   "order": 199,
+   "tensors": [
+    {
+     "id": 325,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 200,
+   "name": "gdn_conv_24_r3",
+   "stream": 0,
+   "order": 200,
+   "tensors": [
+    {
+     "id": 438,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 201,
+   "name": "gdn_state_24_r3",
+   "stream": 0,
+   "order": 201,
+   "tensors": [
+    {
+     "id": 437,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 202,
+   "name": "proj_25",
+   "stream": 0,
+   "order": 202,
+   "tensors": [
+    {
+     "id": 26,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 203,
+   "name": "gdn_conv_25_r0",
+   "stream": 0,
+   "order": 203,
+   "tensors": [
+    {
+     "id": 104,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 204,
+   "name": "gdn_state_25_r0",
+   "stream": 0,
+   "order": 204,
+   "tensors": [
+    {
+     "id": 103,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 205,
+   "name": "gdn_conv_25_r1",
+   "stream": 0,
+   "order": 205,
+   "tensors": [
+    {
+     "id": 216,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 206,
+   "name": "gdn_state_25_r1",
+   "stream": 0,
+   "order": 206,
+   "tensors": [
+    {
+     "id": 215,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 207,
+   "name": "gdn_conv_25_r2",
+   "stream": 0,
+   "order": 207,
+   "tensors": [
+    {
+     "id": 328,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 208,
+   "name": "gdn_state_25_r2",
+   "stream": 0,
+   "order": 208,
+   "tensors": [
+    {
+     "id": 327,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 209,
+   "name": "gdn_conv_25_r3",
+   "stream": 0,
+   "order": 209,
+   "tensors": [
+    {
+     "id": 440,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 210,
+   "name": "gdn_state_25_r3",
+   "stream": 0,
+   "order": 210,
+   "tensors": [
+    {
+     "id": 439,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 211,
+   "name": "proj_26",
+   "stream": 0,
+   "order": 211,
+   "tensors": [
+    {
+     "id": 27,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 212,
+   "name": "gdn_conv_26_r0",
+   "stream": 0,
+   "order": 212,
+   "tensors": [
+    {
+     "id": 106,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 213,
+   "name": "gdn_state_26_r0",
+   "stream": 0,
+   "order": 213,
+   "tensors": [
+    {
+     "id": 105,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 214,
+   "name": "gdn_conv_26_r1",
+   "stream": 0,
+   "order": 214,
+   "tensors": [
+    {
+     "id": 218,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 215,
+   "name": "gdn_state_26_r1",
+   "stream": 0,
+   "order": 215,
+   "tensors": [
+    {
+     "id": 217,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 216,
+   "name": "gdn_conv_26_r2",
+   "stream": 0,
+   "order": 216,
+   "tensors": [
+    {
+     "id": 330,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 217,
+   "name": "gdn_state_26_r2",
+   "stream": 0,
+   "order": 217,
+   "tensors": [
+    {
+     "id": 329,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 218,
+   "name": "gdn_conv_26_r3",
+   "stream": 0,
+   "order": 218,
+   "tensors": [
+    {
+     "id": 442,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 219,
+   "name": "gdn_state_26_r3",
+   "stream": 0,
+   "order": 219,
+   "tensors": [
+    {
+     "id": 441,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 220,
+   "name": "proj_27",
+   "stream": 0,
+   "order": 220,
+   "tensors": [
+    {
+     "id": 28,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 221,
+   "name": "attn_27_r0",
+   "stream": 0,
+   "order": 221,
+   "tensors": [
+    {
+     "id": 167,
+     "access": "read"
+    },
+    {
+     "id": 167,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 222,
+   "name": "attn_27_r1",
+   "stream": 0,
+   "order": 222,
+   "tensors": [
+    {
+     "id": 279,
+     "access": "read"
+    },
+    {
+     "id": 279,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 223,
+   "name": "attn_27_r2",
+   "stream": 0,
+   "order": 223,
+   "tensors": [
+    {
+     "id": 391,
+     "access": "read"
+    },
+    {
+     "id": 391,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 224,
+   "name": "attn_27_r3",
+   "stream": 0,
+   "order": 224,
+   "tensors": [
+    {
+     "id": 503,
+     "access": "read"
+    },
+    {
+     "id": 503,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 225,
+   "name": "proj_28",
+   "stream": 0,
+   "order": 225,
+   "tensors": [
+    {
+     "id": 29,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 226,
+   "name": "gdn_conv_28_r0",
+   "stream": 0,
+   "order": 226,
+   "tensors": [
+    {
+     "id": 108,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 227,
+   "name": "gdn_state_28_r0",
+   "stream": 0,
+   "order": 227,
+   "tensors": [
+    {
+     "id": 107,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 228,
+   "name": "gdn_conv_28_r1",
+   "stream": 0,
+   "order": 228,
+   "tensors": [
+    {
+     "id": 220,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 229,
+   "name": "gdn_state_28_r1",
+   "stream": 0,
+   "order": 229,
+   "tensors": [
+    {
+     "id": 219,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 230,
+   "name": "gdn_conv_28_r2",
+   "stream": 0,
+   "order": 230,
+   "tensors": [
+    {
+     "id": 332,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 231,
+   "name": "gdn_state_28_r2",
+   "stream": 0,
+   "order": 231,
+   "tensors": [
+    {
+     "id": 331,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 232,
+   "name": "gdn_conv_28_r3",
+   "stream": 0,
+   "order": 232,
+   "tensors": [
+    {
+     "id": 444,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 233,
+   "name": "gdn_state_28_r3",
+   "stream": 0,
+   "order": 233,
+   "tensors": [
+    {
+     "id": 443,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 234,
+   "name": "proj_29",
+   "stream": 0,
+   "order": 234,
+   "tensors": [
+    {
+     "id": 30,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 235,
+   "name": "gdn_conv_29_r0",
+   "stream": 0,
+   "order": 235,
+   "tensors": [
+    {
+     "id": 110,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 236,
+   "name": "gdn_state_29_r0",
+   "stream": 0,
+   "order": 236,
+   "tensors": [
+    {
+     "id": 109,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 237,
+   "name": "gdn_conv_29_r1",
+   "stream": 0,
+   "order": 237,
+   "tensors": [
+    {
+     "id": 222,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 238,
+   "name": "gdn_state_29_r1",
+   "stream": 0,
+   "order": 238,
+   "tensors": [
+    {
+     "id": 221,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 239,
+   "name": "gdn_conv_29_r2",
+   "stream": 0,
+   "order": 239,
+   "tensors": [
+    {
+     "id": 334,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 240,
+   "name": "gdn_state_29_r2",
+   "stream": 0,
+   "order": 240,
+   "tensors": [
+    {
+     "id": 333,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 241,
+   "name": "gdn_conv_29_r3",
+   "stream": 0,
+   "order": 241,
+   "tensors": [
+    {
+     "id": 446,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 242,
+   "name": "gdn_state_29_r3",
+   "stream": 0,
+   "order": 242,
+   "tensors": [
+    {
+     "id": 445,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 243,
+   "name": "proj_30",
+   "stream": 0,
+   "order": 243,
+   "tensors": [
+    {
+     "id": 31,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 244,
+   "name": "gdn_conv_30_r0",
+   "stream": 0,
+   "order": 244,
+   "tensors": [
+    {
+     "id": 112,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 245,
+   "name": "gdn_state_30_r0",
+   "stream": 0,
+   "order": 245,
+   "tensors": [
+    {
+     "id": 111,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 246,
+   "name": "gdn_conv_30_r1",
+   "stream": 0,
+   "order": 246,
+   "tensors": [
+    {
+     "id": 224,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 247,
+   "name": "gdn_state_30_r1",
+   "stream": 0,
+   "order": 247,
+   "tensors": [
+    {
+     "id": 223,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 248,
+   "name": "gdn_conv_30_r2",
+   "stream": 0,
+   "order": 248,
+   "tensors": [
+    {
+     "id": 336,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 249,
+   "name": "gdn_state_30_r2",
+   "stream": 0,
+   "order": 249,
+   "tensors": [
+    {
+     "id": 335,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 250,
+   "name": "gdn_conv_30_r3",
+   "stream": 0,
+   "order": 250,
+   "tensors": [
+    {
+     "id": 448,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 251,
+   "name": "gdn_state_30_r3",
+   "stream": 0,
+   "order": 251,
+   "tensors": [
+    {
+     "id": 447,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 252,
+   "name": "proj_31",
+   "stream": 0,
+   "order": 252,
+   "tensors": [
+    {
+     "id": 32,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 253,
+   "name": "attn_31_r0",
+   "stream": 0,
+   "order": 253,
+   "tensors": [
+    {
+     "id": 168,
+     "access": "read"
+    },
+    {
+     "id": 168,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 254,
+   "name": "attn_31_r1",
+   "stream": 0,
+   "order": 254,
+   "tensors": [
+    {
+     "id": 280,
+     "access": "read"
+    },
+    {
+     "id": 280,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 255,
+   "name": "attn_31_r2",
+   "stream": 0,
+   "order": 255,
+   "tensors": [
+    {
+     "id": 392,
+     "access": "read"
+    },
+    {
+     "id": 392,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 256,
+   "name": "attn_31_r3",
+   "stream": 0,
+   "order": 256,
+   "tensors": [
+    {
+     "id": 504,
+     "access": "read"
+    },
+    {
+     "id": 504,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 257,
+   "name": "proj_32",
+   "stream": 0,
+   "order": 257,
+   "tensors": [
+    {
+     "id": 33,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 258,
+   "name": "gdn_conv_32_r0",
+   "stream": 0,
+   "order": 258,
+   "tensors": [
+    {
+     "id": 114,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 259,
+   "name": "gdn_state_32_r0",
+   "stream": 0,
+   "order": 259,
+   "tensors": [
+    {
+     "id": 113,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 260,
+   "name": "gdn_conv_32_r1",
+   "stream": 0,
+   "order": 260,
+   "tensors": [
+    {
+     "id": 226,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 261,
+   "name": "gdn_state_32_r1",
+   "stream": 0,
+   "order": 261,
+   "tensors": [
+    {
+     "id": 225,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 262,
+   "name": "gdn_conv_32_r2",
+   "stream": 0,
+   "order": 262,
+   "tensors": [
+    {
+     "id": 338,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 263,
+   "name": "gdn_state_32_r2",
+   "stream": 0,
+   "order": 263,
+   "tensors": [
+    {
+     "id": 337,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 264,
+   "name": "gdn_conv_32_r3",
+   "stream": 0,
+   "order": 264,
+   "tensors": [
+    {
+     "id": 450,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 265,
+   "name": "gdn_state_32_r3",
+   "stream": 0,
+   "order": 265,
+   "tensors": [
+    {
+     "id": 449,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 266,
+   "name": "proj_33",
+   "stream": 0,
+   "order": 266,
+   "tensors": [
+    {
+     "id": 34,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 267,
+   "name": "gdn_conv_33_r0",
+   "stream": 0,
+   "order": 267,
+   "tensors": [
+    {
+     "id": 116,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 268,
+   "name": "gdn_state_33_r0",
+   "stream": 0,
+   "order": 268,
+   "tensors": [
+    {
+     "id": 115,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 269,
+   "name": "gdn_conv_33_r1",
+   "stream": 0,
+   "order": 269,
+   "tensors": [
+    {
+     "id": 228,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 270,
+   "name": "gdn_state_33_r1",
+   "stream": 0,
+   "order": 270,
+   "tensors": [
+    {
+     "id": 227,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 271,
+   "name": "gdn_conv_33_r2",
+   "stream": 0,
+   "order": 271,
+   "tensors": [
+    {
+     "id": 340,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 272,
+   "name": "gdn_state_33_r2",
+   "stream": 0,
+   "order": 272,
+   "tensors": [
+    {
+     "id": 339,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 273,
+   "name": "gdn_conv_33_r3",
+   "stream": 0,
+   "order": 273,
+   "tensors": [
+    {
+     "id": 452,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 274,
+   "name": "gdn_state_33_r3",
+   "stream": 0,
+   "order": 274,
+   "tensors": [
+    {
+     "id": 451,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 275,
+   "name": "proj_34",
+   "stream": 0,
+   "order": 275,
+   "tensors": [
+    {
+     "id": 35,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 276,
+   "name": "gdn_conv_34_r0",
+   "stream": 0,
+   "order": 276,
+   "tensors": [
+    {
+     "id": 118,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 277,
+   "name": "gdn_state_34_r0",
+   "stream": 0,
+   "order": 277,
+   "tensors": [
+    {
+     "id": 117,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 278,
+   "name": "gdn_conv_34_r1",
+   "stream": 0,
+   "order": 278,
+   "tensors": [
+    {
+     "id": 230,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 279,
+   "name": "gdn_state_34_r1",
+   "stream": 0,
+   "order": 279,
+   "tensors": [
+    {
+     "id": 229,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 280,
+   "name": "gdn_conv_34_r2",
+   "stream": 0,
+   "order": 280,
+   "tensors": [
+    {
+     "id": 342,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 281,
+   "name": "gdn_state_34_r2",
+   "stream": 0,
+   "order": 281,
+   "tensors": [
+    {
+     "id": 341,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 282,
+   "name": "gdn_conv_34_r3",
+   "stream": 0,
+   "order": 282,
+   "tensors": [
+    {
+     "id": 454,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 283,
+   "name": "gdn_state_34_r3",
+   "stream": 0,
+   "order": 283,
+   "tensors": [
+    {
+     "id": 453,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 284,
+   "name": "proj_35",
+   "stream": 0,
+   "order": 284,
+   "tensors": [
+    {
+     "id": 36,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 285,
+   "name": "attn_35_r0",
+   "stream": 0,
+   "order": 285,
+   "tensors": [
+    {
+     "id": 169,
+     "access": "read"
+    },
+    {
+     "id": 169,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 286,
+   "name": "attn_35_r1",
+   "stream": 0,
+   "order": 286,
+   "tensors": [
+    {
+     "id": 281,
+     "access": "read"
+    },
+    {
+     "id": 281,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 287,
+   "name": "attn_35_r2",
+   "stream": 0,
+   "order": 287,
+   "tensors": [
+    {
+     "id": 393,
+     "access": "read"
+    },
+    {
+     "id": 393,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 288,
+   "name": "attn_35_r3",
+   "stream": 0,
+   "order": 288,
+   "tensors": [
+    {
+     "id": 505,
+     "access": "read"
+    },
+    {
+     "id": 505,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 289,
+   "name": "proj_36",
+   "stream": 0,
+   "order": 289,
+   "tensors": [
+    {
+     "id": 37,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 290,
+   "name": "gdn_conv_36_r0",
+   "stream": 0,
+   "order": 290,
+   "tensors": [
+    {
+     "id": 120,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 291,
+   "name": "gdn_state_36_r0",
+   "stream": 0,
+   "order": 291,
+   "tensors": [
+    {
+     "id": 119,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 292,
+   "name": "gdn_conv_36_r1",
+   "stream": 0,
+   "order": 292,
+   "tensors": [
+    {
+     "id": 232,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 293,
+   "name": "gdn_state_36_r1",
+   "stream": 0,
+   "order": 293,
+   "tensors": [
+    {
+     "id": 231,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 294,
+   "name": "gdn_conv_36_r2",
+   "stream": 0,
+   "order": 294,
+   "tensors": [
+    {
+     "id": 344,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 295,
+   "name": "gdn_state_36_r2",
+   "stream": 0,
+   "order": 295,
+   "tensors": [
+    {
+     "id": 343,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 296,
+   "name": "gdn_conv_36_r3",
+   "stream": 0,
+   "order": 296,
+   "tensors": [
+    {
+     "id": 456,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 297,
+   "name": "gdn_state_36_r3",
+   "stream": 0,
+   "order": 297,
+   "tensors": [
+    {
+     "id": 455,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 298,
+   "name": "proj_37",
+   "stream": 0,
+   "order": 298,
+   "tensors": [
+    {
+     "id": 38,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 299,
+   "name": "gdn_conv_37_r0",
+   "stream": 0,
+   "order": 299,
+   "tensors": [
+    {
+     "id": 122,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 300,
+   "name": "gdn_state_37_r0",
+   "stream": 0,
+   "order": 300,
+   "tensors": [
+    {
+     "id": 121,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 301,
+   "name": "gdn_conv_37_r1",
+   "stream": 0,
+   "order": 301,
+   "tensors": [
+    {
+     "id": 234,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 302,
+   "name": "gdn_state_37_r1",
+   "stream": 0,
+   "order": 302,
+   "tensors": [
+    {
+     "id": 233,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 303,
+   "name": "gdn_conv_37_r2",
+   "stream": 0,
+   "order": 303,
+   "tensors": [
+    {
+     "id": 346,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 304,
+   "name": "gdn_state_37_r2",
+   "stream": 0,
+   "order": 304,
+   "tensors": [
+    {
+     "id": 345,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 305,
+   "name": "gdn_conv_37_r3",
+   "stream": 0,
+   "order": 305,
+   "tensors": [
+    {
+     "id": 458,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 306,
+   "name": "gdn_state_37_r3",
+   "stream": 0,
+   "order": 306,
+   "tensors": [
+    {
+     "id": 457,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 307,
+   "name": "proj_38",
+   "stream": 0,
+   "order": 307,
+   "tensors": [
+    {
+     "id": 39,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 308,
+   "name": "gdn_conv_38_r0",
+   "stream": 0,
+   "order": 308,
+   "tensors": [
+    {
+     "id": 124,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 309,
+   "name": "gdn_state_38_r0",
+   "stream": 0,
+   "order": 309,
+   "tensors": [
+    {
+     "id": 123,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 310,
+   "name": "gdn_conv_38_r1",
+   "stream": 0,
+   "order": 310,
+   "tensors": [
+    {
+     "id": 236,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 311,
+   "name": "gdn_state_38_r1",
+   "stream": 0,
+   "order": 311,
+   "tensors": [
+    {
+     "id": 235,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 312,
+   "name": "gdn_conv_38_r2",
+   "stream": 0,
+   "order": 312,
+   "tensors": [
+    {
+     "id": 348,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 313,
+   "name": "gdn_state_38_r2",
+   "stream": 0,
+   "order": 313,
+   "tensors": [
+    {
+     "id": 347,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 314,
+   "name": "gdn_conv_38_r3",
+   "stream": 0,
+   "order": 314,
+   "tensors": [
+    {
+     "id": 460,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 315,
+   "name": "gdn_state_38_r3",
+   "stream": 0,
+   "order": 315,
+   "tensors": [
+    {
+     "id": 459,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 316,
+   "name": "proj_39",
+   "stream": 0,
+   "order": 316,
+   "tensors": [
+    {
+     "id": 40,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 317,
+   "name": "attn_39_r0",
+   "stream": 0,
+   "order": 317,
+   "tensors": [
+    {
+     "id": 170,
+     "access": "read"
+    },
+    {
+     "id": 170,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 318,
+   "name": "attn_39_r1",
+   "stream": 0,
+   "order": 318,
+   "tensors": [
+    {
+     "id": 282,
+     "access": "read"
+    },
+    {
+     "id": 282,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 319,
+   "name": "attn_39_r2",
+   "stream": 0,
+   "order": 319,
+   "tensors": [
+    {
+     "id": 394,
+     "access": "read"
+    },
+    {
+     "id": 394,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 320,
+   "name": "attn_39_r3",
+   "stream": 0,
+   "order": 320,
+   "tensors": [
+    {
+     "id": 506,
+     "access": "read"
+    },
+    {
+     "id": 506,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 321,
+   "name": "proj_40",
+   "stream": 0,
+   "order": 321,
+   "tensors": [
+    {
+     "id": 41,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 322,
+   "name": "gdn_conv_40_r0",
+   "stream": 0,
+   "order": 322,
+   "tensors": [
+    {
+     "id": 126,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 323,
+   "name": "gdn_state_40_r0",
+   "stream": 0,
+   "order": 323,
+   "tensors": [
+    {
+     "id": 125,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 324,
+   "name": "gdn_conv_40_r1",
+   "stream": 0,
+   "order": 324,
+   "tensors": [
+    {
+     "id": 238,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 325,
+   "name": "gdn_state_40_r1",
+   "stream": 0,
+   "order": 325,
+   "tensors": [
+    {
+     "id": 237,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 326,
+   "name": "gdn_conv_40_r2",
+   "stream": 0,
+   "order": 326,
+   "tensors": [
+    {
+     "id": 350,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 327,
+   "name": "gdn_state_40_r2",
+   "stream": 0,
+   "order": 327,
+   "tensors": [
+    {
+     "id": 349,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 328,
+   "name": "gdn_conv_40_r3",
+   "stream": 0,
+   "order": 328,
+   "tensors": [
+    {
+     "id": 462,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 329,
+   "name": "gdn_state_40_r3",
+   "stream": 0,
+   "order": 329,
+   "tensors": [
+    {
+     "id": 461,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 330,
+   "name": "proj_41",
+   "stream": 0,
+   "order": 330,
+   "tensors": [
+    {
+     "id": 42,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 331,
+   "name": "gdn_conv_41_r0",
+   "stream": 0,
+   "order": 331,
+   "tensors": [
+    {
+     "id": 128,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 332,
+   "name": "gdn_state_41_r0",
+   "stream": 0,
+   "order": 332,
+   "tensors": [
+    {
+     "id": 127,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 333,
+   "name": "gdn_conv_41_r1",
+   "stream": 0,
+   "order": 333,
+   "tensors": [
+    {
+     "id": 240,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 334,
+   "name": "gdn_state_41_r1",
+   "stream": 0,
+   "order": 334,
+   "tensors": [
+    {
+     "id": 239,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 335,
+   "name": "gdn_conv_41_r2",
+   "stream": 0,
+   "order": 335,
+   "tensors": [
+    {
+     "id": 352,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 336,
+   "name": "gdn_state_41_r2",
+   "stream": 0,
+   "order": 336,
+   "tensors": [
+    {
+     "id": 351,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 337,
+   "name": "gdn_conv_41_r3",
+   "stream": 0,
+   "order": 337,
+   "tensors": [
+    {
+     "id": 464,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 338,
+   "name": "gdn_state_41_r3",
+   "stream": 0,
+   "order": 338,
+   "tensors": [
+    {
+     "id": 463,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 339,
+   "name": "proj_42",
+   "stream": 0,
+   "order": 339,
+   "tensors": [
+    {
+     "id": 43,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 340,
+   "name": "gdn_conv_42_r0",
+   "stream": 0,
+   "order": 340,
+   "tensors": [
+    {
+     "id": 130,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 341,
+   "name": "gdn_state_42_r0",
+   "stream": 0,
+   "order": 341,
+   "tensors": [
+    {
+     "id": 129,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 342,
+   "name": "gdn_conv_42_r1",
+   "stream": 0,
+   "order": 342,
+   "tensors": [
+    {
+     "id": 242,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 343,
+   "name": "gdn_state_42_r1",
+   "stream": 0,
+   "order": 343,
+   "tensors": [
+    {
+     "id": 241,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 344,
+   "name": "gdn_conv_42_r2",
+   "stream": 0,
+   "order": 344,
+   "tensors": [
+    {
+     "id": 354,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 345,
+   "name": "gdn_state_42_r2",
+   "stream": 0,
+   "order": 345,
+   "tensors": [
+    {
+     "id": 353,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 346,
+   "name": "gdn_conv_42_r3",
+   "stream": 0,
+   "order": 346,
+   "tensors": [
+    {
+     "id": 466,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 347,
+   "name": "gdn_state_42_r3",
+   "stream": 0,
+   "order": 347,
+   "tensors": [
+    {
+     "id": 465,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 348,
+   "name": "proj_43",
+   "stream": 0,
+   "order": 348,
+   "tensors": [
+    {
+     "id": 44,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 349,
+   "name": "attn_43_r0",
+   "stream": 0,
+   "order": 349,
+   "tensors": [
+    {
+     "id": 171,
+     "access": "read"
+    },
+    {
+     "id": 171,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 350,
+   "name": "attn_43_r1",
+   "stream": 0,
+   "order": 350,
+   "tensors": [
+    {
+     "id": 283,
+     "access": "read"
+    },
+    {
+     "id": 283,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 351,
+   "name": "attn_43_r2",
+   "stream": 0,
+   "order": 351,
+   "tensors": [
+    {
+     "id": 395,
+     "access": "read"
+    },
+    {
+     "id": 395,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 352,
+   "name": "attn_43_r3",
+   "stream": 0,
+   "order": 352,
+   "tensors": [
+    {
+     "id": 507,
+     "access": "read"
+    },
+    {
+     "id": 507,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 353,
+   "name": "proj_44",
+   "stream": 0,
+   "order": 353,
+   "tensors": [
+    {
+     "id": 45,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 354,
+   "name": "gdn_conv_44_r0",
+   "stream": 0,
+   "order": 354,
+   "tensors": [
+    {
+     "id": 132,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 355,
+   "name": "gdn_state_44_r0",
+   "stream": 0,
+   "order": 355,
+   "tensors": [
+    {
+     "id": 131,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 356,
+   "name": "gdn_conv_44_r1",
+   "stream": 0,
+   "order": 356,
+   "tensors": [
+    {
+     "id": 244,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 357,
+   "name": "gdn_state_44_r1",
+   "stream": 0,
+   "order": 357,
+   "tensors": [
+    {
+     "id": 243,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 358,
+   "name": "gdn_conv_44_r2",
+   "stream": 0,
+   "order": 358,
+   "tensors": [
+    {
+     "id": 356,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 359,
+   "name": "gdn_state_44_r2",
+   "stream": 0,
+   "order": 359,
+   "tensors": [
+    {
+     "id": 355,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 360,
+   "name": "gdn_conv_44_r3",
+   "stream": 0,
+   "order": 360,
+   "tensors": [
+    {
+     "id": 468,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 361,
+   "name": "gdn_state_44_r3",
+   "stream": 0,
+   "order": 361,
+   "tensors": [
+    {
+     "id": 467,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 362,
+   "name": "proj_45",
+   "stream": 0,
+   "order": 362,
+   "tensors": [
+    {
+     "id": 46,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 363,
+   "name": "gdn_conv_45_r0",
+   "stream": 0,
+   "order": 363,
+   "tensors": [
+    {
+     "id": 134,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 364,
+   "name": "gdn_state_45_r0",
+   "stream": 0,
+   "order": 364,
+   "tensors": [
+    {
+     "id": 133,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 365,
+   "name": "gdn_conv_45_r1",
+   "stream": 0,
+   "order": 365,
+   "tensors": [
+    {
+     "id": 246,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 366,
+   "name": "gdn_state_45_r1",
+   "stream": 0,
+   "order": 366,
+   "tensors": [
+    {
+     "id": 245,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 367,
+   "name": "gdn_conv_45_r2",
+   "stream": 0,
+   "order": 367,
+   "tensors": [
+    {
+     "id": 358,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 368,
+   "name": "gdn_state_45_r2",
+   "stream": 0,
+   "order": 368,
+   "tensors": [
+    {
+     "id": 357,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 369,
+   "name": "gdn_conv_45_r3",
+   "stream": 0,
+   "order": 369,
+   "tensors": [
+    {
+     "id": 470,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 370,
+   "name": "gdn_state_45_r3",
+   "stream": 0,
+   "order": 370,
+   "tensors": [
+    {
+     "id": 469,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 371,
+   "name": "proj_46",
+   "stream": 0,
+   "order": 371,
+   "tensors": [
+    {
+     "id": 47,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 372,
+   "name": "gdn_conv_46_r0",
+   "stream": 0,
+   "order": 372,
+   "tensors": [
+    {
+     "id": 136,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 373,
+   "name": "gdn_state_46_r0",
+   "stream": 0,
+   "order": 373,
+   "tensors": [
+    {
+     "id": 135,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 374,
+   "name": "gdn_conv_46_r1",
+   "stream": 0,
+   "order": 374,
+   "tensors": [
+    {
+     "id": 248,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 375,
+   "name": "gdn_state_46_r1",
+   "stream": 0,
+   "order": 375,
+   "tensors": [
+    {
+     "id": 247,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 376,
+   "name": "gdn_conv_46_r2",
+   "stream": 0,
+   "order": 376,
+   "tensors": [
+    {
+     "id": 360,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 377,
+   "name": "gdn_state_46_r2",
+   "stream": 0,
+   "order": 377,
+   "tensors": [
+    {
+     "id": 359,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 378,
+   "name": "gdn_conv_46_r3",
+   "stream": 0,
+   "order": 378,
+   "tensors": [
+    {
+     "id": 472,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 379,
+   "name": "gdn_state_46_r3",
+   "stream": 0,
+   "order": 379,
+   "tensors": [
+    {
+     "id": 471,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 380,
+   "name": "proj_47",
+   "stream": 0,
+   "order": 380,
+   "tensors": [
+    {
+     "id": 48,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 381,
+   "name": "attn_47_r0",
+   "stream": 0,
+   "order": 381,
+   "tensors": [
+    {
+     "id": 172,
+     "access": "read"
+    },
+    {
+     "id": 172,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 382,
+   "name": "attn_47_r1",
+   "stream": 0,
+   "order": 382,
+   "tensors": [
+    {
+     "id": 284,
+     "access": "read"
+    },
+    {
+     "id": 284,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 383,
+   "name": "attn_47_r2",
+   "stream": 0,
+   "order": 383,
+   "tensors": [
+    {
+     "id": 396,
+     "access": "read"
+    },
+    {
+     "id": 396,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 384,
+   "name": "attn_47_r3",
+   "stream": 0,
+   "order": 384,
+   "tensors": [
+    {
+     "id": 508,
+     "access": "read"
+    },
+    {
+     "id": 508,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 385,
+   "name": "proj_48",
+   "stream": 0,
+   "order": 385,
+   "tensors": [
+    {
+     "id": 49,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 386,
+   "name": "gdn_conv_48_r0",
+   "stream": 0,
+   "order": 386,
+   "tensors": [
+    {
+     "id": 138,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 387,
+   "name": "gdn_state_48_r0",
+   "stream": 0,
+   "order": 387,
+   "tensors": [
+    {
+     "id": 137,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 388,
+   "name": "gdn_conv_48_r1",
+   "stream": 0,
+   "order": 388,
+   "tensors": [
+    {
+     "id": 250,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 389,
+   "name": "gdn_state_48_r1",
+   "stream": 0,
+   "order": 389,
+   "tensors": [
+    {
+     "id": 249,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 390,
+   "name": "gdn_conv_48_r2",
+   "stream": 0,
+   "order": 390,
+   "tensors": [
+    {
+     "id": 362,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 391,
+   "name": "gdn_state_48_r2",
+   "stream": 0,
+   "order": 391,
+   "tensors": [
+    {
+     "id": 361,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 392,
+   "name": "gdn_conv_48_r3",
+   "stream": 0,
+   "order": 392,
+   "tensors": [
+    {
+     "id": 474,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 393,
+   "name": "gdn_state_48_r3",
+   "stream": 0,
+   "order": 393,
+   "tensors": [
+    {
+     "id": 473,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 394,
+   "name": "proj_49",
+   "stream": 0,
+   "order": 394,
+   "tensors": [
+    {
+     "id": 50,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 395,
+   "name": "gdn_conv_49_r0",
+   "stream": 0,
+   "order": 395,
+   "tensors": [
+    {
+     "id": 140,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 396,
+   "name": "gdn_state_49_r0",
+   "stream": 0,
+   "order": 396,
+   "tensors": [
+    {
+     "id": 139,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 397,
+   "name": "gdn_conv_49_r1",
+   "stream": 0,
+   "order": 397,
+   "tensors": [
+    {
+     "id": 252,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 398,
+   "name": "gdn_state_49_r1",
+   "stream": 0,
+   "order": 398,
+   "tensors": [
+    {
+     "id": 251,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 399,
+   "name": "gdn_conv_49_r2",
+   "stream": 0,
+   "order": 399,
+   "tensors": [
+    {
+     "id": 364,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 400,
+   "name": "gdn_state_49_r2",
+   "stream": 0,
+   "order": 400,
+   "tensors": [
+    {
+     "id": 363,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 401,
+   "name": "gdn_conv_49_r3",
+   "stream": 0,
+   "order": 401,
+   "tensors": [
+    {
+     "id": 476,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 402,
+   "name": "gdn_state_49_r3",
+   "stream": 0,
+   "order": 402,
+   "tensors": [
+    {
+     "id": 475,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 403,
+   "name": "proj_50",
+   "stream": 0,
+   "order": 403,
+   "tensors": [
+    {
+     "id": 51,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 404,
+   "name": "gdn_conv_50_r0",
+   "stream": 0,
+   "order": 404,
+   "tensors": [
+    {
+     "id": 142,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 405,
+   "name": "gdn_state_50_r0",
+   "stream": 0,
+   "order": 405,
+   "tensors": [
+    {
+     "id": 141,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 406,
+   "name": "gdn_conv_50_r1",
+   "stream": 0,
+   "order": 406,
+   "tensors": [
+    {
+     "id": 254,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 407,
+   "name": "gdn_state_50_r1",
+   "stream": 0,
+   "order": 407,
+   "tensors": [
+    {
+     "id": 253,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 408,
+   "name": "gdn_conv_50_r2",
+   "stream": 0,
+   "order": 408,
+   "tensors": [
+    {
+     "id": 366,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 409,
+   "name": "gdn_state_50_r2",
+   "stream": 0,
+   "order": 409,
+   "tensors": [
+    {
+     "id": 365,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 410,
+   "name": "gdn_conv_50_r3",
+   "stream": 0,
+   "order": 410,
+   "tensors": [
+    {
+     "id": 478,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 411,
+   "name": "gdn_state_50_r3",
+   "stream": 0,
+   "order": 411,
+   "tensors": [
+    {
+     "id": 477,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 412,
+   "name": "proj_51",
+   "stream": 0,
+   "order": 412,
+   "tensors": [
+    {
+     "id": 52,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 413,
+   "name": "attn_51_r0",
+   "stream": 0,
+   "order": 413,
+   "tensors": [
+    {
+     "id": 173,
+     "access": "read"
+    },
+    {
+     "id": 173,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 414,
+   "name": "attn_51_r1",
+   "stream": 0,
+   "order": 414,
+   "tensors": [
+    {
+     "id": 285,
+     "access": "read"
+    },
+    {
+     "id": 285,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 415,
+   "name": "attn_51_r2",
+   "stream": 0,
+   "order": 415,
+   "tensors": [
+    {
+     "id": 397,
+     "access": "read"
+    },
+    {
+     "id": 397,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 416,
+   "name": "attn_51_r3",
+   "stream": 0,
+   "order": 416,
+   "tensors": [
+    {
+     "id": 509,
+     "access": "read"
+    },
+    {
+     "id": 509,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 417,
+   "name": "proj_52",
+   "stream": 0,
+   "order": 417,
+   "tensors": [
+    {
+     "id": 53,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 418,
+   "name": "gdn_conv_52_r0",
+   "stream": 0,
+   "order": 418,
+   "tensors": [
+    {
+     "id": 144,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 419,
+   "name": "gdn_state_52_r0",
+   "stream": 0,
+   "order": 419,
+   "tensors": [
+    {
+     "id": 143,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 420,
+   "name": "gdn_conv_52_r1",
+   "stream": 0,
+   "order": 420,
+   "tensors": [
+    {
+     "id": 256,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 421,
+   "name": "gdn_state_52_r1",
+   "stream": 0,
+   "order": 421,
+   "tensors": [
+    {
+     "id": 255,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 422,
+   "name": "gdn_conv_52_r2",
+   "stream": 0,
+   "order": 422,
+   "tensors": [
+    {
+     "id": 368,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 423,
+   "name": "gdn_state_52_r2",
+   "stream": 0,
+   "order": 423,
+   "tensors": [
+    {
+     "id": 367,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 424,
+   "name": "gdn_conv_52_r3",
+   "stream": 0,
+   "order": 424,
+   "tensors": [
+    {
+     "id": 480,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 425,
+   "name": "gdn_state_52_r3",
+   "stream": 0,
+   "order": 425,
+   "tensors": [
+    {
+     "id": 479,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 426,
+   "name": "proj_53",
+   "stream": 0,
+   "order": 426,
+   "tensors": [
+    {
+     "id": 54,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 427,
+   "name": "gdn_conv_53_r0",
+   "stream": 0,
+   "order": 427,
+   "tensors": [
+    {
+     "id": 146,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 428,
+   "name": "gdn_state_53_r0",
+   "stream": 0,
+   "order": 428,
+   "tensors": [
+    {
+     "id": 145,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 429,
+   "name": "gdn_conv_53_r1",
+   "stream": 0,
+   "order": 429,
+   "tensors": [
+    {
+     "id": 258,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 430,
+   "name": "gdn_state_53_r1",
+   "stream": 0,
+   "order": 430,
+   "tensors": [
+    {
+     "id": 257,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 431,
+   "name": "gdn_conv_53_r2",
+   "stream": 0,
+   "order": 431,
+   "tensors": [
+    {
+     "id": 370,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 432,
+   "name": "gdn_state_53_r2",
+   "stream": 0,
+   "order": 432,
+   "tensors": [
+    {
+     "id": 369,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 433,
+   "name": "gdn_conv_53_r3",
+   "stream": 0,
+   "order": 433,
+   "tensors": [
+    {
+     "id": 482,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 434,
+   "name": "gdn_state_53_r3",
+   "stream": 0,
+   "order": 434,
+   "tensors": [
+    {
+     "id": 481,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 435,
+   "name": "proj_54",
+   "stream": 0,
+   "order": 435,
+   "tensors": [
+    {
+     "id": 55,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 436,
+   "name": "gdn_conv_54_r0",
+   "stream": 0,
+   "order": 436,
+   "tensors": [
+    {
+     "id": 148,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 437,
+   "name": "gdn_state_54_r0",
+   "stream": 0,
+   "order": 437,
+   "tensors": [
+    {
+     "id": 147,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 438,
+   "name": "gdn_conv_54_r1",
+   "stream": 0,
+   "order": 438,
+   "tensors": [
+    {
+     "id": 260,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 439,
+   "name": "gdn_state_54_r1",
+   "stream": 0,
+   "order": 439,
+   "tensors": [
+    {
+     "id": 259,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 440,
+   "name": "gdn_conv_54_r2",
+   "stream": 0,
+   "order": 440,
+   "tensors": [
+    {
+     "id": 372,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 441,
+   "name": "gdn_state_54_r2",
+   "stream": 0,
+   "order": 441,
+   "tensors": [
+    {
+     "id": 371,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 442,
+   "name": "gdn_conv_54_r3",
+   "stream": 0,
+   "order": 442,
+   "tensors": [
+    {
+     "id": 484,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 443,
+   "name": "gdn_state_54_r3",
+   "stream": 0,
+   "order": 443,
+   "tensors": [
+    {
+     "id": 483,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 444,
+   "name": "proj_55",
+   "stream": 0,
+   "order": 444,
+   "tensors": [
+    {
+     "id": 56,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 445,
+   "name": "attn_55_r0",
+   "stream": 0,
+   "order": 445,
+   "tensors": [
+    {
+     "id": 174,
+     "access": "read"
+    },
+    {
+     "id": 174,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 446,
+   "name": "attn_55_r1",
+   "stream": 0,
+   "order": 446,
+   "tensors": [
+    {
+     "id": 286,
+     "access": "read"
+    },
+    {
+     "id": 286,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 447,
+   "name": "attn_55_r2",
+   "stream": 0,
+   "order": 447,
+   "tensors": [
+    {
+     "id": 398,
+     "access": "read"
+    },
+    {
+     "id": 398,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 448,
+   "name": "attn_55_r3",
+   "stream": 0,
+   "order": 448,
+   "tensors": [
+    {
+     "id": 510,
+     "access": "read"
+    },
+    {
+     "id": 510,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 449,
+   "name": "proj_56",
+   "stream": 0,
+   "order": 449,
+   "tensors": [
+    {
+     "id": 57,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 450,
+   "name": "gdn_conv_56_r0",
+   "stream": 0,
+   "order": 450,
+   "tensors": [
+    {
+     "id": 150,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 451,
+   "name": "gdn_state_56_r0",
+   "stream": 0,
+   "order": 451,
+   "tensors": [
+    {
+     "id": 149,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 452,
+   "name": "gdn_conv_56_r1",
+   "stream": 0,
+   "order": 452,
+   "tensors": [
+    {
+     "id": 262,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 453,
+   "name": "gdn_state_56_r1",
+   "stream": 0,
+   "order": 453,
+   "tensors": [
+    {
+     "id": 261,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 454,
+   "name": "gdn_conv_56_r2",
+   "stream": 0,
+   "order": 454,
+   "tensors": [
+    {
+     "id": 374,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 455,
+   "name": "gdn_state_56_r2",
+   "stream": 0,
+   "order": 455,
+   "tensors": [
+    {
+     "id": 373,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 456,
+   "name": "gdn_conv_56_r3",
+   "stream": 0,
+   "order": 456,
+   "tensors": [
+    {
+     "id": 486,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 457,
+   "name": "gdn_state_56_r3",
+   "stream": 0,
+   "order": 457,
+   "tensors": [
+    {
+     "id": 485,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 458,
+   "name": "proj_57",
+   "stream": 0,
+   "order": 458,
+   "tensors": [
+    {
+     "id": 58,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 459,
+   "name": "gdn_conv_57_r0",
+   "stream": 0,
+   "order": 459,
+   "tensors": [
+    {
+     "id": 152,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 460,
+   "name": "gdn_state_57_r0",
+   "stream": 0,
+   "order": 460,
+   "tensors": [
+    {
+     "id": 151,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 461,
+   "name": "gdn_conv_57_r1",
+   "stream": 0,
+   "order": 461,
+   "tensors": [
+    {
+     "id": 264,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 462,
+   "name": "gdn_state_57_r1",
+   "stream": 0,
+   "order": 462,
+   "tensors": [
+    {
+     "id": 263,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 463,
+   "name": "gdn_conv_57_r2",
+   "stream": 0,
+   "order": 463,
+   "tensors": [
+    {
+     "id": 376,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 464,
+   "name": "gdn_state_57_r2",
+   "stream": 0,
+   "order": 464,
+   "tensors": [
+    {
+     "id": 375,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 465,
+   "name": "gdn_conv_57_r3",
+   "stream": 0,
+   "order": 465,
+   "tensors": [
+    {
+     "id": 488,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 466,
+   "name": "gdn_state_57_r3",
+   "stream": 0,
+   "order": 466,
+   "tensors": [
+    {
+     "id": 487,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 467,
+   "name": "proj_58",
+   "stream": 0,
+   "order": 467,
+   "tensors": [
+    {
+     "id": 59,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 468,
+   "name": "gdn_conv_58_r0",
+   "stream": 0,
+   "order": 468,
+   "tensors": [
+    {
+     "id": 154,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 469,
+   "name": "gdn_state_58_r0",
+   "stream": 0,
+   "order": 469,
+   "tensors": [
+    {
+     "id": 153,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 470,
+   "name": "gdn_conv_58_r1",
+   "stream": 0,
+   "order": 470,
+   "tensors": [
+    {
+     "id": 266,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 471,
+   "name": "gdn_state_58_r1",
+   "stream": 0,
+   "order": 471,
+   "tensors": [
+    {
+     "id": 265,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 472,
+   "name": "gdn_conv_58_r2",
+   "stream": 0,
+   "order": 472,
+   "tensors": [
+    {
+     "id": 378,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 473,
+   "name": "gdn_state_58_r2",
+   "stream": 0,
+   "order": 473,
+   "tensors": [
+    {
+     "id": 377,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 474,
+   "name": "gdn_conv_58_r3",
+   "stream": 0,
+   "order": 474,
+   "tensors": [
+    {
+     "id": 490,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 475,
+   "name": "gdn_state_58_r3",
+   "stream": 0,
+   "order": 475,
+   "tensors": [
+    {
+     "id": 489,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 476,
+   "name": "proj_59",
+   "stream": 0,
+   "order": 476,
+   "tensors": [
+    {
+     "id": 60,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 477,
+   "name": "attn_59_r0",
+   "stream": 0,
+   "order": 477,
+   "tensors": [
+    {
+     "id": 175,
+     "access": "read"
+    },
+    {
+     "id": 175,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 478,
+   "name": "attn_59_r1",
+   "stream": 0,
+   "order": 478,
+   "tensors": [
+    {
+     "id": 287,
+     "access": "read"
+    },
+    {
+     "id": 287,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 479,
+   "name": "attn_59_r2",
+   "stream": 0,
+   "order": 479,
+   "tensors": [
+    {
+     "id": 399,
+     "access": "read"
+    },
+    {
+     "id": 399,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 480,
+   "name": "attn_59_r3",
+   "stream": 0,
+   "order": 480,
+   "tensors": [
+    {
+     "id": 511,
+     "access": "read"
+    },
+    {
+     "id": 511,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 481,
+   "name": "proj_60",
+   "stream": 0,
+   "order": 481,
+   "tensors": [
+    {
+     "id": 61,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 482,
+   "name": "gdn_conv_60_r0",
+   "stream": 0,
+   "order": 482,
+   "tensors": [
+    {
+     "id": 156,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 483,
+   "name": "gdn_state_60_r0",
+   "stream": 0,
+   "order": 483,
+   "tensors": [
+    {
+     "id": 155,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 484,
+   "name": "gdn_conv_60_r1",
+   "stream": 0,
+   "order": 484,
+   "tensors": [
+    {
+     "id": 268,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 485,
+   "name": "gdn_state_60_r1",
+   "stream": 0,
+   "order": 485,
+   "tensors": [
+    {
+     "id": 267,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 486,
+   "name": "gdn_conv_60_r2",
+   "stream": 0,
+   "order": 486,
+   "tensors": [
+    {
+     "id": 380,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 487,
+   "name": "gdn_state_60_r2",
+   "stream": 0,
+   "order": 487,
+   "tensors": [
+    {
+     "id": 379,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 488,
+   "name": "gdn_conv_60_r3",
+   "stream": 0,
+   "order": 488,
+   "tensors": [
+    {
+     "id": 492,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 489,
+   "name": "gdn_state_60_r3",
+   "stream": 0,
+   "order": 489,
+   "tensors": [
+    {
+     "id": 491,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 490,
+   "name": "proj_61",
+   "stream": 0,
+   "order": 490,
+   "tensors": [
+    {
+     "id": 62,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 491,
+   "name": "gdn_conv_61_r0",
+   "stream": 0,
+   "order": 491,
+   "tensors": [
+    {
+     "id": 158,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 492,
+   "name": "gdn_state_61_r0",
+   "stream": 0,
+   "order": 492,
+   "tensors": [
+    {
+     "id": 157,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 493,
+   "name": "gdn_conv_61_r1",
+   "stream": 0,
+   "order": 493,
+   "tensors": [
+    {
+     "id": 270,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 494,
+   "name": "gdn_state_61_r1",
+   "stream": 0,
+   "order": 494,
+   "tensors": [
+    {
+     "id": 269,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 495,
+   "name": "gdn_conv_61_r2",
+   "stream": 0,
+   "order": 495,
+   "tensors": [
+    {
+     "id": 382,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 496,
+   "name": "gdn_state_61_r2",
+   "stream": 0,
+   "order": 496,
+   "tensors": [
+    {
+     "id": 381,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 497,
+   "name": "gdn_conv_61_r3",
+   "stream": 0,
+   "order": 497,
+   "tensors": [
+    {
+     "id": 494,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 498,
+   "name": "gdn_state_61_r3",
+   "stream": 0,
+   "order": 498,
+   "tensors": [
+    {
+     "id": 493,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 499,
+   "name": "proj_62",
+   "stream": 0,
+   "order": 499,
+   "tensors": [
+    {
+     "id": 63,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 500,
+   "name": "gdn_conv_62_r0",
+   "stream": 0,
+   "order": 500,
+   "tensors": [
+    {
+     "id": 160,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 501,
+   "name": "gdn_state_62_r0",
+   "stream": 0,
+   "order": 501,
+   "tensors": [
+    {
+     "id": 159,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 502,
+   "name": "gdn_conv_62_r1",
+   "stream": 0,
+   "order": 502,
+   "tensors": [
+    {
+     "id": 272,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 503,
+   "name": "gdn_state_62_r1",
+   "stream": 0,
+   "order": 503,
+   "tensors": [
+    {
+     "id": 271,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 504,
+   "name": "gdn_conv_62_r2",
+   "stream": 0,
+   "order": 504,
+   "tensors": [
+    {
+     "id": 384,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 505,
+   "name": "gdn_state_62_r2",
+   "stream": 0,
+   "order": 505,
+   "tensors": [
+    {
+     "id": 383,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 506,
+   "name": "gdn_conv_62_r3",
+   "stream": 0,
+   "order": 506,
+   "tensors": [
+    {
+     "id": 496,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 507,
+   "name": "gdn_state_62_r3",
+   "stream": 0,
+   "order": 507,
+   "tensors": [
+    {
+     "id": 495,
+     "access": "read_write"
+    }
+   ]
+  },
+  {
+   "kernel_id": 508,
+   "name": "proj_63",
+   "stream": 0,
+   "order": 508,
+   "tensors": [
+    {
+     "id": 64,
+     "access": "read"
+    }
+   ]
+  },
+  {
+   "kernel_id": 509,
+   "name": "attn_63_r0",
+   "stream": 0,
+   "order": 509,
+   "tensors": [
+    {
+     "id": 176,
+     "access": "read"
+    },
+    {
+     "id": 176,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 510,
+   "name": "attn_63_r1",
+   "stream": 0,
+   "order": 510,
+   "tensors": [
+    {
+     "id": 288,
+     "access": "read"
+    },
+    {
+     "id": 288,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 511,
+   "name": "attn_63_r2",
+   "stream": 0,
+   "order": 511,
+   "tensors": [
+    {
+     "id": 400,
+     "access": "read"
+    },
+    {
+     "id": 400,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  },
+  {
+   "kernel_id": 512,
+   "name": "attn_63_r3",
+   "stream": 0,
+   "order": 512,
+   "tensors": [
+    {
+     "id": 512,
+     "access": "read"
+    },
+    {
+     "id": 512,
+     "access": "write",
+     "bytes": 98304
+    }
+   ]
+  }
+ ]
+}

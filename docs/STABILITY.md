@@ -1,27 +1,31 @@
 # API and ABI stability
 
-RecurLocal is embedded by inference runtimes, and its contract is a set of enumerator values
-other people switch on. This file says what a consumer may rely on across versions, what it
+TensorTransit is embedded by inference runtimes, and its contract is a set of enumerator
+values other people switch on. This file says what a consumer may rely on across versions, what it
 may not, and which of those claims the build actually checks rather than merely asserts.
 
-It is a v0.1 feasibility prototype and the promises below are scoped to that honestly: the
-API is stable, the ABI is not offered at all, and the supported way to consume this library
-is to build it from source in the same build as the runtime that embeds it.
+It is a v0.2 prototype and the promises below are scoped to that honestly: the API is stable,
+the ABI is not offered at all, and the supported way to consume this library is to build it
+from source in the same build as the runtime that embeds it.
 
 ## 1. Surfaces and their tiers
 
 | Surface | Tier | Meaning |
 |---|---|---|
-| `include/recurlocal/version.h` | **Stable** | Macros and two functions; additive only. |
-| `include/recurlocal/planner.h` | **Stable API, unstable ABI** | Enumerator names, enumerator values, struct field names and meanings are stable. Struct *sizes* are not. |
-| `include/recurlocal/cuda_api.h` | **Stable API, unstable ABI** | Same, plus everything below about `ControllerStats`. |
-| `include/recurlocal/sparkinfer.h` | **Stable API, unstable ABI** | The five-call hook surface. This is the one a real runtime patches against. |
-| CMake package `RecurLocal`, targets `RecurLocal::recurlocal`, `::recurlocal_cuda`, `::recurlocal_sparkinfer` | **Stable** | Names, namespace, and the `RecurLocal_VERSION` a `find_package` sets. |
+| `include/tensortransit/version.h` | **Stable** | Macros and two functions; additive only. |
+| `include/tensortransit/recurrent.h` | **Stable API, unstable ABI** | Enumerator names, enumerator values, struct field names and meanings are stable. Struct *sizes* are not. |
+| `include/tensortransit/cuda_recurrent.h` | **Stable API, unstable ABI** | Same, plus everything below about `ControllerStats`. |
+| `include/tensortransit/sparkinfer.h` | **Stable API, unstable ABI** | The five-call hook surface. This is the one a real runtime patches against. |
+| `include/tensortransit/tensor.h`, `graph.h`, `plan.h`, `planner.h`, `executor.h`, `device.h`, `runtime.h`, `trace.h`, `ceiling.h` | **Stable API, unstable ABI** | The 0.2 core. Enumerator names and values, struct field names and meanings are stable; struct sizes are not. |
+| CMake package `TensorTransit`, targets `TensorTransit::tensortransit`, `::tensortransit_cuda`, `::tensortransit_sparkinfer` | **Stable** | Names, namespace, and the `TensorTransit_VERSION` a `find_package` sets. |
+| CMake package `RecurLocal` and the `RecurLocal::*` targets | **Deprecated, still stable** | Section 6a. Removed no earlier than 0.3.0. |
 | Everything in section 7 | **Not stable** | Changes without notice, in a patch release. |
 
-There are no private headers. Everything under `include/recurlocal/` is public and installed
-by `install(DIRECTORY include/ ...)`; everything under `src/` is implementation and has no
-headers of its own.
+Everything under `include/` is public and installed by `install(DIRECTORY include/ ...)`.
+Everything under `src/` and `executors/` is implementation. As of 0.2.0 there is exactly one
+implementation header, `planners/common.h`: it is not installed, it is reachable only from the
+build tree, and nothing outside `planners/` may include it. `schemas/*.json`, in contrast,
+ARE part of the contract — see section 5a.
 
 ## 2. Enums: names versus values
 
@@ -178,7 +182,7 @@ the build enforces it.**
   while the major version is 0, and this section will be rewritten.
 - **The supported way to consume RecurLocal is to build it from source, from the same tree,
   in the same build, as the runtime that embeds it.** That is exactly what
-  `integrations/sparkinfer/build.sh` does: it wipes and reinstalls RecurLocal from scratch on
+  `adapters/sparkinfer/build.sh` does: it wipes and reinstalls RecurLocal from scratch on
   every integration build before configuring SparkInfer against it.
 - **A stale mix is not yet caught.** The `static_assert`s on struct size and field offset in
   `planner.h` fire in the CONSUMER's build, so a consumer whose header disagrees with this
@@ -243,6 +247,39 @@ which is the pair to check when you did not build both halves yourself;
 **At 1.0**, if it happens, the major position takes over ABI breaks and the minor position
 becomes source-additive-only. Nothing in this file is a commitment to reach 1.0.
 
+## 5a. Serialization schemas
+
+Three documents have a declared, versioned schema, and each carries its version in its own
+first field so a reader can refuse a document it does not understand rather than
+misinterpreting one:
+
+| document | schema | version field | written by |
+|---|---|---|---|
+| trace | `schemas/trace.schema.json` | `schema_version` | `write_trace()` |
+| plan | `schemas/plan.schema.json` | `plan_schema_version` | `TransitPlan::to_json()` |
+| evaluation result | `eval/real_result_schema.json` | `schema_version` | `eval/real_eval.py` |
+
+A breaking change increments the version, and `read_trace()` refuses a version it does not
+know **by number, with the number in the message** — it does not attempt a best-effort parse.
+`eval/test_schemas.py` validates every committed golden trace and every plan the CLI produces
+against these, in the same `ctest` run as the planner tests, because a schema nothing is
+checked against is documentation.
+
+Two things the schemas encode that are contract rather than shape:
+
+- **A trace carries no pointers, no prompts, no tokens and no request bodies.** There is no
+  field for any of them in `TraceMetadata`, in the writer, or in the schema. Spec section 45
+  is enforced by construction rather than by policy.
+- **A plan declares `"cost_model": {"basis": "model"}`.** Everything under `cost_model` is an
+  output of a model whose assumptions are in `docs/evaluation.md`, never a measurement, and
+  `eval/test_schemas.py` fails a plan that omits the marker. The moment a prediction and a
+  measurement appear in the same table, somebody will quote whichever is larger.
+
+Note that files in `results/` are **not** all evaluator artifacts. Some are hand-written
+roll-ups and they declare no `schema_version`; the schema test lists them rather than
+validating them, because a narrative summary sitting next to an authoritative artifact and
+looking like one is its own hazard.
+
 ## 6. Deprecation
 
 An enumerator or a field is removed over **two minor releases**, never in one.
@@ -267,19 +304,58 @@ refuse to run rather than fall back to a default under the requested label).
 
 | Symbol | Deprecated in | Removed no earlier than | Replacement |
 |---|---|---|---|
-| CMake options `RECURLLOCAL_BUILD_CUDA`, `RECURLLOCAL_BUILD_TESTS` (double-L misspelling) | 0.2.0 | 0.4.0 | `RECURLOCAL_BUILD_*` |
-| Preprocessor macro `RECURLLOCAL_WITH_CUDA` | 0.2.0 | 0.4.0 | `RECURLOCAL_WITH_CUDA` |
+| CMake options `RECURLLOCAL_BUILD_*` (double-L misspelling) | 0.2.0 | 0.4.0 | `TENSORTRANSIT_BUILD_*` |
+| CMake options `RECURLOCAL_BUILD_CUDA`, `RECURLOCAL_BUILD_TESTS` | 0.2.0 | 0.4.0 | `TENSORTRANSIT_BUILD_*` |
+| Preprocessor macros `RECURLLOCAL_WITH_CUDA`, `RECURLOCAL_WITH_CUDA` | 0.2.0 | 0.4.0 | `TENSORTRANSIT_WITH_CUDA` |
+| Headers `include/recurlocal/*.h` | 0.2.0 | 0.3.0 | `include/tensortransit/*.h` |
+| Namespace `recurlocal` | 0.2.0 | 0.3.0 | `tensortransit` (it is an alias, not a copy) |
+| Macros `RECURLOCAL_VERSION_*` | 0.2.0 | 0.3.0 | `TENSORTRANSIT_VERSION_*` |
+| CMake package `RecurLocal`, targets `RecurLocal::*` | 0.2.0 | 0.3.0 | `TensorTransit`, `TensorTransit::*` |
+| Environment prefix `RECURLOCAL_` read by the adapter | 0.2.0 | 0.4.0 | `TENSORTRANSIT_` |
 
 Nothing else is deprecated. `WindowAttach::CaptureNode` in particular is **not**: it is now
 the better-documented of the two node-attach modes, not the worse one — see
 `docs/OPTIMIZATION-SURFACES.md`.
+
+## 6a. The 0.1 -> 0.2 migration, and the two names that are NOT moving
+
+RecurLocal became the recurrent-state workload inside TensorTransit in 0.2.0. The migration is
+additive: every 0.1 name still resolves, `tests/test_compat.cpp` includes **only** the
+deprecated headers so the shim breaking is a build failure here rather than a link failure in
+somebody else's tree, and CI consumes the installed package under both package names.
+
+One deliberate asymmetry in the two `find_package` version files: `TensorTransit` uses
+`SameMinorVersion` (the honest answer for a library whose ABI is not offered), and
+`RecurLocal` uses `SameMajorVersion`, so an existing `find_package(RecurLocal 0.1 REQUIRED)`
+keeps resolving until the shim is removed. That is the only place they differ and it is the
+reason they differ.
+
+**Two names are staying put, and both for the same reason: the reproduction path.**
+
+- **The `RECURLOCAL_STATS ` stderr line prefix.** `eval/run_from_base.sh` runs the instrument
+  from the BASE commit against a candidate's binary — that is the whole point of it, so a
+  one-line change to a noise floor or an estimator cannot ride in on a submission. The base
+  commit's parser knows only this prefix. Renaming the emitted line would make every
+  base-commit evaluator report "the binary is unhooked" against a perfectly good build, which
+  is a false accusation aimed at a contributor. The reader accepts both spellings; the writer
+  keeps the one the old readers know.
+- **The `RECURLOCAL_*` environment names.** Every command line in `results/*.json` sets them,
+  and those commands are how a published number is reproduced. They are read second, after
+  the `TENSORTRANSIT_*` spelling.
+
+The corollary is a hazard, and it is guarded on the other side: an evaluator that scrubbed
+only `RECURLOCAL*` from the control environment would let an operator with
+`export TENSORTRANSIT=combined` compare the candidate against itself and measure ~0%.
+`eval/real_eval.py::scrubbed_environment` removes **both** prefixes and is asserted directly
+rather than only through an end-to-end run — nothing about a contaminated control looks wrong
+in the output.
 
 ## 7. Explicitly not stable
 
 None of the following is part of the contract. All of it may change in a patch release,
 without deprecation.
 
-- **Adapter telemetry JSON.** The object `recurlocal::sparkinfer::write_stats_json()` writes,
+- **Adapter telemetry JSON.** The object `tensortransit::sparkinfer::write_stats_json()` writes,
   and the `RECURLOCAL_STATS ` line it prints to stderr at exit. Field names, nesting, and the
   set of counters change whenever a measurement needs a new one — two were added in the
   release that introduced `WindowAttach::CaptureNodeStrict`. It carries **no** `schema_version`
@@ -296,9 +372,9 @@ without deprecation.
   `eval/real_result_schema.json`; those integers are the contract, the scripts are not. The
   decision bands they encode are covered by `ctest` because drift there silently redefines
   every past verdict.
-- **`bench/cuda_bench.cu`** and `recur_local_cuda_bench`'s flags and output. The synthetic
+- **`workloads/recurrent/synthetic/cuda_bench.cu`** and `recur_local_cuda_bench`'s flags and output. The synthetic
   benchmark is not the score; it has disagreed with the real model on three axes.
-- **`integrations/sparkinfer/recurlocal-hook.patch` and `pin.json`.** The patch is written
+- **`adapters/sparkinfer/tensortransit-hook.patch` and `pin.json`.** The patch is written
   against one SparkInfer commit and is expected to be rewritten whenever upstream moves.
   Changing any value in `pin.json` invalidates every `real-result.json` produced before the
   change, which is a *measurement* contract, not an API one. The **adapter header**
@@ -335,7 +411,7 @@ overstates its own enforcement is worse than none.
 
 - **The ABI vintage is not in the mangled names.** Section 4.1 says the supported mode is to
   build from source. Today that is a convention plus a build script
-  (`integrations/sparkinfer/build.sh` wipes and reinstalls RecurLocal before configuring
+  (`adapters/sparkinfer/build.sh` wipes and reinstalls RecurLocal before configuring
   SparkInfer, so a header/archive mismatch is impossible for the one real consumer by
   accident of the script rather than by construction). The hardening is an inline namespace
   tagged with the vintage — `namespace recurlocal { inline namespace v0 { ... } }` — spelled

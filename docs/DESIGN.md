@@ -4,7 +4,7 @@
 
 Recurrent state differs from streamed model weights: it is relatively small per layer, mutable, revisited every decode token, and accessed in a predictable layer order.
 
-RecurLocal tests whether explicit cache policy plus next-layer warm-up can exploit this reuse.
+TensorTransit tests whether explicit cache policy plus next-layer warm-up can exploit this reuse.
 
 ## CUDA semantics
 
@@ -65,7 +65,7 @@ paragraph goes further and blesses the exact pointer this code passes:
 
 **And the attribute demonstrably survives.** Nothing in this repository had ever read one back;
 `windows_attached_to_node` was a counter of attach CALLS being quoted as a count of nodes.
-A standalone probe (`tools/capture_attr_probe.cu`) now closes it: it captures N kernels, sets
+A standalone probe (`profiling/capture_attr_probe.cu`) now closes it: it captures N kernels, sets
 the window mid-capture exactly as the controller does, ends the capture, and reads the
 attribute back off the finished graph and off a clone. At 1, 4, 8, 16, 32, 48, 64 and 128
 nodes it finds the window present and byte-for-byte correct on every kernel node, with zero

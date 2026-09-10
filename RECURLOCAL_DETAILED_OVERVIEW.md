@@ -1,5 +1,14 @@
 # RecurLocal
 
+> **Status as of 0.2.0.** This is the RecurLocal specification, and it remains the document
+> every "section N" reference in this repository points at — the numbering is load-bearing in
+> `docs/`, in `results/*.json` and in `eval/decide.py`, so the file keeps its name.
+>
+> It is **not** the scope authority any more. RecurLocal is now the recurrent-state workload
+> inside TensorTransit, whose boundary is the table in the README and in
+> `docs/design-principles.md`. Where the two disagree about what the project *is*, the newer
+> one wins; where they disagree about a measurement, neither does — check `results/`.
+
 ## Detailed Project Overview and Technical Specification
 
 **Project:** RecurLocal  

@@ -5,23 +5,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cmake -S . -B build -DRECURLOCAL_BUILD_CUDA=OFF
+      - run: cmake -S . -B build -DTENSORTRANSIT_BUILD_CUDA=OFF
       - run: cmake --build build -j2
       - run: ctest --test-dir build --output-on-failure
-      - run: ./build/recur_local_info
+      - run: ./build/tensortransit_info
       # The planner tests use always-on checks, so a Release build must still test.
-      - run: cmake -S . -B build-release -DRECURLOCAL_BUILD_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
+      - run: cmake -S . -B build-release -DTENSORTRANSIT_BUILD_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
       - run: cmake --build build-release -j2
       - run: ctest --test-dir build-release --output-on-failure
 
   package:
-    # RecurLocal is embedded by a runtime, so "it builds" is not the bar: the installed
-    # package has to be consumable by an outside project via find_package.
+    # TensorTransit is embedded by a runtime, so "it builds" is not the bar: the installed
+    # package has to be consumable by an outside project via find_package -- under BOTH the
+    # current name and the deprecated 0.1 one, for as long as the shim is promised.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cmake -S . -B build -DRECURLOCAL_BUILD_CUDA=OFF && cmake --build build -j2
+      - run: cmake -S . -B build -DTENSORTRANSIT_BUILD_CUDA=OFF && cmake --build build -j2
       - run: cmake --install build --prefix "$PWD/prefix"
+      - name: consume the installed package under the current name
+        run: |
+          mkdir -p /tmp/consumer-tt
+          cat > /tmp/consumer-tt/CMakeLists.txt <<'CM'
+          cmake_minimum_required(VERSION 3.24)
+          project(ConsumerTT LANGUAGES CXX)
+          find_package(TensorTransit 0.2 REQUIRED)
+          add_executable(consumer main.cpp)
+          target_link_libraries(consumer PRIVATE TensorTransit::tensortransit)
+          CM
+          cat > /tmp/consumer-tt/main.cpp <<'CPP'
+          #include <tensortransit/runtime.h>
+          #include <cstdio>
+          int main() {
+              tensortransit::TransitRuntime rt;
+              tensortransit::TransitPlannerConfig cfg;
+              if (!rt.set_planner("budgeted", cfg)) return 1;
+              std::printf("%s %s\n", tensortransit::version_string(), rt.planner()->name());
+          }
+          CPP
+          cmake -S /tmp/consumer-tt -B /tmp/consumer-tt/build -DCMAKE_PREFIX_PATH="$PWD/prefix"
+          cmake --build /tmp/consumer-tt/build -j2
+          /tmp/consumer-tt/build/consumer
+
       - name: consume the installed package
         run: |
           mkdir -p /tmp/consumer
@@ -58,9 +83,9 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, pathlib, re
-          pin = json.load(open("integrations/sparkinfer/pin.json"))
+          pin = json.load(open("adapters/sparkinfer/pin.json"))
           assert re.fullmatch(r"[0-9a-f]{40}", pin["commit"]), "the runtime commit must be pinned"
-          patch = pathlib.Path("integrations/sparkinfer") / pin["patch"]
+          patch = pathlib.Path("adapters/sparkinfer") / pin["patch"]
           assert patch.exists(), f"{patch} is missing"
           body = patch.read_text()
           # The hook is specified to add lines and remove none. A patch that deletes
@@ -123,6 +148,6 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends nvidia-cuda-toolkit
       - run: nvcc --version
       # sm_80 keeps this buildable with the distro toolkit; sm_120 needs CUDA 12.8+.
-      - run: cmake -S . -B build-cuda -DRECURLOCAL_BUILD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=80
+      - run: cmake -S . -B build-cuda -DTENSORTRANSIT_BUILD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=80
       - run: cmake --build build-cuda -j2
       - run: ctest --test-dir build-cuda --output-on-failure

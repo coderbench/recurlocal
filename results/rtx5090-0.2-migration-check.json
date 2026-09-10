@@ -1,0 +1,162 @@
+{
+ "schema_version": 1,
+ "what_this_is": "The 0.1 -> 0.2 migration check, not a new result. Qwen3.8-27B on the pinned SparkInfer commit, batch 1, ctx 128, three interleaved pairs, one RTX 5090 -- run through the MIGRATED stack: namespace tensortransit, adapters/sparkinfer, the TENSORTRANSIT_ environment prefix, and the CMake package TensorTransit. It exists to answer one question: did generalizing RecurLocal into TensorTransit change what the recurrent policy does? It did not. +0.13% against a 0.06% noise floor is the figure 0.1 published for this arm (README, 'First real result'), and the token-exact gate passes with the control reproducible over three unhooked replays. This is a PARTIAL matrix -- batch 1 only, 0.40 of the section 44 weight -- so decide.py will not call it significant, which is correct and is the point of running it as a check rather than as a submission.",
+ "provenance": {
+  "timestamp_utc": "2026-09-10T03:56:42+00:00",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "driver": "595.84",
+  "model": "/root/models/qwen38-nvfp4",
+  "binary": "/root/work/si-work/sparkinfer/build/runtime/qwen3_gguf_bench",
+  "candidate_env": {
+   "TENSORTRANSIT": "persist",
+   "TENSORTRANSIT_WINDOW_ATTACH": "capture_node",
+   "RECURLOCAL_STATS": "1"
+  },
+  "control_env": {},
+  "tokens_per_measurement": 128,
+  "contexts": [
+   128
+  ],
+  "repeats": 3,
+  "warmup_runs_discarded": 0,
+  "label": "",
+  "note": "",
+  "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+  "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+  "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+  "recurlocal_commit": null
+ },
+ "correctness": {
+  "output_identical": true,
+  "method": "greedy replay, token-exact",
+  "tokens_compared": 64,
+  "prompt_ids": [
+   9707,
+   3837,
+   1879,
+   13,
+   25001,
+   752,
+   911
+  ],
+  "runtime_reproducible": true,
+  "control_replays": 3,
+  "control_replays_requested": 3,
+  "candidate_matches_control": true,
+  "first_divergence": null,
+  "candidate_hook_active": true
+ },
+ "workloads": {
+  "batch1": {
+   "weight": 1.0,
+   "baseline_tps": 96.1125,
+   "candidate_tps": 96.23720000000002
+  }
+ },
+ "workload_coverage": {
+  "measured": [
+   "batch1"
+  ],
+  "unmeasured": [
+   "concurrency4",
+   "concurrency16",
+   "concurrency32"
+  ],
+  "why": "Section 44 weights batch 1 at 0.40 and concurrency at 0.60. An arm that was not run is left out of the matrix rather than filled in, and the weights that remain are renormalised by decide.py - so a partial run is reported as a partial verdict instead of a full one with invented halves."
+ },
+ "per_context": {
+  "128": {
+   "baseline_tps": 96.1125,
+   "candidate_tps": 96.2372,
+   "baseline_runs": [
+    96.1125,
+    96.1112,
+    96.1663
+   ],
+   "candidate_runs": [
+    96.2372,
+    96.2217,
+    96.2984
+   ],
+   "paired_ratios": [
+    1.0012974378982964,
+    1.0011497099193434,
+    1.001373662083287
+   ],
+   "gain_pct": 0.1297437898296394,
+   "baseline_spread_pct": 0.05732865132007818,
+   "candidate_spread_pct": 0.07969891060837433,
+   "resolution": {
+    "resolved": true,
+    "floor_pct": 0.07969891060837433,
+    "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+   }
+  }
+ },
+ "per_concurrency": {},
+ "measurement": {
+  "noise_floor_pct": 0.05732865132007818,
+  "gain_pct": 0.1297437898296394,
+  "resolved": true,
+  "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
+  "unresolved_workloads": []
+ },
+ "adapter": {
+  "adapter": "recurlocal-sparkinfer",
+  "mode": "persist",
+  "initialised": false,
+  "ever_initialised": true,
+  "broken": false,
+  "config_error": null,
+  "config": {
+   "pre_touch": "vec4",
+   "pre_touch_coverage": "both",
+   "prefetch_distance": 1,
+   "prefetch_schedule": "uniform",
+   "prefetch_join": "per_layer",
+   "window_attach": "capture_node",
+   "hot_set_model": "token_footprint",
+   "hot_set_policy": "proportional",
+   "window_scope": "layer",
+   "window_target": "matrix",
+   "set_aside_policy": "fixed",
+   "min_residency": 0.5,
+   "hit_ratio": 0.7,
+   "budget_fraction": 0.75
+  },
+  "geometry": {
+   "recurrent_layers": 48,
+   "bytes_per_layer": 3207168,
+   "sequences": 1,
+   "max_sequences_declared": 1,
+   "bytes_per_layer_at_max": 0,
+   "streamed_bytes_per_token": 0
+  },
+  "l2_set_aside_bytes": 50331648,
+  "l2_set_aside_at_init_bytes": 50331648,
+  "stats": {
+   "tokens": 16,
+   "tokens_packed": 0,
+   "layers": 96,
+   "layers_packed": 0,
+   "max_rows_seen": 0,
+   "windows_applied": 0,
+   "windows_deferred_to_caller": 96,
+   "windows_attached_to_node": 96,
+   "window_nodes_attached": 96,
+   "window_attach_ambiguous": 0,
+   "window_attach_failures": 0,
+   "capture_invalidations": 0,
+   "released_during_capture": 0,
+   "hit_ratio_reduced": 96,
+   "hot_set_oversubscribed": 96,
+   "pre_touch_launches": 0,
+   "pre_touch_segments": 0,
+   "pre_touch_bytes": 0,
+   "pre_touch_skipped": 0,
+   "compute_stream_priority": 0,
+   "prefetch_stream_priority": 0
+  }
+ },
+ "note_on_scope": "Do NOT quote this as a TensorTransit result. It is the recurrent_v0 policy family, whose weighted ceiling is 0.52% on this model and 1.94% on the best model found -- both below the 2.0% floor. See README and docs/MINING.md."
+}

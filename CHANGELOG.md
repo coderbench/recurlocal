@@ -1,8 +1,135 @@
 # Changelog
 
-Notable changes to RecurLocal. Format loosely follows [Keep a Changelog](https://keepachangelog.com).
+Notable changes to TensorTransit (RecurLocal through 0.1). Format loosely follows
+[Keep a Changelog](https://keepachangelog.com).
 
 No performance claim appears here without a measurement behind it. See `docs/FRONTIER.md`.
+
+## [0.2.0] - RecurLocal becomes TensorTransit
+
+The recurrent-state locality library is now the first workload inside an engine-independent,
+cross-kernel, multi-tensor locality planner. **This is a generalization, not a rename**: the
+recurrent policy is unchanged, every 0.1 name still resolves, and the migration was measured
+rather than asserted.
+
+### The migration did not change what the policy does
+
+Qwen3.8-27B on the pinned SparkInfer commit, batch 1, ctx 128, three interleaved pairs, one
+RTX 5090, through the migrated stack — `namespace tensortransit`, `adapters/sparkinfer/`, the
+`TENSORTRANSIT_` environment prefix, the `TensorTransit` CMake package:
+
+```
+>> token-exact greedy replay gate
+    control reproducible over 3 unhooked replays
+    candidate vs control: identical over 64 tokens
+batch-1 decode: +0.13%  (noise floor 0.06%)
+```
+
+That is the figure 0.1 published for this arm, and the hook telemetry confirms the policy
+reached the captured decode graph: `windows_attached_to_node: 96`, `window_nodes_attached: 96`,
+`capture_invalidations: 0`. A partial matrix by construction (batch 1 is 0.40 of the section
+44 weight), and `decide.py` refuses to call it significant and names the missing 60% — which
+is why it is filed as `results/rtx5090-0.2-migration-check.json`, a check rather than a result.
+
+### Added — the core
+
+- **`TensorRegistry`** (`include/tensortransit/tensor.h`). Non-owning; never allocates, frees,
+  or dereferences a runtime pointer. Identity is `(id, generation)` so a freed-and-reallocated
+  address cannot silently inherit a compiled plan's window. Re-registering a live address
+  updates in place rather than issuing a new id — a decode loop that re-declares its state
+  every token must not grow the table without bound or defeat the plan cache.
+- **`TransitGraph`** (`graph.h`). Future-use edges with reuse distance in three currencies —
+  `Ordinal`, `Bytes`, `Time` — because residency is a bytes question and prefetch timing is a
+  time question, and they disagree. A `ReadWrite` use counts its bytes **twice**, which is the
+  factor of two in every ceiling this project has quoted. `set_cyclic(true)` closes the loop a
+  decode token is; without it a recurrent state has no reuse edge at all and the entire
+  surface reads as unreachable.
+- **`TransitPlan`** (`plan.h`). Serializable, diffable, digestible actions plus a **decline
+  record** — `no_reuse`, `budget_exhausted`, `too_large`, `reuse_too_far`, `role_excluded`,
+  `below_min_hit_ratio`, `not_supported` — so a null result can be read rather than guessed
+  at. `validate()` rejects a persist that is never cleared (spec section 32) and a fork that is
+  never joined (which under graph capture ends the capture INVALID).
+- **`ITransitPlanner`** and five implementations in `planners/`: `baseline` (emits nothing —
+  the true control, not "the general planner with the dials at zero"), `recurrent_v0`,
+  `greedy`, `budgeted`, `concurrency`.
+- **Five admission rules** on `budgeted`: `density`, `quota`, `proportional`, `reuse_order`,
+  `role_floor`. Every 0.1 `HotSetPolicy` enumerator survives as one of these, because each was
+  measured and none is dominated on every workload.
+- **`ITransitExecutor`**, with `CudaTransitExecutor` and a `RecordingExecutor` that makes the
+  plan/executor contract testable on a machine with no GPU.
+- **`TransitRuntime`** with a plan cache keyed on `(registry epoch, graph digest, concurrency,
+  phase, device, config)` and a `last_recompile_reason`. Spec section 33: a loop that
+  recompiled every token would put the planner on the critical path, and without a reason code
+  finding that out needs a profiler.
+- **`compute_ceiling()`** (`ceiling.h`). `eval/traffic_budget.py`'s arithmetic, derived from a
+  graph instead of a hand-written geometry file — so a model's decode rates can no longer be
+  paired with another model's state shape.
+- **Trace and plan formats** (`schemas/*.json`), golden plan digests (`tests/golden/`), and the
+  `tensortransit` CLI: `inspect`, `plan`, `compare`, `devices`, `planners`.
+
+### Added — findings
+
+- **The Transit Graph reproduces every published 0.1 bound from a recorded trace.** 293.6 MiB
+  removable, 146.8 MiB footprint, 40.9% resident, +1.692% traffic ceiling, +0.685% persist
+  ceiling — against 294 MiB, 146.8 MiB, 41%, 1.69% and 0.68%, published before any of this
+  code existed. Asserted in `tests/test_golden.cpp`.
+- **Negative, and it is about this project's own central claim.** Under the linear cost model
+  — saving proportional to resident share — total saving is `sum granted_i x density_i` under a
+  budget, greedy-on-density is optimal for that, and **no admission rule can beat `density`**.
+  The `role_floor` sweep is monotonically worse as the floor grows (+0.358% -> +0.269%). So the
+  global planner beats the naive both-persistent arm **10x** (+0.336% vs +0.034%; that policy
+  shaves thirty hit ratios to a third each, and under concurrency declines everything and
+  disables itself) and **ties, slightly below, the best single-role arm**. Spec section 38 is
+  therefore **partially** satisfied and honestly reported as such. The three terms a linear
+  model cannot express — whole-line residency, survival past the reuse distance, interference
+  between the streaming and persisting halves of the cache — are named in
+  `docs/evaluation.md`, and a cost model carrying them is the highest-value open contribution.
+  It needs no GPU.
+
+### Fixed
+
+- **`CudaTransitExecutor::release()` kept the borrowed stream handles**, so the destructor
+  probed streams the caller had already destroyed — a segfault inside `libcuda` in the
+  teardown path of an optional optimization layer. Found by `tests/test_cuda_executor.cu`
+  doing exactly what the header tells a caller to do. `release()` now drops them.
+- **The control-contamination guard only knew one environment prefix.** The adapter reads
+  `TENSORTRANSIT_X` in preference to `RECURLOCAL_X` as of this release, so a scrub that knew
+  only the old prefix would let an operator with `export TENSORTRANSIT=combined` compare the
+  candidate against itself and measure ~0% — silently, because a contaminated control produces
+  a plausible number rather than an error. `eval/real_eval.py::scrubbed_environment` removes
+  both and is asserted directly rather than only through an end-to-end run.
+- **CUDA 13 compatibility in the new executor**: `cudaDeviceProp::memoryClockRate` is gone
+  (the attribute API is used, and the field stays 0 rather than being fabricated when it
+  fails), and `cudaStreamGetCaptureInfo` took the edge-data form.
+- **The device profile in `known_device_names()` disagreed with the device.** An RTX 5090
+  reports a **96 MiB** L2, not the 128 MiB a spec sheet gives. The table now carries what
+  `tensortransit_info` read off the hardware, which is the reason the table exists.
+- **Ceiling saturation printed as `+0.000%`.** Over a cyclic window every tensor is re-read
+  next iteration, so the unlimited-cache figure saturates and `f/(1-f)` collapses to zero at
+  `f = 1` — which reads as "there is nothing here" when the truth is the opposite. It now
+  prints `unbounded`, above a 0.99 share, and says why.
+
+### Changed — migration
+
+`include/recurlocal/*.h` are shims over `include/tensortransit/*.h`; `namespace recurlocal` is
+an **alias** of `tensortransit` rather than a second set of declarations, so it cannot drift.
+`tests/test_compat.cpp` includes **only** the deprecated headers, so the shim breaking is a
+build failure here rather than a link failure in somebody else's tree, and CI consumes the
+installed package under both names. `src/cuda/` -> `executors/cuda/`, `bench/` ->
+`workloads/recurrent/synthetic/`, `integrations/sparkinfer/` -> `adapters/sparkinfer/`,
+`tools/capture_attr_probe.cu` -> `profiling/`.
+
+**Two names deliberately do not move**, both for the reproduction path, and
+`docs/STABILITY.md` section 6a says so: the `RECURLOCAL_STATS ` stderr line prefix (because
+`eval/run_from_base.sh` runs the **base commit's** parser against a candidate's binary, and
+renaming it would make every base-commit evaluator accuse a good build of being unhooked) and
+the `RECURLOCAL_` environment names (because every command line in `results/*.json` sets them).
+
+### Unchanged
+
+The 0.1 answer, which now applies to `recurrent_v0` rather than to the project: the persist
+family's weighted ceiling is **1.94% against a 2.0% floor** on the best model found, and that
+model is not scorable because the runtime is not reproducible on it.
 
 ## [Unreleased]
 

@@ -445,7 +445,7 @@ class MatrixCeiling(unittest.TestCase):
     """
 
     PIN = json.loads((Path(__file__).resolve().parent.parent /
-                      "integrations" / "sparkinfer" / "pin.json").read_text())["model"]
+                      "adapters" / "sparkinfer" / "pin.json").read_text())["model"]
 
     def _spec(self, names=("batch1", "concurrency4", "concurrency16", "concurrency32")):
         base = {"batch1": {"sequences": 1, "ms_per_token": 10.41, "state_bytes_scale": 1.0},

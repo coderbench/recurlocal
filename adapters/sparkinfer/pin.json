@@ -1,0 +1,32 @@
+{
+  "_comment": "The runtime this integration is measured against. Section 18: never benchmark a release claim against a moving main. Changing any value here invalidates every real-result.json produced before the change.",
+  "repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+  "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+  "commit_date": "2026-09-09T08:09:44+00:00",
+  "commit_subject": "perf(muse): let the NVFP4 prefill GEMMs run above 128 tokens (#1010)",
+  "patch": "tensortransit-hook.patch",
+  "patch_shape": "insertions only; no SparkInfer line is modified or removed",
+  "model": {
+    "repository": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+    "label": "Qwen3.8-27B, uniform NVFP4, 17.9 GB",
+    "architecture": "dense hybrid Gated-DeltaNet / full attention",
+    "num_hidden_layers": 64,
+    "full_attention_interval": 4,
+    "recurrent_layers": 48,
+    "linear_num_value_heads": 48,
+    "linear_key_head_dim": 128,
+    "linear_conv_kernel_dim": 4,
+    "lin_state_bytes_per_layer": 3145728,
+    "lin_conv_state_bytes_per_layer": 61440
+  },
+  "hook_sites": [
+    "runtime/src/models/qwen35.cpp: begin_token before cudaStreamBeginCapture",
+    "runtime/src/models/qwen35.cpp: before_layer at the top of the w.linear_attn block",
+    "runtime/src/models/qwen35.cpp: after_launch(Conv) after launch_qwen36_conv_split*",
+    "runtime/src/models/qwen35.cpp: after_launch(Gdn) after launch_qwen36_gdn_ar",
+    "runtime/src/models/qwen35.cpp: after_layer at the end of the w.linear_attn block",
+    "runtime/src/models/qwen35.cpp: end_token beside the existing pf_join()",
+    "runtime/CMakeLists.txt: find_package(RecurLocal) and link"
+  ],
+  "_second_model_note": "This block pins the SCORED model. The same commit and the same hook also run Qwen3.6-35B-A3B, a sparse-MoE hybrid whose geometry lives in configs/qwen3.6-35b-a3b-moe-ceiling.json - the adapter derives every stride from the runtime's config, so a second model needs a geometry file and no code change. Results in results/rtx5090-moe-matrix.json. Changing THIS block invalidates every real-result.json produced before the change; adding a second model's geometry elsewhere does not."
+}

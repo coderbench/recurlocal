@@ -10,8 +10,8 @@
 set -euo pipefail
 BUILD="${1:-build}"
 BIN="$BUILD/test_cuda_controller"
-BENCH="$BUILD/recur_local_cuda_bench"
-[ -x "$BIN" ] || { echo "!! $BIN not built; cmake -B $BUILD -DRECURLOCAL_BUILD_CUDA=ON first"; exit 2; }
+BENCH="$BUILD/tensortransit_bench"
+[ -x "$BIN" ] || { echo "!! $BIN not built; cmake -B $BUILD -DTENSORTRANSIT_BUILD_CUDA=ON first"; exit 2; }
 
 fail=0
 # One controller test deliberately provokes a failing cudaMalloc to reproduce a stale-error

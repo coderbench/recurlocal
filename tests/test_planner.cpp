@@ -1,5 +1,5 @@
-#include "recurlocal/planner.h"
-#include "recurlocal/version.h"
+#include "tensortransit/recurrent.h"
+#include "tensortransit/version.h"
 #include <algorithm>
 #include <cstring>
 #include <cmath>
@@ -8,7 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
-using namespace recurlocal;
+using namespace tensortransit;
 
 // assert() disappears under NDEBUG, which would leave a Release build reporting a
 // green test run with nothing checked. These checks are always compiled in.
@@ -162,9 +162,11 @@ static void test_pre_touch_strategy_round_trips() {
 }
 
 static void test_version_is_consistent() {
-    CHECK(std::strcmp(version_string(), RECURLOCAL_VERSION_STRING) == 0);
-    CHECK(version_number() == RECURLOCAL_VERSION_NUMBER);
+    CHECK(std::strcmp(version_string(), TENSORTRANSIT_VERSION_STRING) == 0);
+    CHECK(version_number() == TENSORTRANSIT_VERSION_NUMBER);
     CHECK(version_number() > 0);
+    // The 0.1 spelling is covered by tests/test_compat.cpp, which includes only the
+    // deprecated headers -- so it fails to build the moment the shim stops working.
 }
 
 static void test_default_constructed_planner_is_inert() {

@@ -1,42 +1,162 @@
-# RecurLocal
+# TensorTransit
 
-**RecurLocal is a feasibility-first CUDA library for software-directed locality of mutable recurrent neural state in hybrid LLM inference.**
+**TensorTransit is an engine-independent, cross-kernel, multi-tensor locality planner for AI
+inference.**
 
-> Keep recurrent AI state close to compute.
+> SparkInfer makes kernels fast. TensorTransit coordinates the data those kernels will need next.
 
-RecurLocal is intentionally **not** another inference engine, KV-cache manager, or model quantizer. Its first technical question is narrower:
+Modern inference kernels can be extremely fast and still stall waiting for the next tensor.
+TensorTransit builds a **future-use Transit Graph** across kernel boundaries and compiles it
+into cache-residency, streaming, prefetch and overlap actions, so a runtime spends less time
+waiting on memory.
 
-> Can explicit L2 residency hints plus layer-ahead state prefetch reduce recurrent-state HBM traffic enough to improve real hybrid-LLM decode throughput?
+It does not implement model math, own the KV cache, allocate anything, or replace an inference
+server. It is a component a runtime embeds.
 
-The project starts with a small, measurable primitive and is designed to integrate with runtimes such as SparkInfer.
+```text
+NOT "prefetch tensors"    NOT "manage GPU memory"    NOT "another cache"
 
-## The answer, before the mechanism
+YES  a future-use graph
+   + several semantic tensor classes
+   + one global cross-kernel planner
+   + short-timescale on-GPU locality actions
+   + real inference evaluation
+```
 
-**No, not on any device this project can reach — and the reason is arithmetic, not
-implementation.** A persisting window cannot save traffic it cannot hold, so the ceiling is
-`2 x min(persisting capacity, recurrent footprint) / decode step traffic`. The numerator is
-pinned at 60 MiB by the hardware. Weighted across the full workload matrix, on the best model
-found — a sparse-MoE hybrid whose decode step moves 3.56 GB instead of a dense hybrid's 18.5 —
-that ceiling is **1.94% against this project's own 2.0% significance floor**, with both
-persistence dials at maximum and a bound that already assumes every resident byte hits.
+## The answer this project already has, before you read the rest
 
-The best measured real-model gain is **+1.74% at batch 1** (three contexts, sparse-MoE
-checkpoint), on a checkpoint that **cannot be scored** because the runtime is not reproducible
-on it — four were screened on hardware and none gives two unhooked greedy replays that agree. Concurrency has four to seven times the room and a persisting window reaches less
-of it, not more, because the footprint grows faster than the cache.
+RecurLocal — now the recurrent-state workload inside TensorTransit — asked whether a
+persisting-L2 policy over recurrent state could produce a scorable end-to-end speedup. It
+cannot, on any device this project can reach, **and the reason is arithmetic rather than
+implementation**:
 
-Read `docs/MINING.md` before spending a week here. What this repository has actually been good
-at is the *instrument* — the traffic-budget calculator that says "do not start", and a set of
-evaluator guards each of which encodes a measurement that fooled somebody. Those found a 2.7x
-defect in the host runtime (`docs/UPSTREAM-SPARKINFER-MMVQ.md`) and a checkpoint whose runtime
-claims bit-reproducibility it does not have. The locality policy found 1.74%, on one arm, of
-one model, that cannot be scored.
+```text
+ceiling = 2 x min(persisting capacity, footprint) / decode step traffic
+```
 
-## Why this exists
+The numerator is pinned at 60 MiB by the hardware. Weighted across the full workload matrix on
+the best model found — a sparse-MoE hybrid whose decode step moves 3.56 GB instead of a dense
+hybrid's 18.5 — that ceiling is **1.94% against this project's own 2.0% significance floor**,
+with both persistence dials at maximum and a bound that already assumes every resident byte
+hits. The best measured real gain is **+1.74% at batch 1**, on a checkpoint that **cannot be
+scored** because the runtime is not reproducible on it.
+
+**The 0.2 generalization does not repeal that bound.** It relocates it: the bound now applies
+to one planner (`recurrent_v0`) over one tensor class, rather than to the project. What is new
+is a frontier wide enough for the bound to be a fact about a policy instead of a verdict on
+the repository.
+
+Read [`docs/MINING.md`](docs/MINING.md) before spending a week here.
+
+## What 0.2 adds, and what it found
+
+The core is five objects, and every policy decision lives on the CPU side where a test can
+reach it without a GPU:
+
+```text
+TensorRegistry  ->  TransitGraph  ->  ITransitPlanner  ->  TransitPlan  ->  ITransitExecutor
+   (what)             (when)            (decide)           (actions)          (CUDA)
+```
+
+Five planners (`baseline`, `recurrent_v0`, `greedy`, `budgeted`, `concurrency`), five
+admission rules (`density`, `quota`, `proportional`, `reuse_order`, `role_floor`), three reuse
+metrics, a trace format, a plan format, golden plan digests, and a CLI that does all of it
+offline. [`docs/architecture.md`](docs/architecture.md) is the map.
+
+### It reproduces the 0.1 bound from a recorded trace
+
+The 0.1 ceilings were computed from a hand-written geometry file. The Transit Graph derives
+them from a trace, which is a stronger statement — the rates and the state shape now come from
+the same recording, so they cannot be mismatched:
+
+```console
+$ tensortransit inspect tests/golden/trace_recurrent.json
+  traffic  18500000000 B per iteration
+
+per role:
+  role                  tensors     uses          bytes      removable
+  recurrent_state            96       96      153944064      307888128
+  model_weight               64       64    18192111872    18192111872
+
+ceilings [MODEL, not measurements]:
+  policy scope          unlimited on this device     resident     held B
+  recurrent_state         +1.692%        +0.685%        40.9%   62914560
+```
+
+293.6 MiB removable, 146.8 MiB footprint, 40.9% resident, +1.69% traffic ceiling, +0.685%
+persist ceiling — against 294 MiB, 146.8 MiB, 41%, 1.69% and 0.68% published before any of
+this code existed. `tests/test_golden.cpp` asserts the agreement; if the graph stops
+reproducing it, the graph is wrong.
+
+### And it found a negative result about its own central claim
+
+The specification's second proof track asks the global planner to beat naive independent
+tensor policies. On a two-role trace:
+
+```console
+$ tensortransit compare tests/golden/trace_recurrent_kv.json
+  arm                actions  declines    committed B    predicted
+  baseline                 0       176              0      +0.000%
+  recurrent_only          60       146       47185920      +0.358%
+  kv_only                  8       172       47185920      +0.179%
+  naive_both             224        64       47185872      +0.034%
+  global                  54       149       47185920      +0.336%
+```
+
+It beats the naive both-persistent arm by **10x** — that policy shaves thirty hit ratios to a
+third each and the hardware cannot keep a third of a line; under concurrency it declines
+everything and disables itself. It does **not** beat the best single-role arm, and under this
+cost model it cannot: total saving is `sum granted_i x density_i` under a budget, greedy-on-
+density is optimal for that, and any floor that diverts budget to a lower-density role must
+lose by exactly the density difference. The sweep is monotone.
+
+**So the honest state of the multi-tensor claim is: the mechanism is built, tested and
+observable; the arithmetic that would justify it is not in the cost model; and settling it
+needs hardware.** The three terms a linear model cannot express — whole-line residency,
+survival past the reuse distance, and interference between the streaming and persisting halves
+of the cache — are named in [`docs/evaluation.md`](docs/evaluation.md), and a cost model
+carrying them is the highest-value contribution available right now. It needs no GPU.
+
+Everything above marked `predicted` is a **cost-model output**. Every artifact carrying one
+declares `"basis": "model"`, and `eval/test_schemas.py` fails a plan that omits the marker.
+Only `eval/decide.py --real` produces evidence about a speedup.
+
+### The migration did not change what the policy does
+
+Generalizing a working library is a good way to break it quietly, so the claim was measured
+rather than asserted. Qwen3.8-27B on the pinned SparkInfer commit, batch 1, ctx 128, three
+interleaved pairs, one RTX 5090 — through the migrated stack: `namespace tensortransit`,
+`adapters/sparkinfer/`, the `TENSORTRANSIT_` environment prefix, the `TensorTransit` CMake
+package.
+
+```console
+>> token-exact greedy replay gate
+    control reproducible over 3 unhooked replays
+    candidate vs control: identical over 64 tokens
+>> pair 1/3   control: ctx128=96.11    candidate: ctx128=96.24
+>> pair 2/3   control: ctx128=96.11    candidate: ctx128=96.22
+>> pair 3/3   control: ctx128=96.17    candidate: ctx128=96.30
+
+batch-1 decode: +0.13%  (noise floor 0.06%)
+```
+
+**+0.13% against a 0.06% floor** is the figure 0.1 published for this arm, and the hook
+telemetry confirms the policy reached the captured decode graph — `windows_attached_to_node:
+96`, `window_nodes_attached: 96`, `capture_invalidations: 0`. Raw data in
+[`results/rtx5090-0.2-migration-check.json`](results/rtx5090-0.2-migration-check.json).
+
+It is a **partial** matrix — batch 1 only, 0.40 of the section 44 weight — and `decide.py`
+refuses to call it significant and names the missing 60%. That is the instrument working, and
+it is why this is filed as a migration check rather than as a result.
+
+## The first workload: recurrent state
 
 Hybrid LLMs increasingly combine full attention with recurrent / linear-attention layers. Qwen3.8-27B, for example, has 64 language layers with a repeating pattern of three linear-attention layers followed by one full-attention layer. Its recurrent state uses FP32 and has 48 value heads of dimension 128×128, which is 3 MiB of matrix state per recurrent layer.
 
-That state is mutable and repeatedly read/written during decode. RecurLocal experiments with the CUDA memory hierarchy rather than changing model math:
+That state is mutable and repeatedly read/written during decode, in a known layer order —
+which is what makes it a good first locality target, and why TensorTransit must not be
+branded as a recurrent-state project. The `recurrent_v0` planner experiments with the CUDA
+memory hierarchy rather than changing model math:
 
 - reserve a bounded persisting-L2 set-aside when supported;
 - mark hot recurrent-state windows as persisting;
@@ -44,49 +164,63 @@ That state is mutable and repeatedly read/written during decode. RecurLocal expe
 - rotate the hot window according to known layer execution order;
 - measure whether this improves **end-to-end** decode, not just a microbenchmark.
 
-CUDA's access-policy windows are hints, not placement guarantees. RecurLocal therefore treats every policy as an experimentally measured optimization, never as an assumed win.
+CUDA's access-policy windows are hints, not placement guarantees. Every policy here is treated
+as an experimentally measured optimization, never as an assumed win.
 
 ## Non-goals
 
-RecurLocal v0 does **not**:
+TensorTransit does **not**:
 
-- implement Gated DeltaNet / KDA / Mamba math;
-- replace SparkInfer, vLLM, or SGLang;
-- page recurrent state to CPU/NVMe;
-- quantize recurrent state;
+- implement model math — attention, GEMM, Gated DeltaNet / KDA / Mamba;
+- replace SparkInfer, vLLM, SGLang, TensorRT-LLM or FlashInfer;
+- own KV allocation, recurrent-state allocation, or any allocation at all;
+- page anything to CPU/NVMe, or transport anything between machines;
+- quantize anything;
 - change model outputs;
 - claim any speedup before hardware measurements exist.
+
+| TensorTransit owns | TensorTransit does not own |
+|---|---|
+| the future tensor-use graph | model math |
+| the cross-kernel reuse model | attention / GEMM / GDN kernels |
+| the global locality planner | KV allocation |
+| multi-tensor L2 QoS | recurrent-state allocation |
+| prefetch timing and streaming decisions | CPU/NVMe offload, distributed KV transport, RDMA |
+| cache-policy lifetime and cross-stream overlap | model quantization |
+| Transit Plan execution | full inference scheduling, serving API |
+
+If the repository drifts into the right-hand column it has lost its identity. See
+[`docs/design-principles.md`](docs/design-principles.md).
 
 ## Architecture
 
 ```text
-Inference runtime
+inference runtime
       |
-      | recurrent layer N is about to run
+      |  register_tensor(role, bytes)         -- what exists
+      |  record_use(kernel, tensor, access)   -- what will be touched, in what order
       v
-+---------------------------+
-|         RecurLocal        |
-|                           |
-| locality planner          |
-| persisting-L2 window      |
-| next-layer pre-touch      |
-| cache-window rotation     |
-+-------------+-------------+
-              |
-              v
-      CUDA memory hierarchy
-        L2 <----> HBM
-              |
-              v
-        recurrent kernel
++---------------------------------------------------------------+
+|                          TensorTransit                        |
+|   TensorRegistry -> TransitGraph -> ITransitPlanner -> Plan    |
+|                                                        |      |
+|                                              ITransitExecutor  |
++---------------------------------------------------------+-----+
+                                                          |
+                                                          v
+                                              CUDA memory hierarchy
+                                                  L2 <----> HBM
+                                                          |
+                                                          v
+                                                   model kernels
 ```
 
 ## First real result
 
 One RTX 5090, CUDA 13.3. **Qwen3.8-27B** (NVFP4, 64 layers, 48 of them recurrent) on a
 **pinned SparkInfer commit** (`5347b27c`), through the adapter in
-[`integrations/sparkinfer/`](integrations/sparkinfer/). Control and candidate are the same
-binary — the hook is inert unless `RECURLOCAL` names a mode — run interleaved on the same box.
+[`adapters/sparkinfer/`](adapters/sparkinfer/). Control and candidate are the same
+binary — the hook is inert unless `TENSORTRANSIT` names a mode — run interleaved on the same box.
 Control: **96.08 tok/s** at ctx 128, batch 1. Noise floor **0.023%**.
 
 | mode | real end-to-end decode |
@@ -116,7 +250,7 @@ recorded. **An earlier version of this README called that undocumented. It is no
 own header for `cudaStreamGetCaptureInfo` says "All operations other than destroy and node
 removal are permitted on the graph while the capture sequence is in progress"
 (`cuda_runtime_api.h:2743`, unchanged since CUDA 11.3), and blesses passing the driver-owned
-node array directly to graph APIs. `tools/capture_attr_probe.cu` reads the window back off the
+node array directly to graph APIs. `profiling/capture_attr_probe.cu` reads the window back off the
 finished graph at 1 to 128 nodes — present and byte-correct every time, memcheck-clean — and a
 persisting-versus-streaming A/B over the same buffer separates by 3.2% on replay, which a
 policy absent from the replay could not do.
@@ -203,7 +337,7 @@ disagreed with the real model.
 ### Concurrency is where the room is, and a persisting cache cannot reach it
 
 Weights are read once per decode step whatever the batch; recurrent state once per sequence.
-So the share of traffic RecurLocal can address grows with concurrency. Measured on one RTX
+So the share of traffic a recurrent-state policy can address grows with concurrency. Measured on one RTX
 5090, three interleaved pairs per arm ([`results/rtx5090-baseline-matrix.json`](results/rtx5090-baseline-matrix.json)):
 
 | | control | floor | traffic ceiling | `persist` | `prefetch` | persist ceiling |
@@ -348,7 +482,7 @@ The runtime documents the mechanism itself: a few ULP of difference in the prefi
 `SPARKINFER_DETERMINISTIC=1` does not cover this checkpoint's Q4_K expert path — two controls
 still diverge with it set.
 
-**RecurLocal is not the cause, and that is checkable.** On the dense Qwen3.8-27B, the same
+**The locality policy is not the cause, and that is checkable.** On the dense Qwen3.8-27B, the same
 binary and the same policy at the same settings give control, control and candidate as
 bit-identical over every token compared.
 
@@ -488,32 +622,71 @@ PR that loses elsewhere.
 
 ## Using it from a runtime
 
-RecurLocal is a component, not an application. It installs a CMake package:
+TensorTransit is a component, not an application. It installs a CMake package:
 
 ```cmake
-find_package(RecurLocal 0.1 REQUIRED)
-target_link_libraries(your_runtime PRIVATE RecurLocal::recurlocal_cuda)
+find_package(TensorTransit 0.2 REQUIRED)
+target_link_libraries(your_runtime PRIVATE TensorTransit::tensortransit_cuda)
+```
+
+The 0.1 spelling — `find_package(RecurLocal 0.1)` and the `RecurLocal::*` targets — still
+resolves and CI consumes the installed package under both names. It is deprecated and will be
+removed no earlier than 0.3.0; [`docs/STABILITY.md`](docs/STABILITY.md) section 6a says what
+that will and will not break, and which two names are deliberately not moving.
+
+The five-call runtime surface:
+
+```cpp
+tensortransit::TransitRuntime tt;
+tt.set_device_profile(profile);
+tt.set_planner("budgeted", config);
+tt.set_executor(&executor);
+
+const auto handle = tt.register_tensor({ptr, bytes, TensorRole::RecurrentState});
+tt.begin_recording();
+tt.record_kernel({kernel_id, order});
+tt.record_use({handle.id, kernel_id, AccessKind::ReadWrite});
+tt.end_recording(/*cyclic=*/true);   // a decode token is one iteration of a loop
+
+tt.compile(state);                   // once; reused across tokens
+for (each kernel) { tt.before_kernel(id); launch(); tt.after_kernel(id); }
 ```
 
 Construction and every entry point are `noexcept` and report `cudaError_t`; the controller
 detects CUDA Graph capture and hands the access-policy window back for the caller to attach to
 its kernel node, because a stream attribute is not recorded into a graph. See
-`integrations/sparkinfer/README.md` for the full contract.
+`adapters/sparkinfer/README.md` for the full contract.
 
 ## Build: CPU-only
 
 ```bash
-cmake -S . -B build -DRECURLOCAL_BUILD_CUDA=OFF
+cmake -S . -B build -DTENSORTRANSIT_BUILD_CUDA=OFF
 cmake --build build -j
 ctest --test-dir build --output-on-failure
-./build/recur_local_info
+./build/tensortransit_info
 ```
+
+Most of the frontier is reachable from this build: the planners, the graph, the plan schema,
+the golden digests and the whole CLI are host code.
+
+## The CLI
+
+```bash
+tensortransit inspect <trace.json>     # roles, reuse, and the ceiling that binds
+tensortransit plan    <trace.json> --planner budgeted --admission role_floor
+tensortransit compare <trace.json>     # the five policy arms over one trace
+tensortransit devices                  # device profiles, read off real hardware
+tensortransit planners
+```
+
+`inspect` is the one to run first. If the device-bounded ceiling for the roles your policy
+may touch is under the 2% floor, nothing here can help you — one command, no hardware.
 
 ## Build: CUDA
 
 ```bash
 cmake -S . -B build \
-  -DRECURLOCAL_BUILD_CUDA=ON \
+  -DTENSORTRANSIT_BUILD_CUDA=ON \
   -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build build -j
 ctest --test-dir build --output-on-failure
@@ -522,15 +695,15 @@ ctest --test-dir build --output-on-failure
 ## Synthetic CUDA benchmark
 
 ```bash
-./build/recur_local_cuda_bench baseline
-./build/recur_local_cuda_bench persist
-./build/recur_local_cuda_bench prefetch
-./build/recur_local_cuda_bench combined
+./build/tensortransit_bench baseline
+./build/tensortransit_bench persist
+./build/tensortransit_bench prefetch
+./build/tensortransit_bench combined
 
-python3 eval/run_eval.py --binary ./build/recur_local_cuda_bench
+python3 eval/run_eval.py --binary ./build/tensortransit_bench
 ```
 
-The default benchmark emulates 48 recurrent layers with 3 MiB of state per layer, over 32 timed tokens preceded by 4 untimed warm-up tokens. It is a memory-locality experiment, **not** a faithful GDN model benchmark.
+The synthetic benchmark emulates 48 recurrent layers with 3 MiB of state per layer, over 32 timed tokens preceded by 4 untimed warm-up tokens. It is a memory-locality experiment, **not** a faithful GDN model benchmark.
 
 Benchmark options: `--layers`, `--tokens`, `--warmup-tokens`, `--inner-iters`, `--state-bytes`, `--device`.
 
@@ -543,7 +716,7 @@ reproducible off the box, not merely same-box comparable.
 
 ## Integration contract
 
-A runtime needs only the lifecycle hook shown in `integrations/sparkinfer/README.md`. The
+A runtime needs only the lifecycle hook shown in `adapters/sparkinfer/README.md`. The
 SparkInfer integration is 88 lines of insertions against a pinned commit, and CI asserts it
 deletes nothing.
 
