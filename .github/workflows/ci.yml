@@ -209,6 +209,44 @@ jobs:
           # And the overlaid copy must be the BASE's, not the submission's.
           grep -q "usage: real_eval.py" <<<"$OUT" || { echo "::error::the base evaluator did not run"; exit 1; }
           echo "anti-gaming overlay ok"
+      - name: the frontier entry point scores through the base's generation, not the submission's
+        run: |
+          set -euo pipefail
+          BASE="$(git rev-parse HEAD)"
+          # The submission raised the generation's cell floor to 1.0, which would turn every
+          # cell into a floor decision. The receipt must be computed against the BASE's
+          # generation and carry the BASE's checksum.
+          WANT="$(python3 tools/tt-frontier generation show TTF-1 | sed -n 's/.*checksum *//p')"
+          python3 - <<'MAKE'
+          import json, random
+          cells = json.load(open("eval/generations/TTF-1/generation.json"))["cells"]
+          rng, rows = random.Random(7), []
+          for repeat in (1, 2, 3):
+              for index, cell in enumerate(cells):
+                  goodput, p99 = 100.0 + 40 * index, 20.0 + index
+                  for variant, mult in (("main", 1.0), ("candidate", 1.004)):
+                      jitter = 1.0 + rng.uniform(-0.001, 0.001)
+                      rows.append({"result_schema_version": 1, "generation": "TTF-1",
+                                   "workload_id": cell, "variant": variant,
+                                   "config_id": "control" if variant == "main" else "persist",
+                                   "repeat": repeat, "status": "OK", "correctness": "PASS",
+                                   "metrics": {"goodput_tps": goodput * mult * jitter,
+                                               "p99_itl_ms": p99 / (mult * jitter)}})
+          json.dump({"result_schema_version": 1, "results": rows,
+                     "provenance": {"correctness": {"correctness": "PASS"}}},
+                    open("/tmp/raw.json", "w"))
+          MAKE
+          OUT="$(TT_ENTRY=frontier bash eval/run_from_base.sh "$BASE" /tmp/submission --                     compute --generation TTF-1 --results /tmp/raw.json --output /tmp/receipt.json 2>&1)"
+          echo "$OUT"
+          GOT="$(python3 -c "import json;print(json.load(open('/tmp/receipt.json'))['generation_checksum'])")"
+          [ "$GOT" = "$WANT" ] || { echo "::error::receipt carries $GOT, base generation is $WANT"; exit 1; }
+          python3 -c "
+          import json; r = json.load(open('/tmp/receipt.json'))
+          assert not r['aggregation']['floor_decided'], 'the submission raised cell_floor and it took effect'
+          assert r['status'] == 'FRONTIER_GAIN', r['status']
+          print('receipt computed through the staged instrument:', r['frontier']['gain_percent'])
+          "
+          echo "frontier entry point ok"
       - name: the trusted runner stages two trees and overlays the baseline's instrument
         run: |
           set -euo pipefail
