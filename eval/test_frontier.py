@@ -339,6 +339,16 @@ def test_compute_cases():
     result = compute_frontier(generation, matrix(oom_main, capable))
     check(result.gain > 0, "territory that did not exist raises dF")
     check(result.failures.get("main:OOM") == 3, "and the main OOMs are counted, not hidden")
+    # ...and the floor, not a measurement, is what set the size of that gain. One such cell
+    # can move dF by a large multiple through the geometric mean, so it has to be NAMED.
+    check(result.cells_at_floor["main"] == ["ctx128-c4"] and result.floor_decided,
+          "a cell scored at the floor is named, by variant")
+    receipt = build_receipt(generation=generation, computation=result, correctness="PASS",
+                            provenance={})
+    check(receipt["aggregation"]["floor_decided"], "and the receipt says so")
+    rendered = report_mod.markdown(receipt) + report_mod.pr_comment(receipt)
+    check("cell floor" in rendered.lower() and "ctx128-c4" in rendered,
+          "and both reports name it, so the aggregate cannot be quoted without it")
 
     # the reverse: the candidate loses a region to OOM
     result = compute_frontier(generation, matrix(capable, oom_main))

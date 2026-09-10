@@ -49,7 +49,16 @@
       "description": "The frozen bounds each cell was actually scored under. Without them a reader cannot reproduce a hypervolume from the raw results, and a receipt that cannot be reproduced is a claim rather than evidence."
     },
     "reference_point": {"type": "array", "items": {"type": "number"}},
-    "aggregation": {"type": "object"},
+    "aggregation": {
+      "type": "object",
+      "properties": {
+        "method": {"type": "string"},
+        "weights": {"type": "object"},
+        "cell_floor": {"type": "number", "exclusiveMinimum": 0},
+        "cells_at_floor": {"type": "object", "description": "Cells whose hypervolume was zero for an arm and were scored at the floor instead. One such cell can move dF by a large multiple through the geometric mean, so it is named rather than absorbed."},
+        "floor_decided": {"type": "boolean"}
+      }
+    },
     "coverage": {
       "type": "object",
       "required": ["improved_cells", "neutral_cells", "regressed_cells", "total_cells"],

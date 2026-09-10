@@ -88,6 +88,19 @@ def pr_comment(receipt: dict) -> str:
                   f"**Partial matrix.** Not run: {', '.join(coverage['missing_cells'])}. "
                   f"A cell that was not run is not averaged in as a zero; this receipt is "
                   f"marked PARTIAL and does not qualify as a full-coverage contribution."]
+    aggregation = receipt.get("aggregation") or {}
+    if aggregation.get("floor_decided"):
+        floored = aggregation.get("cells_at_floor") or {}
+        parts = "; ".join(f"{variant}: {', '.join('`' + c + '`' for c in cells)}"
+                          for variant, cells in sorted(floored.items()) if cells)
+        lines += ["",
+                  f"**Scored at the cell floor.** {parts}. Those cells produced no operating "
+                  f"point at all for that arm -- an OOM, a timeout, or a fall off the batched "
+                  f"decode path -- so their contribution is set by the generation's "
+                  f"`cell_floor` ({aggregation.get('cell_floor')}) rather than by a "
+                  f"measurement. That is the intended treatment of a lost or newly-created "
+                  f"operating region, and it can move dF by a large multiple, so read the "
+                  f"per-cell table before quoting the aggregate."]
     violations = receipt.get("regression_guard", {}).get("violations") or []
     if violations:
         lines += ["",
@@ -232,6 +245,18 @@ def markdown(receipt: dict, *, raw_results_path=None) -> str:
         f"Improved {coverage['improved_cells']}, neutral {coverage['neutral_cells']}, "
         f"regressed {coverage['regressed_cells']}, of {coverage['total_cells']} declared.",
     ]
+    if (receipt.get("aggregation") or {}).get("floor_decided"):
+        floored = receipt["aggregation"].get("cells_at_floor") or {}
+        out += ["",
+                "> **Cells scored at the floor.** "
+                + "; ".join(f"{variant}: {', '.join('`' + c + '`' for c in cells)}"
+                            for variant, cells in sorted(floored.items()) if cells)
+                + f". Those cells produced no operating point for that arm, so their ratio is "
+                  f"set by `cell_floor` = {receipt['aggregation'].get('cell_floor')} rather "
+                  f"than by a measurement. One such cell can move dF by a large multiple "
+                  f"through the geometric mean; it is the intended treatment of a lost or a "
+                  f"newly-created operating region, and it is named here so that it cannot "
+                  f"do so silently."]
     if coverage.get("missing_cells"):
         out += ["",
                 f"> **Partial matrix.** Not run: "

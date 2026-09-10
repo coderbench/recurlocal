@@ -122,6 +122,7 @@ def compute_frontier(generation, results, *, allow_partial=False):
     scored_cells = sorted(seen_cells)
     per_repeat = {"main": [], "candidate": []}
     per_cell_detail = defaultdict(dict)
+    at_floor = defaultdict(set)
     for variant in ("main", "candidate"):
         for repeat in repeats:
             cells = {}
@@ -133,6 +134,8 @@ def compute_frontier(generation, results, *, allow_partial=False):
                                   method=generation.aggregation,
                                   cell_floor=generation.cell_floor)
             per_repeat[variant].append(agg["score"])
+            for cell in agg["cells_at_floor"]:
+                at_floor[variant].add(cell)
             for cell, value in agg["cells"].items():
                 per_cell_detail[cell].setdefault(variant, []).append(value)
 
@@ -186,6 +189,14 @@ def compute_frontier(generation, results, *, allow_partial=False):
                               "candidate": _median(per_cell_detail[c].get("candidate", []))}
                           for c in scored_cells},
         coverage=coverage,
+        # Cells whose hypervolume was ZERO for one arm and were scored at the generation's
+        # floor instead. This matters out of all proportion to how often it happens: the ratio
+        # for such a cell is set by the floor rather than by anything measured, and a single
+        # one can move dF by hundreds of percent through the geometric mean. It is the "new
+        # capability" case the specification most wants to reward -- main OOMs, the candidate
+        # succeeds -- and rewarding it is right; letting it do so SILENTLY is not.
+        cells_at_floor={variant: sorted(at_floor[variant]) for variant in ("main", "candidate")},
+        floor_decided=bool(at_floor["main"] or at_floor["candidate"]),
         configurations={v: sorted(configs[v]) for v in ("main", "candidate")},
         failures=dict(failures),
         guard_violations=guard_violations,

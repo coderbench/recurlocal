@@ -121,6 +121,12 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
             "method": generation.aggregation,
             "weights": computation.weights,
             "cell_floor": generation.cell_floor,
+            # Which cells the FLOOR decided rather than a measurement. A cell whose
+            # hypervolume was zero for one arm has its ratio set by this constant, and one
+            # such cell can move dF by hundreds of percent through the geometric mean. Naming
+            # them is the difference between a result and a number.
+            "cells_at_floor": computation.cells_at_floor,
+            "floor_decided": computation.floor_decided,
         },
 
         "coverage": {
