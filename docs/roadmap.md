@@ -8,7 +8,9 @@ mechanism is implemented, tested, and either measured or explicitly marked unmea
 Recurrent-state locality for hybrid LLM decode: persisting-L2 windows, layer-ahead pre-touch,
 hot-set accounting, the SparkInfer adapter, the evaluation harness.
 
-**Answer: the persist family is bounded below the project's own significance floor.** Ceiling
+**Answer: the persist family is bounded below the project's own significance floor, and — asked
+per cell rather than weighted — below the floor the measurement itself can resolve on seven of
+TTF-1's ten cells.** Ceiling
 `2 x min(persisting capacity, footprint) / step traffic`; numerator pinned at 60 MiB by the
 hardware; **1.94% weighted** on the best model found -- under the 2% floor the 0.1 scorer rejected at,
 which is why 0.2.1 retired the floor from BOTH scorers rather than retiring the project. It
@@ -64,6 +66,16 @@ the measured end-to-end number, which made the entire competition surface decora
 - **A trusted, keyless, ephemeral GPU runner**, and the anti-gaming overlay it depends on,
   both proven by CI rather than described.
 - Plan replay, a gated overhead budget, an O(log) live-set query, and live trace recording.
+- **The ceiling asked per cell instead of weighted**, which is the finding this release turns
+  on: `tools/tt-frontier generation show TTF-1 --reachable` computes, for every cell, what a
+  perfect persisting-L2 policy could be worth against the floor that cell can actually resolve.
+  **Seven of ten cells lose**, including the one every headline in this repository was measured
+  in, and on the three that remain the shipped policy measures negative. The traffic is still
+  there — 5.2% of the step at sixteen sequences, 8.6% at thirty-two — and reaching it is not a
+  planner problem. docs/VERDICT.md sections 7 and 9.
+- **Five defects in the evaluator**, all found by the first full run of its own generation, all
+  fixed and each named in the CHANGELOG with the incident it caused. The receipt for that run
+  read −99.5% and none of what produced it was the submission.
 
 ## v0.3 — A cost model that can express coordination
 
