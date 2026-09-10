@@ -23,6 +23,13 @@ Short version:
 > `tools/tt-frontier generation show TTF-1 --reachable` prints the whole table, computed from
 > the pinned geometry and each cell's own measured control. Sections 3, 8 and 9 give each claim
 > a number and name the measurement it came from.
+>
+> **All of that is about the model that is pinned, and section 9 is where it stops being the
+> last word.** On the same RTX 5090 and the same runtime commit, `Qwen3.5-4B-Q4_K_M` — a decode
+> step of 2.84 GB against 18.21, and a recurrent footprint that *fits* in the 60 MiB partition —
+> measures **+0.695% at batch 1 against a 0.112% noise floor**, token-exact, ten of ten replays
+> identical. The device fixes the numerator of the ceiling. The model fixes the denominator, and
+> the denominator was never searched properly.
 
 ---
 
@@ -588,7 +595,37 @@ where a 2% floor gated `significant` until 0.2.1.
   resolve at three repeats; and whether any mechanism *outside* the persist family can reach the
   5–9% at concurrency is untouched. None needs a maintainer's permission to start.
 
-**What would change the answer.** For the persist family: a model whose decode step moves under
-6.42 GB *and* is reproducible against itself. Four were screened and none is. For everything
-else: nothing needs to change. The room is measured, published, and larger than the noise.
+**What would change the answer — and it has.** For the persist family: a model whose decode step
+moves under 6.42 GB *and* is reproducible against itself. Four were screened and none was, and
+**all four were sparse MoE**. A small *dense* hybrid reaches a small step too, without the
+top-k expert routing that breaks reproducibility, and nobody had looked.
+
+`Qwen3.5-4B-Q4_K_M`, on the same RTX 5090 and the same pinned SparkInfer commit, clears both
+gates and measures a **resolved positive**:
+
+| | pinned Qwen3.8-27B | **Qwen3.5-4B-Q4_K_M** |
+|---|--:|--:|
+| decode step | 18.21 GB | **2.84 GB** |
+| recurrent footprint | 153.9 MB (2.4x the partition) | **51.5 MB — it fits** |
+| persist-family ceiling | 0.696% | **3.760%** |
+| ten unhooked greedy replays | identical | **identical, 128 tokens** |
+| **measured `persist`, batch 1** | +0.10% | **+0.695%** |
+| that arm's noise floor | — | **0.112% — resolved at 6.2x** |
+
+Two independent reasons for the ceiling, not one: the step is 6.4x smaller *and* the footprint
+fits inside the 60 MiB partition instead of overflowing it, so 61% of the pinned model's state
+can never be resident whatever the policy does.
+
+**It is the first result in this repository that is both positive and scorable.** The sparse MoE
+measured +1.26% and can never be scored — its own unhooked replays disagree. This one passes the
+gate.
+
+Three qualifications, all measured: the step runs at **55% of bandwidth**, so 3.760% is a loose
+upper bound and +0.695% is about 18% of it; **concurrency is negative here too** (−1.819% at
+sixteen), exactly as section 3.3's concurrency-blind graph predicts; and dense is *not*
+sufficient — `Qwen3.5-9B-Q4_K_M` is dense, has no expert routing, and one replay of three
+diverges at token 16, so the gate runs per checkpoint.
+
+`results/rtx5090-4b-checkpoint-screen.json`; `eval/screen_checkpoints.py` does the first gate
+from a `config.json` and a file size, before any download.
 

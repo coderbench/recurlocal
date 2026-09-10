@@ -1,0 +1,235 @@
+{
+ "schema_version": 1,
+ "what_this_is": "A checkpoint that clears BOTH gates on one RTX 5090 with the pinned SparkInfer commit, which docs/VERDICT.md said did not exist. It does; the earlier search looked only for a sparse MoE, because that is the textbook route to a small decode step, and a small DENSE model gets there too without the top-k expert routing that breaks reproducibility.",
+ "provenance": {
+  "timestamp_utc": "2026-09-10T11:55:14+00:00",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "driver": "595.84",
+  "model": "/root/models/screen/q4b/Qwen3.5-4B-Q4_K_M.gguf",
+  "binary": "/root/work/si-work/sparkinfer/build/runtime/qwen3_gguf_bench",
+  "candidate_env": {
+   "TENSORTRANSIT": "persist",
+   "TENSORTRANSIT_WINDOW_ATTACH": "capture_node",
+   "RECURLOCAL_STATS": "1"
+  },
+  "control_env": {},
+  "tokens_per_measurement": 128,
+  "contexts": [
+   128,
+   4096,
+   16384
+  ],
+  "repeats": 5,
+  "warmup_runs_discarded": 1,
+  "label": "",
+  "note": "",
+  "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+  "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+  "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+  "recurlocal_commit": null
+ },
+ "gate_1_traffic": {
+  "what": "ceiling = 2 x min(persisting-L2, recurrent footprint) / decode step traffic, from config.json and a file size. eval/screen_checkpoints.py. `basis`: model.",
+  "candidates": [
+   {
+    "model": "Qwen3.5-4B-Q4_K_M",
+    "quantisation": "Q4_K_M",
+    "file_bytes": 2740937888,
+    "active_weight_bytes_per_token": 2740937888,
+    "active_weight_basis": "dense: every weight is read every token",
+    "step_traffic_bytes": 2843960480,
+    "layers": 32,
+    "full_attention_interval": 4,
+    "recurrent_layers": 24,
+    "lin_state_bytes_per_layer": 2097152,
+    "lin_conv_state_bytes_per_layer": 49152,
+    "footprint_bytes_per_token": 51511296,
+    "architecture": "Qwen3_5ForConditionalGeneration",
+    "sparse_moe": false,
+    "resident_bytes": 51511296,
+    "footprint_fits_in_partition": true,
+    "traffic_share": 0.036225043464739,
+    "ceiling_pct": 3.7586620423264403,
+    "implied_tok_s_if_bandwidth_bound": 630.1,
+    "loadable": true,
+    "refused_because": [],
+    "reproducibility_risk": "unknown -- dense removes the known cause, and does not settle it: Qwen3.5-9B-Q4_K_M is dense and diverges at token 16 in one replay of three, while Qwen3.5-4B-Q4_K_M agrees three of three. Run the gate.",
+    "basis": "model",
+    "note": "predicted_* and ceiling_pct are cost-model outputs, not measurements. The second gate -- two unhooked greedy replays agreeing -- needs hardware."
+   },
+   {
+    "model": "Qwen3.5-9B-Q4_K_M",
+    "quantisation": "Q4_K_M",
+    "file_bytes": 5680522464,
+    "active_weight_bytes_per_token": 5680522464,
+    "active_weight_basis": "dense: every weight is read every token",
+    "step_traffic_bytes": 5783545056,
+    "layers": 32,
+    "full_attention_interval": 4,
+    "recurrent_layers": 24,
+    "lin_state_bytes_per_layer": 2097152,
+    "lin_conv_state_bytes_per_layer": 49152,
+    "footprint_bytes_per_token": 51511296,
+    "architecture": "Qwen3_5ForConditionalGeneration",
+    "sparse_moe": false,
+    "resident_bytes": 51511296,
+    "footprint_fits_in_partition": true,
+    "traffic_share": 0.01781305254864777,
+    "ceiling_pct": 1.8136112065905916,
+    "implied_tok_s_if_bandwidth_bound": 309.8,
+    "loadable": true,
+    "refused_because": [],
+    "reproducibility_risk": "unknown -- dense removes the known cause, and does not settle it: Qwen3.5-9B-Q4_K_M is dense and diverges at token 16 in one replay of three, while Qwen3.5-4B-Q4_K_M agrees three of three. Run the gate.",
+    "basis": "model",
+    "note": "predicted_* and ceiling_pct are cost-model outputs, not measurements. The second gate -- two unhooked greedy replays agreeing -- needs hardware."
+   },
+   {
+    "model": "Qwen3.8-27B PINNED",
+    "quantisation": "NVFP4",
+    "file_bytes": 17900000000,
+    "active_weight_bytes_per_token": 17900000000,
+    "active_weight_basis": "dense: every weight is read every token",
+    "step_traffic_bytes": 18207888128,
+    "layers": 64,
+    "full_attention_interval": 4,
+    "recurrent_layers": 48,
+    "lin_state_bytes_per_layer": 3145728,
+    "lin_conv_state_bytes_per_layer": 61440,
+    "footprint_bytes_per_token": 153944064,
+    "architecture": "Qwen3_5ForConditionalGeneration",
+    "sparse_moe": false,
+    "resident_bytes": 62914560,
+    "footprint_fits_in_partition": false,
+    "traffic_share": 0.006910692723693782,
+    "ceiling_pct": 0.6958782732891744,
+    "implied_tok_s_if_bandwidth_bound": 98.4,
+    "loadable": true,
+    "refused_because": [],
+    "reproducibility_risk": "unknown -- dense removes the known cause, and does not settle it: Qwen3.5-9B-Q4_K_M is dense and diverges at token 16 in one replay of three, while Qwen3.5-4B-Q4_K_M agrees three of three. Run the gate.",
+    "basis": "model",
+    "note": "predicted_* and ceiling_pct are cost-model outputs, not measurements. The second gate -- two unhooked greedy replays agreeing -- needs hardware."
+   },
+   {
+    "model": "Qwen3.6-35B-A3B MoE",
+    "quantisation": "Q4_K_M",
+    "file_bytes": 22130000000,
+    "active_weight_bytes_per_token": 3560000000,
+    "active_weight_basis": "measured, supplied on the --candidate spec",
+    "step_traffic_bytes": 3688778240,
+    "layers": 40,
+    "full_attention_interval": 4,
+    "recurrent_layers": 30,
+    "lin_state_bytes_per_layer": 2097152,
+    "lin_conv_state_bytes_per_layer": 49152,
+    "footprint_bytes_per_token": 64389120,
+    "architecture": "Qwen3_5MoeForConditionalGeneration",
+    "sparse_moe": true,
+    "resident_bytes": 62914560,
+    "footprint_fits_in_partition": false,
+    "traffic_share": 0.03411132678986959,
+    "ceiling_pct": 3.53160024917785,
+    "implied_tok_s_if_bandwidth_bound": 485.8,
+    "loadable": true,
+    "refused_because": [],
+    "reproducibility_risk": "high -- sparse-MoE top-k routing turns a few ULP of prefill difference into a different token; four checkpoints screened and none reproducible",
+    "basis": "model",
+    "note": "predicted_* and ceiling_pct are cost-model outputs, not measurements. The second gate -- two unhooked greedy replays agreeing -- needs hardware."
+   }
+  ]
+ },
+ "gate_2_reproducibility": {
+  "what": "unhooked greedy replays of the same prompt, compared as token ids",
+  "Qwen3.5-4B-Q4_K_M": {
+   "replays": 10,
+   "distinct": 1,
+   "tokens": 128,
+   "reproducible": true
+  },
+  "Qwen3.5-9B-Q4_K_M": {
+   "replays": 3,
+   "distinct": 2,
+   "tokens": 64,
+   "reproducible": false,
+   "first_divergence_token": 16,
+   "note": "dense, no expert routing, and still not reproducible -- which is why the gate runs per checkpoint rather than per architecture"
+  },
+  "Qwen3.8-27B (pinned)": {
+   "reproducible": true,
+   "note": "3 control replays in every matrix"
+  },
+  "Qwen3.6-35B-A3B (MoE)": {
+   "reproducible": false,
+   "note": "4 of 4 replays distinct; four MoE checkpoints screened"
+  }
+ },
+ "measured": {
+  "model": "Qwen3.5-4B-Q4_K_M",
+  "correctness": {
+   "output_identical": true,
+   "method": "greedy replay, token-exact",
+   "tokens_compared": 64,
+   "prompt_ids": [
+    9707,
+    3837,
+    1879,
+    13,
+    25001,
+    752,
+    911
+   ],
+   "runtime_reproducible": true,
+   "control_replays": 3,
+   "control_replays_requested": 3,
+   "candidate_matches_control": true,
+   "first_divergence": null,
+   "candidate_hook_active": true
+  },
+  "measurement": {
+   "noise_floor_pct": 0.11154301362910227,
+   "gain_pct": 0.6945205388412479,
+   "resolved": true,
+   "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
+   "unresolved_workloads": []
+  },
+  "workloads": {
+   "batch1": {
+    "weight": 0.4,
+    "baseline_tps": 346.5726079946884,
+    "candidate_tps": 348.97962593920926
+   },
+   "concurrency16": {
+    "weight": 0.2,
+    "baseline_tps": 318.4,
+    "candidate_tps": 312.6072772898369
+   }
+  },
+  "note": "Paired interleaved, five pairs, one warm-up discarded, one binary, one box, the only variable being the environment. batch1 +0.695% against a 0.112% noise floor -- RESOLVED, and the first scorable positive result this project has produced. concurrency16 -1.819%."
+ },
+ "findings": [
+  {
+   "finding": "A checkpoint clearing both gates exists on this device, and it is dense.",
+   "detail": "Qwen3.5-4B-Q4_K_M: loads on the pinned runtime, ten unhooked greedy replays identical over 128 tokens, persist-family ceiling 3.760% against the pinned model's 0.696%. Two independent reasons for the ceiling, not one: its step moves 2.84 GB instead of 18.2, AND its 51.5 MB recurrent footprint FITS inside the device's 60 MiB persisting partition rather than overflowing it 2.4x. The pinned model's footprint is 153.9 MB, so 61% of it can never be resident whatever the policy does."
+  },
+  {
+   "finding": "+0.695% at batch 1, resolved at 6.2x the noise floor, token-exact.",
+   "detail": "The dense 27B gives +0.10% to +0.145% on the same arm. The sparse MoE gives +1.26% and can never be scored, because its own unhooked replays disagree. This one is both positive and scorable, which no result in this repository has been before."
+  },
+  {
+   "finding": "The ceiling is loose, and the measurement says by how much.",
+   "detail": "2.84 GB at 1792 GB/s implies 630 tok/s if the step were purely bandwidth-bound; it measured 346.6, which is 55% utilisation. Below the 80% at which a traffic ceiling is tight, so 3.760% is an upper bound and the measured +0.695% is about 18% of it. That is the same caveat every cell of the pinned model carries, and it is why the screen prints an implied rate to check against."
+  },
+  {
+   "finding": "Concurrency is negative here too.",
+   "detail": "-1.819% at sixteen sequences. Consistent with every other model measured here and with results/rtx5090-0.2.1-concurrency-blind-graph.json: a window covers row 0, so at sixteen sequences the benefit divides by sixteen while the interference multiplies by it, and the planner is not told either. The positive result is batch 1."
+  },
+  {
+   "finding": "Dense is not sufficient, and assuming it was cost an hour.",
+   "detail": "eval/screen_checkpoints.py was written with `reproducibility_risk: low -- dense, no expert routing`. Qwen3.5-9B-Q4_K_M is dense, has no expert routing, and one replay of three diverges at token 16. Dense removes the KNOWN cause -- discrete top-k routing amplifying a few ULP -- and does not settle the question. The tool now says so and cites both results."
+  }
+ ],
+ "how_to_reproduce": {
+  "screen": "eval/screen_checkpoints.py --candidate 'name=config.json:file_bytes:quant[:active_weight_bytes]'",
+  "gate": "qwen3_gguf_generate <model.gguf> 128 <prompt ids>, N times, compare OUTPUT_IDS",
+  "measure": "eval/real_eval.py --cb-binary ... --model <model.gguf> --repeats 5 --warmup-runs 1 --concurrency 4 --concurrency 16 --candidate TENSORTRANSIT=persist TENSORTRANSIT_WINDOW_ATTACH=capture_node"
+ }
+}
