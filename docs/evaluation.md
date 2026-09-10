@@ -307,8 +307,8 @@ spread this project had itself calibrated at **481%**.
 
 The published spreads are also what says three repeats is a floor rather than a
 recommendation. The same arm measured **+0.07%** and **−0.39%** at `ctx128-c16` in two sessions
-two hours apart on the reference box; that cell's published spread is 0.42%. `scripts/
-trusted_eval.sh` defaults to five and the generation allows nine.
+two hours apart on the reference box; that cell's published spread is 0.42%.
+`scripts/trusted_eval.sh` defaults to five and the generation allows nine.
 
 ### The guards, and the incident each one encodes
 
