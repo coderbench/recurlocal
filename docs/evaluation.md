@@ -310,7 +310,8 @@ whether the first exceeds the second; `resolution_summary` says what share of th
 resolved. Neither moves a score — they say which cells a score is entitled to rest on. A floor
 decision taken inside a published spread is named on the receipt's face, and the first full
 TTF-1 run is why: it read −99.5%, and the cell that decided it moved its p99 by 183% against a
-spread this project had itself calibrated at **481%**.
+spread this project had itself calibrated at **481%** — a figure nine repeats of that cell later
+put at a median ratio of 1.083, worse in seven of nine pairs, p ≈ 0.18.
 
 The published spreads are also what says three repeats is a floor rather than a
 recommendation. The same arm measured **+0.07%** and **−0.39%** at `ctx128-c16` in two sessions

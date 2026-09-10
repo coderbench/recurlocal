@@ -1,0 +1,312 @@
+{
+ "schema_version": 1,
+ "what_this_is": "Nine paired interleaved repeats of ctx128-c32 -- control against the shipped `persist` policy, nothing else -- because three repeats of that cell drove the first full TTF-1 receipt to -99.5% and three repeats cannot say whether that was the policy or the box. The generation allows nine. This spends them on one cell.",
+ "provenance": {
+  "attribution": {
+   "probe_independent_of_candidate": false,
+   "probed": [],
+   "skipped": false,
+   "verdicts": {}
+  },
+  "baseline_commit": null,
+  "candidate_commit": null,
+  "cells_requested": [
+   "ctx128-c32"
+  ],
+  "correctness": {
+   "compared_against": "candidate build",
+   "control_binary": "/root/work/si-work/sparkinfer/build/runtime/qwen3_gguf_generate",
+   "control_replays": 3,
+   "correctness": "PASS",
+   "method": "greedy replay, token-exact",
+   "runtime_reproducible": true,
+   "tokens_compared": 64
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "hardware": {
+   "count": 1,
+   "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "instances": "public_only",
+  "long_prefill": 4096,
+  "main_concurrency_scaling": {},
+  "max_new": 64,
+  "mode": "authoritative",
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "repeats": 9,
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  }
+ },
+ "pairs": [
+  {
+   "repeat": 1,
+   "control": {
+    "goodput_tps": 901.2,
+    "p50_itl_ms": 18.606,
+    "p95_itl_ms": 18.705,
+    "p99_itl_ms": 46.705,
+    "max_itl_ms": 678.36,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 575.1,
+    "p50_itl_ms": 18.842,
+    "p95_itl_ms": 20.431,
+    "p99_itl_ms": 71.818,
+    "max_itl_ms": 655.05,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -36.1851,
+   "p99_ratio": 1.5377,
+   "max_ratio": 0.9656
+  },
+  {
+   "repeat": 2,
+   "control": {
+    "goodput_tps": 903.8,
+    "p50_itl_ms": 18.583,
+    "p95_itl_ms": 18.697,
+    "p99_itl_ms": 45.645,
+    "max_itl_ms": 674.22,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 894.3,
+    "p50_itl_ms": 18.774,
+    "p95_itl_ms": 18.894,
+    "p99_itl_ms": 46.845,
+    "max_itl_ms": 680.81,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -1.0511,
+   "p99_ratio": 1.0263,
+   "max_ratio": 1.0098
+  },
+  {
+   "repeat": 3,
+   "control": {
+    "goodput_tps": 901.4,
+    "p50_itl_ms": 18.566,
+    "p95_itl_ms": 18.681,
+    "p99_itl_ms": 47.855,
+    "max_itl_ms": 679.26,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 890.5,
+    "p50_itl_ms": 18.754,
+    "p95_itl_ms": 18.903,
+    "p99_itl_ms": 116.215,
+    "max_itl_ms": 116.22,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -1.2092,
+   "p99_ratio": 2.4285,
+   "max_ratio": 0.1711
+  },
+  {
+   "repeat": 4,
+   "control": {
+    "goodput_tps": 894.9,
+    "p50_itl_ms": 18.547,
+    "p95_itl_ms": 18.68,
+    "p99_itl_ms": 240.096,
+    "max_itl_ms": 240.11,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 890.1,
+    "p50_itl_ms": 18.76,
+    "p95_itl_ms": 19.062,
+    "p99_itl_ms": 260.036,
+    "max_itl_ms": 260.05,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -0.5364,
+   "p99_ratio": 1.0831,
+   "max_ratio": 1.083
+  },
+  {
+   "repeat": 5,
+   "control": {
+    "goodput_tps": 903.7,
+    "p50_itl_ms": 18.563,
+    "p95_itl_ms": 18.682,
+    "p99_itl_ms": 49.145,
+    "max_itl_ms": 673.14,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 892.9,
+    "p50_itl_ms": 18.769,
+    "p95_itl_ms": 18.891,
+    "p99_itl_ms": 156.992,
+    "max_itl_ms": 157.0,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -1.1951,
+   "p99_ratio": 3.1945,
+   "max_ratio": 0.2332
+  },
+  {
+   "repeat": 6,
+   "control": {
+    "goodput_tps": 905.0,
+    "p50_itl_ms": 18.57,
+    "p95_itl_ms": 18.693,
+    "p99_itl_ms": 46.91,
+    "max_itl_ms": 673.04,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 893.0,
+    "p50_itl_ms": 18.781,
+    "p95_itl_ms": 18.908,
+    "p99_itl_ms": 72.097,
+    "max_itl_ms": 72.1,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -1.326,
+   "p99_ratio": 1.5369,
+   "max_ratio": 0.1071
+  },
+  {
+   "repeat": 7,
+   "control": {
+    "goodput_tps": 907.2,
+    "p50_itl_ms": 18.556,
+    "p95_itl_ms": 18.681,
+    "p99_itl_ms": 45.123,
+    "max_itl_ms": 668.11,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 895.9,
+    "p50_itl_ms": 18.768,
+    "p95_itl_ms": 18.903,
+    "p99_itl_ms": 48.508,
+    "max_itl_ms": 676.94,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -1.2456,
+   "p99_ratio": 1.075,
+   "max_ratio": 1.0132
+  },
+  {
+   "repeat": 8,
+   "control": {
+    "goodput_tps": 903.6,
+    "p50_itl_ms": 18.57,
+    "p95_itl_ms": 18.681,
+    "p99_itl_ms": 46.364,
+    "max_itl_ms": 676.28,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 895.4,
+    "p50_itl_ms": 18.759,
+    "p95_itl_ms": 18.891,
+    "p99_itl_ms": 45.842,
+    "max_itl_ms": 679.54,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -0.9075,
+   "p99_ratio": 0.9887,
+   "max_ratio": 1.0048
+  },
+  {
+   "repeat": 9,
+   "control": {
+    "goodput_tps": 899.6,
+    "p50_itl_ms": 18.56,
+    "p95_itl_ms": 18.688,
+    "p99_itl_ms": 72.779,
+    "max_itl_ms": 72.78,
+    "itl_samples": 2016.0
+   },
+   "candidate": {
+    "goodput_tps": 893.0,
+    "p50_itl_ms": 18.772,
+    "p95_itl_ms": 18.981,
+    "p99_itl_ms": 70.55,
+    "max_itl_ms": 70.55,
+    "itl_samples": 2016.0
+   },
+   "goodput_delta_pct": -0.7337,
+   "p99_ratio": 0.9694,
+   "max_ratio": 0.9694
+  }
+ ],
+ "summary": {
+  "goodput_delta_pct": {
+   "per_repeat": [
+    -36.1851,
+    -1.0511,
+    -1.2092,
+    -0.5364,
+    -1.1951,
+    -1.326,
+    -1.2456,
+    -0.9075,
+    -0.7337
+   ],
+   "median": -1.1951,
+   "pairs_worse_for_candidate": 0,
+   "pairs": 9
+  },
+  "p99_ratio": {
+   "per_repeat": [
+    1.5377,
+    1.0263,
+    2.4285,
+    1.0831,
+    3.1945,
+    1.5369,
+    1.075,
+    0.9887,
+    0.9694
+   ],
+   "median": 1.0831,
+   "pairs_worse_for_candidate": 7,
+   "pairs": 9
+  },
+  "max_ratio": {
+   "per_repeat": [
+    0.9656,
+    1.0098,
+    0.1711,
+    1.083,
+    0.2332,
+    0.1071,
+    1.0132,
+    1.0048,
+    0.9694
+   ],
+   "median": 0.9694,
+   "pairs_worse_for_candidate": 4,
+   "pairs": 9
+  },
+  "itl_samples_per_run": 2016
+ },
+ "findings": [
+  {
+   "finding": "Goodput: a resolved regression of about 1.2%, nine pairs out of nine.",
+   "detail": "Every one of the nine paired repeats is negative, median -1.20%. A paired sign test over nine pairs all in one direction is p = 0.004 two-sided, and pairing is exactly what the interleaving exists to enable. Note the other reading: that cell's PUBLISHED control spread is 1.738% peak-to-peak, so -1.2% does not clear the peak-to-peak rule this repository applies elsewhere. Both are reported. The sign test is the stronger statistic here and the peak-to-peak rule is the more conservative one.",
+   "caveat": "Repeat 1's candidate came in at 575.1 tok/s against 901.2 -- a -36% collapse in the opening pair, which is the warm-up effect eval/real_eval.py documents and offers --discard-leading for, defaulted to zero so every published result stays reproducible. Excluding it the median is -1.12% and eight of eight are still negative."
+  },
+  {
+   "finding": "p99 inter-token latency: NOT resolved at nine repeats, and the three-repeat figure was sampling.",
+   "detail": "The first full matrix reported a p99 of 133.97 ms against a control's 47.30 over three repeats -- a 183% regression -- and docs/VERDICT.md reported it as a real distributional change. Nine repeats do not support that. The paired ratio is worse for the candidate in SEVEN of nine pairs with a median of 1.083, which a sign test puts at p ~ 0.18. The cell's published control spread on this objective is 481% and the control's own nine values span 45.1 to 240.1 ms, which is 432%: the calibration was right and three repeats sampled it.\n\nThe mechanism is visible in the pairs. Every run carries one very long gap -- the generation's long-prefill request landing on a decode step -- at around 673 ms, and with 2016 timed gaps per run that single stall sits at the maximum and does not move a 99th percentile. In three of the nine candidate runs and two of the nine control runs it is ABSENT, and p99 then climbs to whatever the next tail is: 72, 116, 157 ms. So p99 at this cell is bimodal on whether one stall lands in the window, and it is not measuring a policy."
+  },
+  {
+   "finding": "The maximum gap shows no effect either, which retracts the other half of the earlier reading.",
+   "detail": "Median ratio 0.969, worse for the candidate in four of nine pairs. The earlier three-repeat reading -- that the policy converts one long stall into several medium ones, so max improves while p99 worsens -- was the same sampling seen from the other side. Neither direction survives nine repeats."
+  }
+ ]
+}

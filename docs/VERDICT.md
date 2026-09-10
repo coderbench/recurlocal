@@ -160,7 +160,7 @@ tracks window count, the model needs a per-window cost term and *fewer, larger w
 direction to tune. If it does not, the correlation is an artifact of what these five arms
 happen to persist.
 
-### 3.4 The tail-latency objective cannot be resolved yet
+### 3.4 The tail-latency objective cannot be resolved yet, and nine repeats do not rescue it
 
 The frontier scores goodput *and* p99 inter-token latency, and the second is where a locality
 policy has a mechanism the throughput ceiling does not bound — a resident line removes a
@@ -169,7 +169,25 @@ variable-latency round trip from the critical path. It has now been measured, an
 three paired repeats only two of fifteen latency figures cleared their own noise.
 
 That is a fact about the harness, not about any policy. The generation allows up to nine
-repeats; nobody has spent them.
+repeats, and they have now been spent on the worst cell.
+
+**`ctx128-c32`, nine paired repeats** (`results/rtx5090-0.2.1-c32-latency.json`). The paired p99
+ratio is worse for the candidate in **seven of nine** pairs, median **1.083** — a sign test puts
+that at p ≈ 0.18. The maximum-gap ratio shows nothing at all: median 0.969, worse in four of
+nine. The control's own nine p99 values span 45.1 to 240.1 ms, which is 432% and confirms the
+calibration's 481%.
+
+The mechanism is visible in the pairs and is worth knowing before anyone tries again: every run
+carries one ~673 ms stall — the generation's long-prefill request landing on a decode step — and
+with 2016 timed gaps per run that single stall sits at the maximum and cannot move a 99th
+percentile. In three of nine candidate runs and two of nine control runs it is **absent**, and
+p99 then climbs to whatever the next tail is: 72, 116, 157 ms. **p99 at this cell is bimodal on
+whether one stall lands in the window.** More repeats sharpen the estimate of a bimodal
+distribution; they do not make it measure a policy.
+
+What the same nine repeats *do* resolve is goodput: **−1.20% median, nine of nine pairs
+negative**, a paired sign test at p = 0.004. (Peak-to-peak against that cell's published 1.738%
+spread does not clear; the two rules disagree and both are reported.)
 
 ## 4. What the second proof track says, and what it does not
 
@@ -390,9 +408,12 @@ defects produced it, both now fixed and both now named on the receipt's own face
    `tt-frontier run` re-runs such a cell on the **baseline** binary with the hook installed and
    no window, and a failure that reproduces there is the runtime's.
 2. `ctx128-c32` was driven to the floor by a p99 change of 183% against a control spread that
-   `reference.json` **froze at 481%** when the generation was calibrated. Every receipt now
-   reports, per cell and per objective, what moved against what the generation published, and
-   names a floor decision taken inside that spread.
+   `reference.json` **froze at 481%** when the generation was calibrated. Nine repeats of that
+   cell, run afterwards, confirm the calibration and retract the reading: the paired p99 ratio
+   is worse for the candidate in seven of nine pairs, median 1.083, sign test p ≈ 0.18, and the
+   control's own nine values span 432%. Every receipt now reports, per cell and per objective,
+   what moved against what the generation published, and names a floor decision taken inside
+   that spread.
 
 Neither fix moves a score by itself. What they change is whether a number can be published
 without saying what it rests on — and the first full run of this generation could not have

@@ -302,8 +302,10 @@ comment.
 The first full TTF-1 receipt is why. It read **−99.5%**, and the cell that decided it,
 `ctx128-c32`, reached the floor on a p99 change of 183% against a control spread this project
 had itself calibrated at **481%**. Its p50 and p95 were identical to the control's in every
-repeat. A number like that is not a result and a receipt should not be able to publish it
-without saying what it rests on.
+repeat. Nine repeats of that cell afterwards put the paired p99 ratio at a median of 1.083,
+worse for the candidate in seven of nine pairs — p ≈ 0.18, not a result. A number like the first
+one is not a result either, and a receipt should not be able to publish it without saying what
+it rests on.
 
 The same document is what says four of TTF-1's ten cells cannot be measured as concurrency
 cells on this runtime at all — see `results/rtx5090-ttf1-first-matrix.json` and

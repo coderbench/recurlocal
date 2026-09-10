@@ -1124,7 +1124,7 @@
   },
   {
    "finding": "One more cell was decided at the floor on an axis the generation says is unmeasurable.",
-   "detail": "`ctx128-c32` reached the floor on a p99 change of 183% against a control spread that reference.json froze at 481% at calibration. Its p50 and p95 are identical to the control's in every repeat (18.7 / 18.9 ms against 18.5 / 18.7); what differs is the extreme tail, where the candidate's maximum was three to five times LOWER (134-239 ms against 670) and its 99th percentile three to five times higher. Both readings are true and neither resolves."
+   "detail": "`ctx128-c32` reached the floor on a p99 change of 183% against a control spread that reference.json froze at 481% at calibration. Its p50 and p95 are identical to the control's in every repeat (18.7 / 18.9 ms against 18.5 / 18.7); the difference is entirely in the extreme tail.\n\nNINE repeats of that cell were run afterwards and they retract the reading, not the measurement: the paired p99 ratio is worse for the candidate in seven of nine pairs with a median of 1.083, which a sign test puts at p ~ 0.18, and the maximum-gap ratio shows nothing at all (median 0.969, four of nine). The control's own nine p99 values span 45.1 to 240.1 ms -- 432%, which is the calibration's 481% confirmed. Every run carries one ~673 ms stall that a 2016-sample p99 does not see, and p99 climbs to the next tail in the runs where that stall is absent: three of nine candidate runs and two of nine control runs. p99 at this cell is bimodal on whether one stall lands in the window. See results/rtx5090-0.2.1-c32-latency.json."
   },
   {
    "finding": "On the six cells that do batch, the shipped default policy is a regression.",
