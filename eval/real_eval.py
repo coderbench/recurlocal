@@ -468,18 +468,51 @@ def main():
         if verbose:
             print(">> token-exact greedy replay gate", flush=True)
         ctrl_ids, _ = greedy_replay(a.generate, a.model, prompt, a.gate_tokens, ctrl_env, "control")
+        # The control against ITSELF, before the candidate is allowed to be blamed for anything.
+        # A gate that compares one control run to one candidate run cannot tell "the policy
+        # changed the output" from "this runtime is not reproducible on this model" -- and it
+        # reported the second as the first: on a sparse-MoE checkpoint two unhooked controls
+        # diverge at token 2, because a few ULP in the prefill flip a discrete top-k expert
+        # choice, and the harness called that a candidate that changed model output. The
+        # candidate had changed nothing; on the dense checkpoint the same binary is
+        # bit-identical across control, control and candidate.
+        ctrl_ids_2, _ = greedy_replay(a.generate, a.model, prompt, a.gate_tokens, ctrl_env,
+                                      "control (reproducibility)")
+        runtime_reproducible = ctrl_ids == ctrl_ids_2
         cand_ids, gate_stats = greedy_replay(a.generate, a.model, prompt, a.gate_tokens, cand_env, "candidate")
         identical = ctrl_ids == cand_ids
-        correctness.update(output_identical=identical,
-                           tokens_compared=len(ctrl_ids),
+        correctness.update(tokens_compared=len(ctrl_ids),
                            prompt_ids=prompt,
+                           runtime_reproducible=runtime_reproducible,
+                           candidate_matches_control=identical,
                            first_divergence=None if identical else next(
                                (i for i, (x, y) in enumerate(zip(ctrl_ids, cand_ids)) if x != y),
                                min(len(ctrl_ids), len(cand_ids))))
+        # `output_identical` is what decide.py gates on, so it must mean "the candidate did not
+        # change the output" and nothing else. Where the control is not reproducible against
+        # itself the question is unanswerable, so it is left None -- inconclusive, which
+        # decide.py refuses to score -- rather than False, which accuses the candidate.
+        correctness["output_identical"] = identical if runtime_reproducible else None
+        if not runtime_reproducible:
+            correctness["method"] = ("greedy replay, token-exact -- INCONCLUSIVE: two control "
+                                     "runs of this runtime on this model disagree with each "
+                                     "other, so a candidate/control difference cannot be "
+                                     "attributed to the candidate. Not a candidate defect and "
+                                     "not scorable; the exact-locality gate needs a runtime "
+                                     "and checkpoint that are reproducible.")
+            correctness["control_first_divergence"] = next(
+                (i for i, (x, y) in enumerate(zip(ctrl_ids, ctrl_ids_2)) if x != y),
+                min(len(ctrl_ids), len(ctrl_ids_2)))
         if gate_stats:
             correctness["candidate_hook_active"] = hook_ran(gate_stats)
         if verbose:
-            print(f"    {'identical' if identical else 'DIVERGED'} over {len(ctrl_ids)} tokens", flush=True)
+            if not runtime_reproducible:
+                print(f"    CONTROL IS NOT REPRODUCIBLE: two unhooked runs diverge at token "
+                      f"{correctness['control_first_divergence']}. The gate cannot attribute a "
+                      "difference to the candidate; correctness is inconclusive, not failed.",
+                      flush=True)
+            print(f"    candidate vs control: {'identical' if identical else 'DIVERGED'} over "
+                  f"{len(ctrl_ids)} tokens", flush=True)
     else:
         correctness["method"] = "not run (--generate not given)"
 

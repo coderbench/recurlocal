@@ -615,6 +615,62 @@ class WithinLayerCeiling(unittest.TestCase):
                 self.assertLessEqual(a["within_layer_family"]["ceiling_pct"], a["ceiling_pct"])
 
 
+class ControlReproducibility(unittest.TestCase):
+    """The gate must not blame the candidate for a runtime that disagrees with itself.
+
+    Found by using the harness: on a sparse-MoE checkpoint two UNHOOKED control runs diverge at
+    token 2, because a few ULP in the prefill flip a discrete top-k expert choice and that moves
+    the argmax. The gate compared one control to one candidate, saw a difference, and reported
+    "the exact-locality track requires bit-identical model output" — an accusation against a
+    candidate that had changed nothing. On the dense checkpoint the same binary is bit-identical
+    across control, control and candidate.
+    """
+
+    def _doc(self, **correctness):
+        base = {"method": "greedy replay, token-exact"}
+        base.update(correctness)
+        return {"correctness": base, "workloads": flat(1.05)}
+
+    def test_a_candidate_that_really_diverged_is_still_blamed(self):
+        out = label.score_real(self._doc(output_identical=False, runtime_reproducible=True,
+                                        first_divergence=7))
+        self.assertEqual(out["verdict"], "REJECT")
+        self.assertIn("the candidate changed model output", out["reason"])
+        self.assertIn("token 7", out["reason"])
+
+    def test_an_irreproducible_control_is_inconclusive_not_an_accusation(self):
+        out = label.score_real(self._doc(output_identical=None, runtime_reproducible=False,
+                                         control_first_divergence=2))
+        self.assertEqual(out["verdict"], "REJECT")
+        self.assertFalse(out["scored"])
+        self.assertIn("INCONCLUSIVE", out["reason"])
+        self.assertIn("not the candidate's fault", out["reason"])
+        self.assertNotIn("the candidate changed model output", out["reason"])
+
+    def test_neither_is_scorable(self):
+        # Refusing to score is the same in both cases; only the attribution differs.
+        for c in ({"output_identical": False, "runtime_reproducible": True},
+                  {"output_identical": None, "runtime_reproducible": False}):
+            with self.subTest(**c):
+                self.assertFalse(label.score_real(self._doc(**c))["scored"])
+
+    def test_a_reproducible_and_identical_run_scores(self):
+        out = label.score_real(self._doc(output_identical=True, runtime_reproducible=True))
+        self.assertTrue(out["scored"])
+
+    def test_the_runner_compares_the_control_against_itself_before_the_candidate(self):
+        src = inspect.getsource(real_eval)
+        i = src.index('"control (reproducibility)"')
+        j = src.index('"candidate")', i)
+        self.assertLess(i, j, "the second control replay must precede the candidate's")
+        self.assertIn("runtime_reproducible", src)
+
+    def test_the_runner_leaves_output_identical_none_when_the_control_is_unstable(self):
+        src = inspect.getsource(real_eval)
+        self.assertIn('correctness["output_identical"] = identical if runtime_reproducible else None',
+                      src)
+
+
 class PackedPathGuard(unittest.TestCase):
     """The 32-sequence cliff, turned from an invisible number into a named refusal.
 

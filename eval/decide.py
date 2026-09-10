@@ -87,10 +87,29 @@ def score_real(doc, allow_regression=False, allow_partial=False):
 
     # Exact-locality track: identical model output is a precondition, not a tradeoff
     # (sections 15 and 35). A faster run that changed the output scores nothing.
+    #
+    # Two different failures, and calling them both "the candidate changed the output" is a
+    # false accusation. `output_identical: False` is the candidate diverging from a control the
+    # runtime CAN reproduce. `None` is the gate being unable to answer -- either it did not run,
+    # or the control does not agree with itself, which happens on a sparse-MoE checkpoint where
+    # a few ULP in the prefill flip a discrete top-k expert choice. Neither is scorable, and
+    # only the first is the submission's fault.
     if correctness.get("output_identical") is not True:
-        out.update(scored=False, impact=None, verdict="REJECT",
-                   reason="exact-locality track requires bit-identical model output; "
-                          f"correctness.output_identical={correctness.get('output_identical')!r}")
+        if correctness.get("output_identical") is False:
+            reason = ("the candidate changed model output: the exact-locality track requires "
+                      "bit-identical greedy replay against the control "
+                      f"(first divergence at token {correctness.get('first_divergence')})")
+        elif correctness.get("runtime_reproducible") is False:
+            reason = ("INCONCLUSIVE, and not the candidate's fault: two control runs of this "
+                      "runtime on this model disagree with each other (first divergence at "
+                      f"token {correctness.get('control_first_divergence')}), so a "
+                      "candidate/control difference cannot be attributed to the candidate. The "
+                      "exact-locality gate needs a reproducible runtime and checkpoint; this "
+                      "result cannot be scored either way")
+        else:
+            reason = ("the exact-locality gate did not produce a verdict; "
+                      f"correctness.output_identical={correctness.get('output_identical')!r}")
+        out.update(scored=False, impact=None, verdict="REJECT", reason=reason)
         return out
     out["correctness_method"] = correctness.get("method", "unspecified")
 
