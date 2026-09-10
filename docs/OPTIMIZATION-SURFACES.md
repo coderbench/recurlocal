@@ -492,6 +492,29 @@ persisting window can hold falls faster: 3.66% to 0.27%. Past the crossover the 
 the weight stream more than the residency returns, and `persist` sits a few hundredths below
 `baseline` — which is the hook's own overhead and nothing else.
 
+## The best configuration is workload-dependent, and the scored run shows the cost
+
+The batch-1 axis sweeps resolve `budget_fraction=1.00, hit_ratio=1.00` as best there — +1.63%
+against +1.26% at the shipped defaults. The scored matrix holds those settings on every arm, and
+at concurrency they are **worse** than the defaults:
+
+| | shipped defaults (mode axis) | tuned for batch 1 (scored run) |
+|---|--:|--:|
+| batch 1 | +1.26% | **+1.74%** |
+| concurrency 4 | -0.46% | **-1.29%** |
+| concurrency 16 | -0.17% | -0.79% |
+| concurrency 32 | -0.22% | -0.75% |
+
+Same residency story from a third direction: a set-aside sized for a footprint that fits costs
+the weight stream more once it does not. Batch 1 is +1.74% across all three contexts
+(+1.78 / +1.76 / +1.68 at 128 / 4096 / 16384), so the gain is not a short-context artefact.
+
+**A planner that chose the set-aside from the measured footprint-to-capacity ratio, rather than
+from a constant, is an open item** — and this is the evidence for it. Nothing in the library
+currently varies `budget_fraction` with the workload; the runtime declares `RECURLOCAL_SEQUENCES`
+and the hot-set model already computes the footprint, so the input is there and only the policy
+is missing. `results/rtx5090-moe-scored.json` carries the run.
+
 ## What the whole matrix can pay, on each model
 
 `eval/traffic_budget.py --matrix ... --persisting-l2-bytes 62914560`, weighted the way
