@@ -70,6 +70,10 @@ struct Adapter {
     // decode paths are different code in SparkInfer and produce different state shapes, so
     // the adapter tracks which one it is inside rather than guessing from the layout.
     bool packed = false;
+    // The packed entry point borrows begin_token() for its stream setup, then overwrites the
+    // sequence count. Declaring the geometry inside that borrowed call would size the
+    // reservation for one sequence and then again for N, twice per token, forever.
+    bool declare_suppressed = false;
     GdnPackedLayout packed_layout{};
 
     int recurrent_layers = 0;
@@ -163,11 +167,6 @@ void begin_common(Adapter& a, int n_layers, int full_attn_interval,
 
     a.recurrent_ordinal = 0;
     a.window_pending = false;
-    // The set-aside was requested at initialize() from the config alone, before anything was
-    // known about the workload. A workload-aware SetAsidePolicy sizes it from the footprint,
-    // so it has to be told the footprint; the controller ignores this under the default
-    // policy and whenever the answer has not changed.
-    a.controller.declare_geometry(a.geometry);
     a.controller.begin_sequence();
     ++a.tokens;
 }
@@ -238,6 +237,8 @@ const char* mode_name() noexcept {
     return adapter().usable ? to_string(adapter().config.mode) : "off";
 }
 
+void declare_geometry_now(Adapter& a) noexcept;
+
 bool begin_token(const GdnStateLayout& layout) noexcept {
     Adapter& a = adapter();
     configure_once();
@@ -298,8 +299,21 @@ bool begin_token(const GdnStateLayout& layout) noexcept {
     a.layout = layout;
     begin_common(a, layout.n_layers, layout.full_attn_interval,
                  layout.lin_state_stride + layout.lin_conv_stride, /*sequences=*/1);
+    // Not when the packed path is borrowing this entry point for its stream setup: it is
+    // about to overwrite the sequence count, and declaring here would size the reservation
+    // for one sequence and then again for N, on every single token.
+    if (!a.declare_suppressed) declare_geometry_now(a);
     return true;
 }
+
+// The set-aside was requested at initialize() from the config alone, before anything was
+// known about the workload. A workload-aware SetAsidePolicy sizes it from the footprint, so
+// it has to be told the footprint - and told it ONCE the geometry is final. Declaring it
+// inside begin_common() ran before the packed path had overwritten the sequence count, so a
+// concurrent step declared `sequences = 1` and every workload-aware rule sized the
+// reservation for a workload that was not running. The controller ignores this under the
+// default policy and whenever the answer has not changed.
+void declare_geometry_now(Adapter& a) noexcept { a.controller.declare_geometry(a.geometry); }
 
 bool begin_token_packed(const GdnPackedLayout& layout) noexcept {
     Adapter& a = adapter();
@@ -314,7 +328,10 @@ bool begin_token_packed(const GdnPackedLayout& layout) noexcept {
     as_single.n_layers = layout.n_layers;
     as_single.full_attn_interval = layout.full_attn_interval;
     as_single.compute = layout.compute;
-    if (!begin_token(as_single)) return false;
+    a.declare_suppressed = true;
+    const bool ok = begin_token(as_single);
+    a.declare_suppressed = false;
+    if (!ok) return false;
 
     a.packed = true;
     a.packed_layout = layout;
@@ -323,6 +340,7 @@ bool begin_token_packed(const GdnPackedLayout& layout) noexcept {
     // At concurrency the sequence count is not a declaration, it is observed: this is how
     // many sequences the runtime is actually decoding in this step.
     a.geometry.sequences = layout.rows > 0 ? layout.rows : 1;
+    declare_geometry_now(a);
     return true;
 }
 
@@ -442,7 +460,7 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"hit_ratio\":%.4f,\"budget_fraction\":%.4f},"
         "\"geometry\":{\"recurrent_layers\":%d,\"bytes_per_layer\":%zu,\"sequences\":%d,"
         "\"streamed_bytes_per_token\":%zu},"
-        "\"l2_set_aside_bytes\":%zu,"
+        "\"l2_set_aside_bytes\":%zu,\"l2_set_aside_at_init_bytes\":%zu,"
         "\"stats\":{\"tokens\":%llu,\"tokens_packed\":%llu,\"layers\":%llu,"
         "\"layers_packed\":%llu,\"max_rows_seen\":%d,\"windows_applied\":%llu,"
         "\"windows_deferred_to_caller\":%llu,\"windows_attached_to_node\":%llu,"
@@ -465,6 +483,11 @@ void write_stats_json(std::FILE* out) noexcept {
         c.hit_ratio, c.persisting_budget_fraction,
         a.geometry.recurrent_layers, a.geometry.bytes_per_layer, a.geometry.sequences,
         a.geometry.streamed_bytes_per_token,
+        // The set-aside IN FORCE. A workload-aware SetAsidePolicy resizes it once the
+        // geometry is known, and reporting only the init-time value made every such resize
+        // invisible to every sweep - the telemetry would show 45 MiB for a run that spent all
+        // its tokens at 30.
+        a.controller.l2_set_aside_bytes(),
         a.ever_initialised ? a.l2_set_aside_at_init : a.controller.l2_set_aside_bytes(),
         (unsigned long long)a.tokens, (unsigned long long)a.tokens_packed,
         (unsigned long long)s.layers, (unsigned long long)a.layers_packed, a.max_rows_seen,

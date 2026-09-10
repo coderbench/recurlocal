@@ -247,6 +247,10 @@ private:
     float* scratch_ = nullptr;
     std::size_t scratch_count_ = 0;
     std::size_t l2_set_aside_bytes_ = 0;
+    // What was last ASKED for, as distinct from what the driver granted. The driver rounds
+    // requests up, so a policy that re-derives its target every token needs the request to
+    // compare against or it re-carves the L2 partition on every one of them.
+    std::size_t l2_set_aside_requested_ = 0;
     // What the device's persisting-L2 limit was before we touched it. The limit is
     // device-wide and context-lifetime: without restoring it, merely constructing a
     // controller carves a permanent hole out of L2 for every other kernel in the process,

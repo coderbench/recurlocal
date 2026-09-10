@@ -87,6 +87,11 @@ std::size_t LocalityPlanner::token_footprint_bytes(const RecurrentGeometry& g) n
         saturating_mul(g.bytes_per_layer, static_cast<std::size_t>(g.recurrent_layers)), seqs);
 }
 
+std::size_t LocalityPlanner::windowed_footprint_bytes(const RecurrentGeometry& g) noexcept {
+    if (!g.valid()) return 0;
+    return saturating_mul(g.bytes_per_layer, static_cast<std::size_t>(g.recurrent_layers));
+}
+
 double LocalityPlanner::achievable_residency(const RecurrentGeometry& g) const noexcept {
     const auto footprint = token_footprint_bytes(g);
     if (!footprint || !caps_.persisting_l2_max_bytes) return 0.0;
@@ -108,14 +113,22 @@ std::size_t LocalityPlanner::recommended_l2_set_aside(const RecurrentGeometry& g
         achievable_residency(g) < config_.min_residency)
         return 0;   // it cannot hold enough of the footprint to be worth the cache it takes
 
-    // Take what the footprint can use, and no more than the device will give.
+    // Take what a WINDOW can use, and no more than the device will give.
+    //
+    // Not the token footprint: that is what competes for the cache, and it counts every
+    // sequence. A persisting window is an address range and this library places one per
+    // layer, over one sequence's slice, so set-aside beyond one sequence's footprint holds
+    // nothing - it is taken from the shared cache and protects no byte that a window covers.
+    // Sizing from the total instead reserved the whole 60 MiB at four concurrent sequences,
+    // which is the setting that arm measures WORST.
     //
     // `persisting_budget_fraction` is deliberately NOT applied here. It is the dial
     // SetAsidePolicy::Fixed turns, and turning both would leave the workload-aware rules
     // unable to reach the setting the workload wants without the caller ALSO changing the
     // constant they were introduced to replace - which is the whole defect. One dial per
     // policy; the fraction is documented as read by Fixed only.
-    return std::min(footprint, caps_.persisting_l2_max_bytes);
+    const auto windowed = windowed_footprint_bytes(g);
+    return std::min(windowed ? windowed : footprint, caps_.persisting_l2_max_bytes);
 }
 
 int LocalityPlanner::distance_for_layer(int layer_index) const noexcept {

@@ -344,8 +344,16 @@ public:
     // not silently invent one. Pure arithmetic, so the policy is testable without a GPU.
     std::size_t recommended_l2_set_aside(const RecurrentGeometry& geometry) const noexcept;
     // Bytes that must be resident for a recurrent state to survive until its layer runs
-    // again: every recurrent layer, every sequence. Saturates rather than wrapping.
+    // again: every recurrent layer, every sequence. Saturates rather than wrapping. This is
+    // what COMPETES for the cache, and it is what the hot-set models count.
     static std::size_t token_footprint_bytes(const RecurrentGeometry& geometry) noexcept;
+    // Bytes a persisting window can actually cover, which is not the same number. An
+    // access-policy window is an address range and the controller places ONE per layer, over
+    // one sequence's slice - at concurrency the runtime hands over a device array of per-row
+    // pointers for the pre-touch and a single host-nameable row for the window. So a byte of
+    // set-aside beyond ONE sequence's footprint protects nothing, however many sequences are
+    // in flight. Every recurrent layer, one sequence.
+    static std::size_t windowed_footprint_bytes(const RecurrentGeometry& geometry) noexcept;
     // Fraction of that footprint the device's persisting capacity could hold, in [0,1].
     // Zero when there is no capacity or no footprint to hold.
     double achievable_residency(const RecurrentGeometry& geometry) const noexcept;

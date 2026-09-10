@@ -121,6 +121,7 @@ cudaError_t CudaLocalityController::initialize(int device, PlannerConfig config)
         }
         if (configure_persisting_l2(device_, wanted, &l2_set_aside_bytes_) == cudaSuccess) {
             l2_set_aside_owned_ = true;
+            l2_set_aside_requested_ = wanted;
             // Tell the planner what we GOT. Without this it keeps budgeting against the
             // request, and every hot-set decision inherits the driver's rounding error.
             planner_.set_granted_l2_set_aside(l2_set_aside_bytes_);
@@ -129,6 +130,7 @@ cudaError_t CudaLocalityController::initialize(int device, PlannerConfig config)
         }
     } else {
         l2_set_aside_bytes_ = 0;
+        l2_set_aside_requested_ = 0;
     }
 
     scratch_count_ = 8192;
@@ -409,7 +411,11 @@ cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& ge
     if (planner_.config().set_aside_policy == SetAsidePolicy::Fixed) return cudaSuccess;
 
     const auto wanted = planner_.recommended_l2_set_aside(geometry);
-    if (wanted == l2_set_aside_bytes_) return cudaSuccess;
+    // Against the last REQUEST, not against what the driver granted. cudaDeviceSetLimit
+    // rounds up - on an RTX 5090 a 15 MiB request comes back as 18 - so comparing a fresh
+    // request against the granted bytes never matches for any target that is not exactly the
+    // device maximum, and the L2 partition would be re-carved on every single token.
+    if (wanted == l2_set_aside_requested_) return cudaSuccess;
 
     // Never resize the device's L2 partition from inside a capture. It is not a stream
     // operation, it would not be recorded, and it would take effect at a moment that has
@@ -433,6 +439,7 @@ cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& ge
             l2_set_aside_owned_ = false;
         }
         l2_set_aside_bytes_ = 0;
+        l2_set_aside_requested_ = 0;
         planner_.set_granted_l2_set_aside(0);
         return cudaSuccess;
     }
@@ -448,6 +455,7 @@ cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& ge
     }
     l2_set_aside_owned_ = true;
     l2_set_aside_bytes_ = granted;
+    l2_set_aside_requested_ = wanted;
     // Budget the hot set against what the driver GAVE, not what we asked for. Skipping this
     // is what made every oversubscription decision wrong by the driver's rounding.
     planner_.set_granted_l2_set_aside(granted);

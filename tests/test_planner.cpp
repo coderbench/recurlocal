@@ -859,6 +859,34 @@ static void test_a_workload_aware_policy_with_no_workload_is_the_shipped_behavio
     }
 }
 
+static void test_the_reservation_is_sized_by_what_a_WINDOW_can_cover() {
+    // Two different footprints, and conflating them was a real defect. The TOKEN footprint is
+    // what competes for the cache and it counts every sequence; the WINDOWED footprint is what
+    // a persisting window can actually cover, and this library places one window per layer
+    // over one sequence's slice. Set-aside beyond one sequence's footprint is taken from the
+    // shared cache and protects nothing.
+    for (int seq : {1, 4, 16, 32}) {
+        CHECK(LocalityPlanner::windowed_footprint_bytes(moe_geometry(seq))
+              == LocalityPlanner::windowed_footprint_bytes(moe_geometry(1)));
+        CHECK(LocalityPlanner::token_footprint_bytes(moe_geometry(seq))
+              == LocalityPlanner::windowed_footprint_bytes(moe_geometry(1)) * (std::size_t)seq);
+    }
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::FitFootprint;
+    LocalityPlanner p(rtx5090(), cfg);
+    // Sizing from the TOTAL reserved the whole 60 MiB at every concurrency, which is the
+    // setting four sequences measures worst. Sizing from the window reserves one sequence's
+    // worth whatever the concurrency - and on the packed path, where the runtime compacts the
+    // matrix state to bf16, that is about half the batch-1 number.
+    for (int seq : {4, 16, 32})
+        CHECK(p.recommended_l2_set_aside(moe_geometry(seq)) == 60 * MiB);   // 61.41 MiB clamps
+    RecurrentGeometry packed = moe_geometry(4);
+    packed.bytes_per_layer /= 2;                                            // bf16 compaction
+    CHECK(p.recommended_l2_set_aside(packed)
+          == LocalityPlanner::windowed_footprint_bytes(packed));
+    CHECK(p.recommended_l2_set_aside(packed) < 45 * MiB);   // less than the shipped constant
+}
+
 static void test_fit_footprint_never_reserves_more_than_the_footprint_can_use() {
     // The unarguable half: reserving cache to hold bytes that do not exist takes capacity
     // from the stream and buys nothing. This is the regime a device with more persisting L2
@@ -872,7 +900,8 @@ static void test_fit_footprint_never_reserves_more_than_the_footprint_can_use() 
     CHECK(p.recommended_l2_set_aside(tiny) == footprint);
     CHECK(p.recommended_l2_set_aside(tiny) < p.recommended_l2_set_aside());
 
-    // ...and never more than the device will grant, whatever the footprint asks for.
+    // ...and never more than the device will grant, whatever the footprint asks for. At 32
+    // sequences the WINDOWED footprint is still one sequence's 61.41 MiB, which clamps to 60.
     LocalityPlanner q(rtx5090(), cfg);
     CHECK(q.recommended_l2_set_aside(moe_geometry(32)) == 60 * MiB);
 }
@@ -1406,6 +1435,7 @@ int main() {
     test_hot_set_accounting_is_reported_in_every_mode();
     test_fixed_set_aside_is_the_shipped_behaviour_whatever_the_workload();
     test_a_workload_aware_policy_with_no_workload_is_the_shipped_behaviour();
+    test_the_reservation_is_sized_by_what_a_WINDOW_can_cover();
     test_fit_footprint_never_reserves_more_than_the_footprint_can_use();
     test_fit_footprint_reaches_the_setting_the_measurement_calls_best();
     test_residency_declines_where_the_footprint_cannot_be_held();
