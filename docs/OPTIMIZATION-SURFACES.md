@@ -161,7 +161,7 @@ like one:
   continues, and the run decodes 320 or 384 tokens where a healthy one decodes 2056 — at the
   same wall time. A failure reported as a slowdown. Identified, and `real_eval.py` now refuses
   such an arm by name.
-- **A 32% drop that is still open.** This is the historical one — the `prefetch` ratio 0.676
+- **A 32% drop that is now diagnosed** (below, and it was open until 0.2.1). This is the historical one — the `prefetch` ratio 0.676
   above matches a measured 0.648, not the 0.15 that request loss produces. It completes every
   request, its per-token latency is identical to a healthy run's, and it spends 1.2 s more wall
   time somewhere outside the decode loop. It is not a decode-path fallback and it is not the
@@ -189,10 +189,43 @@ What is actually known, and one line of it has been **retracted**:
 - `baseline` installs no window and issues no pre-touch, so whatever causes it is not a
   locality policy at all.
 
-The honest conclusion is that something about the eval's run *sequence* — accumulated device
-state across arms is the obvious candidate — occasionally drops SparkInfer onto its
-per-row path at 32 sequences, and this project has not identified it. It is an open problem,
-not a settled attribution.
+**As of 0.2.1 the "somewhere else" has a name, and the counters that say so were already being
+emitted.** Nine paired repeats of `ctx128-c32` were run for a different reason — settling that
+cell's p99 — and one of the nine reproduced the collapse: 575.1 tok/s against the arm's own
+median of 893.0, a 36% drop, with every guard passing it.
+
+The adapter's step counters separate it cleanly:
+
+| | healthy (8 of 9) | collapsed (1 of 9) |
+|---|--:|--:|
+| steps bracketed | 78 | **207** |
+| of which batched decode | 63 | **63** |
+| geometry rebuilds | 5 | **15** |
+| p50 inter-token latency | 18.6 ms | 18.8 ms |
+| aggregate throughput | 893.0 tok/s | **575.1 tok/s** |
+
+**The decode work is identical.** Sixty-three batched decode steps at 32 rows in every one of
+the nine. What differs is 144 single-row steps against 15, and fifteen geometry rebuilds against
+five — the engine recompiles whenever the in-flight sequence count changes, so fifteen rebuilds
+is a run whose concurrency never settled. The runtime scheduled the 32 requests substantially
+serially: wall time grew, batched work did not, and aggregate throughput is tokens over wall
+time.
+
+That is consistent with every observation above, including the two this document had already
+retracted a wrong explanation for. Per-token latency is identical because the decode steps
+themselves are fine. `baseline` can collapse because nothing about it is a locality policy. It
+is intermittent because request arrival is. And it is invisible to a latency number because the
+lost time is not *in* the decode steps.
+
+The signature separates on the reference box's own data: across 77 hooked runs in three
+matrices, every healthy group's non-decode step count is stable to within one step, and exactly
+one run deviates — at 9.6x its group's median. `eval/frontier/runner.py::scheduling_outliers`
+flags it and nothing else; the receipt names it; and it is **reported rather than refused**,
+because the failure is the runtime's and it lands on whichever arm happens to be running.
+
+What is still open is *why the scheduler does it*, which is a question about SparkInfer's
+continuous-batching admission and not about this library. What is closed is the diagnosis, the
+detection, and three releases of calling it unexplained.
 
 **The part that *is* settled is about the boundary, not the policy.** A locality library can
 compute a persisting window; under graph decode it cannot deliver one without touching the
