@@ -564,7 +564,19 @@ Three things are open here and none needs a GPU to start:
   a form that fits the concurrency arms as well as it fits batch 1 would be worth more than a
   new admission rule.
 - **A rule that exploits the convexity.** `AdmissionRule::Survival` stops when the marginal
-  admission stops paying. That is the obvious exploitation; it is not the best one.
+  admission stops paying. That is the obvious exploitation; it is not the best one — and as
+  shipped it is not an exploitation at all. At the fitted `beta = 0.1108` the stopping rule
+  never fires and its plan is **byte-identical to `density`'s** on all three golden traces; a
+  little under `beta = 0.2` the first candidate stops paying and it admits **nothing**. There is
+  no useful middle. `tests/test_golden.cpp` pins both ends, so a rule that actually differs is a
+  contribution that will show up as a changed digest rather than as an argument.
+- **A per-window term, which the model does not have.** In the five measured arms the gain is
+  monotone in `windows_attached_to_node` — 48, 77, 144, 144, 144 — in both the per-cell and the
+  aggregated view, and the model prices bytes and residency with no term for how many windows
+  hold them. `density` and `reuse_order` are the pair that separates the two explanations: on
+  every golden trace they commit the **same** bytes and hold the **same** resident bytes, at 30
+  windows against 4, and the model says `density` wins by 1.7x while the window-count reading
+  says `reuse_order` does. They disagree in sign. See docs/VERDICT.md section 3.3.
 
 ### 1b. The model it replaced, kept because it is still the control
 
@@ -574,7 +586,9 @@ or about the model. If an improvement only appears under `residency`, it is a cl
 `beta` and `eta`, not about a cache.
 
 A test asserts that `AdmissionRule::Survival` reduces to `density` *exactly* under it, so a
-comparison against `density` is not a comparison against a moving target.
+comparison against `density` is not a comparison against a moving target. (Under `residency` at
+the fitted beta it reduces to `density` too — see the bullet above; that is a fact about the
+fitted parameters rather than about the linear model.)
 
 ### 2. A new admission rule — MEASURED, and this is the surface
 
@@ -597,6 +611,13 @@ Aggregated over c1, c4 and c16 by `tt-frontier`, `density` (+0.056%, 99% CI −0
 `quota` (−0.642%, −0.94…−0.39) have **non-overlapping** intervals. One admission rule is
 confidently worse than another, end to end, on a real model. That is the whole of what a
 competition surface is, and this repository did not have one before.
+
+Read the per-cell table for what it is, though: **no pair of arms separates at that cell.** The
+largest gap between two arms there is 0.247 points against a 0.283% floor, so the ordering
+inside the table is not evidence. Only `density` and `global` separate from the *control*, and
+what orders every arm in both views is the number of windows it attached — not which admission
+rule produced them. docs/VERDICT.md section 3.3 has the table and the experiment that settles
+it.
 
 **Two things to know before you start.** First, everything below sixteen sequences is negative
 for every arm, so a rule that only helps at batch 1 is helping in a regime where the family
