@@ -257,8 +257,63 @@ def cells_needing_attribution(records, cells):
             if lost[cell]["guarded"] and not lost[cell]["usable"] and main_ok[cell]]
 
 
+def concurrency_scaling(records, cells):
+    """How much throughput the MAIN arm actually got for the concurrency it asked for.
+
+    Independent of any adapter telemetry, and that is the point: the packed-path guard reads
+    the adapter's counters, the control is unhooked, and so a control that also fell off the
+    batched path cannot be seen to. This can see it. A cell at concurrency N is compared with
+    the SAME-CONTEXT c=1 cell of the same matrix, both measured on the same box minutes apart:
+
+        ctx128-c16   8.17x for 16 sequences        the runtime is batching
+        ctx4096-c16  2.61x for 16 sequences        it is not
+
+    Returns {cell: {"scale", "concurrency", "share_of_ideal", "baseline_cell"}} for every cell
+    whose context also has a c=1 cell in the matrix. Diagnostic, never a score: it is recorded
+    beside an attribution so the verdict can be read against arithmetic as well as a probe.
+    """
+    goodput = defaultdict(list)
+    for record in records:
+        if record["variant"] != "main" or record.get("status", "OK") != "OK":
+            continue
+        value = (record.get("metrics") or {}).get("goodput_tps")
+        if value:
+            goodput[record["workload_id"]].append(float(value))
+
+    def median(values):
+        ordered = sorted(values)
+        n = len(ordered)
+        return ordered[n // 2] if n % 2 else 0.5 * (ordered[n // 2 - 1] + ordered[n // 2])
+
+    single = {}
+    for cell, values in goodput.items():
+        try:
+            prompt, concurrency = parse_cell(cell)
+        except RunnerError:
+            continue
+        if concurrency == 1:
+            single[prompt] = median(values)
+
+    out = {}
+    for cell in cells:
+        try:
+            prompt, concurrency = parse_cell(cell)
+        except RunnerError:
+            continue
+        if concurrency < 2 or prompt not in single or not goodput.get(cell):
+            continue
+        base = single[prompt]
+        if not base:
+            continue
+        scale = median(goodput[cell]) / base
+        out[cell] = {"scale": round(scale, 3), "concurrency": concurrency,
+                     "share_of_ideal": round(scale / concurrency, 3),
+                     "baseline_cell": f"ctx{prompt}-c1"}
+    return out
+
+
 def attribute_serving_losses(*, cells, model, baseline_cb_binary, max_new, long_prefill,
-                             settle_seconds=30, verbose=True):
+                             settle_seconds=30, verbose=True, scaling=None):
     """One probe per cell: the BASELINE build's bench, hook on, no window, no policy.
 
     Two deliberate choices.
@@ -292,6 +347,10 @@ def attribute_serving_losses(*, cells, model, baseline_cb_binary, max_new, long_
             "probe_binary": str(baseline_cb_binary),
             "guard": detail.get("guard", ""),
         }
+        if scaling and cell in scaling:
+            # The arithmetic beside the probe. A cell whose control got 1.15x out of 4
+            # sequences was not serving that workload either, whatever any telemetry says.
+            verdicts[cell]["main_concurrency_scaling"] = scaling[cell]
         if verbose:
             print(f"   attribution: {cell} -> {verdict} (probe {status})", flush=True)
     return verdicts

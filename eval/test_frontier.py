@@ -362,6 +362,28 @@ def test_attribution_of_a_serving_loss():
     check(set(result.cells_scored) <= set(charged.cells_scored),
           "attribution can drop a cell and can never add one")
 
+    # The arithmetic that can see what the telemetry cannot. The packed-path guard reads the
+    # ADAPTER's counters and the control is unhooked, so a control that also fell off the
+    # batched path is invisible to it. Its own scaling is not.
+    scaling_records = [
+        {"workload_id": cell, "variant": "main", "status": "OK", "repeat": 1,
+         "metrics": {"goodput_tps": tps}}
+        for cell, tps in (("ctx128-c1", 69.3), ("ctx128-c4", 221.7),
+                          ("ctx4096-c1", 55.8), ("ctx4096-c4", 63.9))]
+    scaling = runner_mod.concurrency_scaling(
+        scaling_records, ["ctx128-c1", "ctx128-c4", "ctx4096-c1", "ctx4096-c4"])
+    check("ctx128-c1" not in scaling and "ctx4096-c1" not in scaling,
+          "a concurrency-1 cell has no scaling to report")
+    check(abs(scaling["ctx128-c4"]["scale"] - 3.2) < 0.01,
+          "a cell that batches shows most of its concurrency")
+    check(abs(scaling["ctx4096-c4"]["scale"] - 1.15) < 0.01,
+          "and one that does not shows almost none of it")
+    check(scaling["ctx4096-c4"]["share_of_ideal"] < 0.3 < scaling["ctx128-c4"]["share_of_ideal"],
+          "which is what separates the cells the first TTF-1 matrix lost from the ones it kept")
+    check(runner_mod.concurrency_scaling(scaling_records[2:], ["ctx4096-c4"]) == {}
+          or "ctx4096-c4" in runner_mod.concurrency_scaling(scaling_records[2:], ["ctx4096-c4"]),
+          "a matrix without the matching c=1 cell reports nothing rather than guessing")
+
     # A dropped cell must not PAY. A candidate that gains on the cells it can serve and is
     # excused the one it cannot has not expanded the frontier of the whole matrix.
     from frontier.receipt import build_receipt, verify_receipt, ReceiptError

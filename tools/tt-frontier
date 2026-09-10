@@ -240,7 +240,8 @@ def cmd_probe(args):
     verdicts = runner_mod.attribute_serving_losses(
         cells=needs, model=args.model, baseline_cb_binary=args.cb_binary,
         max_new=args.max_new, long_prefill=args.long_prefill,
-        settle_seconds=args.settle_seconds, verbose=not args.quiet)
+        settle_seconds=args.settle_seconds, verbose=not args.quiet,
+        scaling=runner_mod.concurrency_scaling(records, cells))
     stamped = runner_mod.apply_attribution(records, verdicts)
 
     provenance = document.setdefault("provenance", {})
@@ -390,7 +391,8 @@ def cmd_run(args):
             attribution = runner_mod.attribute_serving_losses(
                 cells=needs, model=args.model, baseline_cb_binary=args.cb_binary,
                 max_new=args.max_new, long_prefill=args.long_prefill,
-                settle_seconds=args.settle_seconds, verbose=not args.quiet)
+                settle_seconds=args.settle_seconds, verbose=not args.quiet,
+                scaling=runner_mod.concurrency_scaling(records, cells))
         runner_mod.apply_attribution(records, attribution)
 
     provenance = {
@@ -413,6 +415,7 @@ def cmd_run(args):
                                                    and args.candidate_cb != args.cb_binary),
             "skipped": bool(args.no_attribution),
         },
+        "main_concurrency_scaling": runner_mod.concurrency_scaling(records, cells),
         "cells_requested": cells,
         "mode": args.mode,
         "instances": (generation.raw.get("hidden") or {}).get("mode", "unspecified"),
