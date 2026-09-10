@@ -352,6 +352,193 @@ static void test_the_single_role_arms_touch_only_their_own_role() {
     CHECK(excluded);
 }
 
+// A decode token whose weight traffic is PER LAYER, as a real model's is: each layer reads
+// its own slice, so a slice's next read is a whole token away. The shared-weight fixture
+// above cannot exercise this -- one buffer re-read by every layer has a reuse distance of one
+// layer, which a cache this size genuinely can serve, so declining to stream it is right.
+struct StreamedWeights {
+    TensorRegistry registry;
+    TransitGraph graph;
+    DeviceProfile device{};
+
+    // `kv_bytes` of 0 leaves the workload single-role. Non-zero adds a KV slice per layer, so
+    // the workload has two classes to arbitrate between AND a weight stream to tell to get out
+    // of the way -- which is the only shape where the global arm's two mechanisms can be
+    // separated from each other.
+    StreamedWeights(int layers, std::size_t state_bytes, std::size_t weight_bytes_per_layer,
+                    std::size_t kv_bytes = 0) {
+        device_profile_by_name("rtx5090", &device);
+        std::uintptr_t next = 1;
+        for (int i = 0; i < layers; ++i) {
+            TensorDesc state{};
+            state.ptr = fake(next++);
+            state.bytes = state_bytes;
+            state.role = TensorRole::RecurrentState;
+            state.mutable_data = true;
+            const TensorId s = registry.register_tensor(state).id;
+
+            TensorDesc weight{};
+            weight.ptr = fake(next++);
+            weight.bytes = weight_bytes_per_layer;
+            weight.role = TensorRole::ModelWeight;
+            weight.model_global = true;
+            const TensorId w = registry.register_tensor(weight).id;
+
+            KernelEvent kernel{};
+            kernel.id = static_cast<KernelId>(i + 1);
+            kernel.order = static_cast<std::uint64_t>(i);
+            graph.record_kernel(kernel);
+            TensorUse use_state{};
+            use_state.tensor = s;
+            use_state.kernel = kernel.id;
+            use_state.access = AccessKind::ReadWrite;
+            graph.record_use(use_state);
+            TensorUse use_weight{};
+            use_weight.tensor = w;
+            use_weight.kernel = kernel.id;
+            use_weight.access = AccessKind::Read;
+            graph.record_use(use_weight);
+
+            if (kv_bytes) {
+                TensorDesc kv{};
+                kv.ptr = fake(next++);
+                kv.bytes = kv_bytes;
+                kv.role = TensorRole::KVCache;
+                kv.mutable_data = true;
+                kv.request_local = true;
+                TensorUse use_kv{};
+                use_kv.tensor = registry.register_tensor(kv).id;
+                use_kv.kernel = kernel.id;
+                use_kv.access = AccessKind::Read;
+                graph.record_use(use_kv);
+            }
+        }
+        graph.set_cyclic(true);
+        graph.build(registry);
+    }
+
+    PlanInput input() {
+        PlanInput in{};
+        in.graph = &graph;
+        in.registry = &registry;
+        in.device = device;
+        in.runtime = RuntimeState{};
+        return in;
+    }
+};
+
+// --- the second proof track, at model level ------------------------------------------
+//
+// Spec section 38 asks whether one planner arbitrating a shared budget across two tensor
+// classes beats two independent policies. Under the LINEAR cost model it provably could not:
+// total saving was a fractional knapsack, greedy-on-density was optimal, and the global arm's
+// one distinguishing action -- telling the weight stream to get out of the way -- was priced
+// at exactly zero.
+//
+// These checks pin the answer the residency model gives, the mechanism behind it, and the
+// control that isolates it. They are checks on a MODEL. Whether hardware agrees is a
+// measurement, and docs/evaluation.md says what taking it costs.
+
+static double arm_prediction(PolicyPreset preset, const TransitPlannerConfig& base,
+                             const PlanInput& input) {
+    const TransitPlannerConfig config = preset_config(preset, base);
+    const auto plan = make_planner(preset_planner(preset), config)->build_plan(input);
+    return plan.cost().predicted_throughput_ratio() - 1.0;
+}
+
+static TransitPlannerConfig arms_base(CostModel model) {
+    TransitPlannerConfig config{};
+    // A base that hands BOTH halves of a shared cache budget to every arm -- which is a
+    // sensible default for a tool planning one trace, and exactly what the presets have to
+    // override. Starting from it here is the point: if a preset stopped clearing the scope,
+    // this base would put it back and the comparison would silently become four global
+    // planners with different persist masks.
+    config.persist_roles = RoleMask::of(TensorRole::RecurrentState, TensorRole::KVCache);
+    config.stream_roles = RoleMask::of(TensorRole::ModelWeight, TensorRole::ExpertWeight);
+    config.cost_model = model;
+    config.max_windows_per_kernel = 0;
+    return config;
+}
+
+static void test_only_the_global_preset_gets_the_other_half_of_the_budget() {
+    const TransitPlannerConfig base = arms_base(CostModel::Residency);
+    for (const PolicyPreset preset : {PolicyPreset::Baseline, PolicyPreset::RecurrentOnly,
+                                      PolicyPreset::KVOnly,
+                                      PolicyPreset::NaiveBothPersistent}) {
+        const TransitPlannerConfig config = preset_config(preset, base);
+        CHECK(config.stream_roles.empty());
+    }
+    CHECK(!preset_config(PolicyPreset::Global, base).stream_roles.empty());
+}
+
+static void test_the_global_arm_beats_the_independent_ones_only_under_the_new_model() {
+    Hybrid workload(16, 3 * MiB, 2, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    const TransitPlannerConfig linear = arms_base(CostModel::Linear);
+    const double linear_best = std::max(arm_prediction(PolicyPreset::RecurrentOnly, linear, input),
+                                        arm_prediction(PolicyPreset::KVOnly, linear, input));
+    const double linear_global = arm_prediction(PolicyPreset::Global, linear, input);
+    // The negative result 0.2.0 published, kept as a check: under a linear model the global
+    // arm cannot beat the best single-role arm, and it is not close to an accident.
+    CHECK(linear_global <= linear_best);
+
+    const TransitPlannerConfig residency = arms_base(CostModel::Residency);
+    const double best = std::max(arm_prediction(PolicyPreset::RecurrentOnly, residency, input),
+                                 arm_prediction(PolicyPreset::KVOnly, residency, input));
+    const double naive = arm_prediction(PolicyPreset::NaiveBothPersistent, residency, input);
+    const double global = arm_prediction(PolicyPreset::Global, residency, input);
+    CHECK(global > best);    // ...and under this one it does
+    CHECK(global > naive);   // ...and still beats the straw man it is really measured against
+}
+
+static void test_the_global_arms_advantage_is_the_stream_action_where_one_is_emitted() {
+    // The mechanism, isolated by one dial. `stream_relief` is how much of a hinted tensor's
+    // traffic actually stops interfering; at zero the Stream action buys nothing and the
+    // global arm is left with role_floor arbitration alone.
+    //
+    // This needs a workload where a Stream action is EMITTED at all, which means per-layer
+    // weight slices whose next read is a whole token away. The shared-buffer fixture has a
+    // weight tensor re-read by every layer -- a distance a cache this size genuinely serves --
+    // so nothing there is streamable and this dial would move nothing. That is not a
+    // difference in the model; it is a difference in the workload, and finding it out this way
+    // is why the control exists.
+    StreamedWeights workload(16, 3 * MiB, 256 * MiB, /*kv_bytes=*/8 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig base = arms_base(CostModel::Residency);
+    const double best = std::max(arm_prediction(PolicyPreset::RecurrentOnly, base, input),
+                                 arm_prediction(PolicyPreset::KVOnly, base, input));
+    const double with_relief = arm_prediction(PolicyPreset::Global, base, input);
+    CHECK(with_relief > best);
+
+    base.stream_relief = 0.0;
+    const double without_relief = arm_prediction(PolicyPreset::Global, base, input);
+    // Turn the Stream action's value off and the advantage goes with it. If it survived, the
+    // gain would be coming from somewhere this test does not understand -- worth knowing
+    // BEFORE anybody spends device time measuring it.
+    CHECK(without_relief < with_relief);
+    CHECK(without_relief <= best);
+}
+
+static void test_where_nothing_is_streamable_the_global_arm_wins_by_arbitration_instead() {
+    // The other half of the same finding, stated rather than left as an unexplained pass. On
+    // a workload whose weight traffic IS holdable, no Stream action is emitted -- correctly,
+    // because marking a genuinely reusable tensor as streaming would evict what a policy just
+    // paid to keep -- and the global arm's advantage is role_floor arbitration alone.
+    Hybrid workload(16, 3 * MiB, 2, 8 * MiB, 512 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig base = arms_base(CostModel::Residency);
+    const auto plan = make_planner(preset_planner(PolicyPreset::Global),
+                                   preset_config(PolicyPreset::Global, base))->build_plan(input);
+    CHECK(plan.count(TransitActionKind::Stream) == 0);
+
+    const double best = std::max(arm_prediction(PolicyPreset::RecurrentOnly, base, input),
+                                 arm_prediction(PolicyPreset::KVOnly, base, input));
+    CHECK(arm_prediction(PolicyPreset::Global, base, input) > best);
+}
+
 static void test_only_the_global_arm_tells_the_weight_stream_to_get_out_of_the_way() {
     Hybrid fixture(20, 3 * MiB, 8, 12 * MiB, 200 * MiB);
     const TransitPlannerConfig root = base();
@@ -604,62 +791,6 @@ static void test_survival_is_exactly_density_under_the_linear_model() {
     CHECK(density.digest() == survival.digest());
 }
 
-// A decode token whose weight traffic is PER LAYER, as a real model's is: each layer reads
-// its own slice, so a slice's next read is a whole token away. The shared-weight fixture
-// above cannot exercise this -- one buffer re-read by every layer has a reuse distance of one
-// layer, which a cache this size genuinely can serve, so declining to stream it is right.
-struct StreamedWeights {
-    TensorRegistry registry;
-    TransitGraph graph;
-    DeviceProfile device{};
-
-    StreamedWeights(int layers, std::size_t state_bytes, std::size_t weight_bytes_per_layer) {
-        device_profile_by_name("rtx5090", &device);
-        std::uintptr_t next = 1;
-        for (int i = 0; i < layers; ++i) {
-            TensorDesc state{};
-            state.ptr = fake(next++);
-            state.bytes = state_bytes;
-            state.role = TensorRole::RecurrentState;
-            state.mutable_data = true;
-            const TensorId s = registry.register_tensor(state).id;
-
-            TensorDesc weight{};
-            weight.ptr = fake(next++);
-            weight.bytes = weight_bytes_per_layer;
-            weight.role = TensorRole::ModelWeight;
-            weight.model_global = true;
-            const TensorId w = registry.register_tensor(weight).id;
-
-            KernelEvent kernel{};
-            kernel.id = static_cast<KernelId>(i + 1);
-            kernel.order = static_cast<std::uint64_t>(i);
-            graph.record_kernel(kernel);
-            TensorUse use_state{};
-            use_state.tensor = s;
-            use_state.kernel = kernel.id;
-            use_state.access = AccessKind::ReadWrite;
-            graph.record_use(use_state);
-            TensorUse use_weight{};
-            use_weight.tensor = w;
-            use_weight.kernel = kernel.id;
-            use_weight.access = AccessKind::Read;
-            graph.record_use(use_weight);
-        }
-        graph.set_cyclic(true);
-        graph.build(registry);
-    }
-
-    PlanInput input() {
-        PlanInput in{};
-        in.graph = &graph;
-        in.registry = &registry;
-        in.device = device;
-        in.runtime = RuntimeState{};
-        return in;
-    }
-};
-
 static void test_a_stream_hint_is_worth_something_under_residency_and_nothing_under_linear() {
     // The linear model has no interference term, so telling the weight stream to get out of
     // the way is priced at exactly zero -- which is why only the global arm was allowed one
@@ -752,6 +883,10 @@ int main() {
     test_the_five_arms_are_five_different_plans();
     test_the_single_role_arms_touch_only_their_own_role();
     test_only_the_global_arm_tells_the_weight_stream_to_get_out_of_the_way();
+    test_only_the_global_preset_gets_the_other_half_of_the_budget();
+    test_the_global_arm_beats_the_independent_ones_only_under_the_new_model();
+    test_the_global_arms_advantage_is_the_stream_action_where_one_is_emitted();
+    test_where_nothing_is_streamable_the_global_arm_wins_by_arbitration_instead();
 
     test_recurrent_v0_reproduces_the_0_1_hit_ratio();
     test_recurrent_v0_never_touches_a_second_role();

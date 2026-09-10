@@ -166,10 +166,20 @@ TransitPlannerConfig preset_config(PolicyPreset preset, const TransitPlannerConf
         case PolicyPreset::RecurrentOnly:
             config.persist_roles = RoleMask::of(TensorRole::RecurrentState);
             config.admission = AdmissionRule::Density;
+            // An INDEPENDENT policy, so it gets one half of a shared cache budget and not
+            // both. Cleared here rather than left to the caller: a base config that happened
+            // to set stream_roles -- which is a sensible default for a tool that plans a
+            // single trace -- would hand the other half to every arm, and the comparison
+            // would be between four global planners with different persist masks. That was
+            // invisible for as long as a Stream action was unreachable under a cyclic decode
+            // graph, which is exactly the kind of agreement-by-accident a preset exists to
+            // prevent.
+            config.stream_roles = RoleMask::none();
             break;
         case PolicyPreset::KVOnly:
             config.persist_roles = RoleMask::of(TensorRole::KVCache);
             config.admission = AdmissionRule::Density;
+            config.stream_roles = RoleMask::none();
             break;
         case PolicyPreset::NaiveBothPersistent:
             // Both roles, and NO arbitration: every candidate asks for the full hit ratio
@@ -179,6 +189,9 @@ TransitPlannerConfig preset_config(PolicyPreset preset, const TransitPlannerConf
             // policies on at once.
             config.persist_roles = RoleMask::of(TensorRole::RecurrentState, TensorRole::KVCache);
             config.admission = AdmissionRule::Proportional;
+            // "Two independent policies turned on at once" is the straw man, and two
+            // independent policies do not coordinate with the weight stream either.
+            config.stream_roles = RoleMask::none();
             break;
         case PolicyPreset::Global:
             config.persist_roles = RoleMask::of(TensorRole::RecurrentState, TensorRole::KVCache);
