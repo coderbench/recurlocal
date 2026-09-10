@@ -894,6 +894,31 @@ def test_status_derivation():
     check(decide_status(Fake(), "PASS") == "REGRESSION_GUARD_FAIL", "the guard vetoes")
 
 
+def test_a_draft_generation_cannot_produce_a_receipt():
+    """Half a generation is more dangerous than none, because it verifies.
+
+    A generation that has not been calibrated has no per-cell bounds, so every hypervolume is
+    computed against the generation-wide fallbacks -- numbers nobody measured on the target
+    hardware. The receipt would still carry a checksum and still pass `receipt verify`, which is
+    exactly what makes it worth refusing at the door. The `_status` field is removed by the same
+    calibration run that writes reference.json.
+    """
+    section("a draft generation is refused")
+    generation = make_generation()
+    flat = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+            "ctx128-c4": {"base": (500.0, 50.0, "OK")}}
+    check(compute_frontier(generation, matrix(flat, flat)) is not None,
+          "a calibrated generation scores")
+    generation.raw["_status"] = "DRAFT -- calibration has not run"
+    try:
+        compute_frontier(generation, matrix(flat, flat))
+        check(False, "a DRAFT generation produced a receipt")
+    except ComputeError as exc:
+        check("DRAFT" in str(exc), "a DRAFT generation is refused by name")
+        check("calibrate" in str(exc), "and the message says what to run")
+    del generation.raw["_status"]
+
+
 def test_a_ceiling_reads_the_generation_it_is_about():
     """Pairing one model's decode rates with another's state shape is a confident wrong number.
 
@@ -1012,6 +1037,7 @@ def main():
                  test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone,
                  test_regression_guard, test_receipt_and_result_match_their_schemas,
                  test_receipt_and_ledger, test_status_derivation,
+                 test_a_draft_generation_cannot_produce_a_receipt,
                  test_a_ceiling_reads_the_generation_it_is_about,
                  test_a_frozen_generation_has_exactly_one_definition,
                  test_no_size_bands, test_reports_render):

@@ -59,6 +59,18 @@ def compute_frontier(generation, results, *, allow_partial=False):
     point of "hardware counters explain why a PR works, real serving performance decides
     whether it works".
     """
+    # A generation that has not been calibrated cannot produce a receipt. Its bounds are the
+    # generation-wide fallbacks rather than per-cell measurements, so every hypervolume would be
+    # computed against numbers nobody measured on the target hardware -- and the receipt would
+    # carry a checksum, verify cleanly, and be meaningless. The field is removed by the same
+    # calibration run that writes reference.json.
+    draft = (generation.raw or {}).get("_status")
+    if draft:
+        raise ComputeError(
+            f"{generation.name} is a DRAFT and cannot be scored: {draft}\n"
+            f"Run `tt-frontier measure` on a control and then `tt-frontier calibrate --write` "
+            f"against this generation; that writes reference.json and removes `_status`.")
+
     reference = generation.reference_point
 
     # variant -> repeat -> cell -> [points], and the same keyed by config so a receipt can say

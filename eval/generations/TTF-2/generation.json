@@ -1,0 +1,192 @@
+{
+ "name": "TTF-2",
+ "description": "Qwen3.5-4B-Q4_K_M on one RTX 5090, pinned SparkInfer, serving cells scored on goodput and p99 inter-token latency. The model changed and nothing else did.",
+ "_what_a_generation_is": "Everything below is FROZEN for the lifetime of TTF-1. A receipt stays attached to the generation that produced it, so if the meaning of the evaluation changes materially the answer is TTF-2, never an edit here. The generation's SHA-256 is recorded in every receipt and `tt-frontier receipt verify` refuses one whose generation has moved.",
+ "objectives": [
+  {
+   "key": "goodput_tps",
+   "direction": "max",
+   "lo": 0.0,
+   "hi": 4000.0,
+   "unit": "tok/s",
+   "_note": "Aggregate decode tokens per second over wall time, from the continuous-batching bench. These generation-wide bounds are a FALLBACK: reference.json calibrates lo/hi per cell, because cells differ in absolute throughput by more than a factor of ten and one global bound would make the geometric mean an implicit weighting by throughput regime that nobody chose. Anchoring a maximized objective at lo=0 is deliberate -- it makes this objective's contribution to dF exactly its own ratio, so a TTF-1 number stays comparable with every throughput figure in results/."
+  },
+  {
+   "key": "p99_itl_ms",
+   "direction": "min",
+   "lo": 200.0,
+   "hi": 0.0,
+   "unit": "ms",
+   "_note": "99th-percentile inter-token latency, nearest-rank over every decode gap the bench timed. The tail, not the mean: a policy that halves the median while doubling the 99th makes serving worse and the mean better. `lo` is the SLO limit -- latency at or beyond it scores zero -- so this objective measures HEADROOM AGAINST THE SLO, which is the thing a serving frontier actually trades against throughput."
+  }
+ ],
+ "reference_point": [
+  0.0,
+  0.0
+ ],
+ "cells": [
+  "ctx128-c1",
+  "ctx4096-c1",
+  "ctx16384-c1",
+  "ctx128-c4",
+  "ctx4096-c4",
+  "ctx16384-c4",
+  "ctx128-c16",
+  "ctx4096-c16",
+  "ctx16384-c16",
+  "ctx128-c32",
+  "ctx4096-c32",
+  "ctx16384-c32"
+ ],
+ "_cells_note": "ctx<prompt tokens>-c<concurrent sequences>. Every cell runs on the SAME binary and the SAME code path -- qwen3_gguf_cb_bench, including at concurrency 1. A matrix whose low-concurrency corner came from a different bench would have a step in it that no policy caused. Each run also carries the generation's fixed long-prefill injection, identical in both arms, because a decode-only mix is not a serving workload. TEN cells, not twelve. The 4x3 matrix was cut down by CALIBRATION, on this hardware, and the measurements are in reference.json: ctx16384-c16 loses 30 of its requests to a device OOM in every repeat (128 decode tokens of an expected 1024), and ctx16384-c32 cannot even load -- 32 sequences of 16K context plus a 17.9 GB model does not fit 32 GB of VRAM. A cell that fails identically for BOTH arms scores nothing, costs GPU time, and adds a floored hypervolume to the geometric mean; declaring it anyway would be a matrix with a hole in it that every receipt would have to explain. If a future device can run them, that is TTF-2.  TTF-2's cell list is written by calibration: a cell the device cannot run is not declared, exactly as TTF-1 dropped ctx16384-c16 and ctx16384-c32.",
+ "weights": {
+  "ctx128-c1": 1.0,
+  "ctx4096-c1": 1.0,
+  "ctx16384-c1": 1.0,
+  "ctx128-c4": 1.0,
+  "ctx4096-c4": 1.0,
+  "ctx16384-c4": 1.0,
+  "ctx128-c16": 1.0,
+  "ctx4096-c16": 1.0,
+  "ctx16384-c16": 1.0,
+  "ctx128-c32": 1.0,
+  "ctx4096-c32": 1.0,
+  "ctx16384-c32": 1.0
+ },
+ "_weights_note": "Equal, and published rather than implied. The 0.1 scorer weighted C1 at 0.40 and the concurrency arms at 0.20 each, which encoded a judgement about which regime mattered; equal weighting encodes none. A generation that wants different weights states them here.",
+ "cell_floor": 1e-06,
+ "_cell_floor_note": "The smallest hypervolume a cell is scored at. It exists so F(candidate)/F(main) stays defined when a cell scores zero -- which is exactly the NEW CAPABILITY case, where main OOMs and the candidate succeeds. Every receipt records how many cells hit the floor, because a run the floor decided is a run whose number is about the floor.",
+ "aggregation": "geometric_mean",
+ "slo": {
+  "ttft_ms": null,
+  "p99_itl_ms": "per cell, from reference.json: the `lo` bound of p99_itl_ms is this cell's SLO limit",
+  "acceptance": "A request counts only if it completes. An arm that lost requests to a device OOM did not run slower, it ran less -- aggregate tok/s is tokens over wall time -- so the runner refuses it as a serving FAILURE and the cell gets no operating point from that configuration.",
+  "_note": "TTF-1 does not filter individual requests against a TTFT SLO, because the pinned bench reports aggregate throughput rather than per-request completion times. That is a real limitation of this generation and is stated rather than papered over; a generation that wants request-level goodput needs a bench that emits per-request records."
+ },
+ "repeats": {
+  "minimum": 3,
+  "maximum": 9,
+  "_note": "Interleaved pairs: main and candidate for the SAME cell and the SAME repeat run adjacently. Graphics clocks cannot be pinned on this hardware, so only paired same-box deltas are trustworthy, and running all of main before all of the candidate puts thermal drift entirely on one arm. Two repeats cannot estimate a floor at all."
+ },
+ "confidence": {
+  "level": 0.99,
+  "resamples": 20000,
+  "seed": 20260910,
+  "method": "paired_bootstrap_percentile",
+  "_note": "A qualification gate, never a multiplier. dF is not scaled by confidence: 'how much was created' and 'how sure are we' are different questions and one number answers neither. Resampling is over REPEAT INDEX and applies the same index to both arms, which is what makes it paired. The seed and resample count are frozen so a receipt is reproducible bit for bit from its raw results."
+ },
+ "regression_guard": {
+  "protected_cells": [],
+  "max_regression": 0.05,
+  "_note": "Hypervolume alone lets a candidate buy a catastrophic loss somewhere strategically essential with a large win elsewhere. ctx128-c1 is the low-latency decode arm this repository has always treated as a regression guard. ctx128-c16 is the concurrency arm that actually RESOLVES: its measured control spread is 0.42%, comfortably inside the 5% guard. The c32 cells are declared and scored but NOT protected, and that is a measurement rather than a preference: ctx4096-c32's control spread is 39% across three interleaved repeats and ctx128-c32's p99 latency moved by 6x in one of three. A guard whose threshold is 5% against an arm whose own noise is 39% does not protect anything -- it rejects good submissions at random. The instability is this runtime's, is documented in the changelog as an open failure, and is published here rather than hidden behind a guard that would fire on it."
+ },
+ "portfolio": {
+  "max_configurations": 6,
+  "allowed_planners": [
+   "baseline",
+   "recurrent_v0",
+   "greedy",
+   "budgeted",
+   "concurrency"
+  ],
+  "allowed_parameter_ranges": {
+   "TENSORTRANSIT": [
+    "off",
+    "baseline",
+    "persist",
+    "prefetch",
+    "combined"
+   ],
+   "TENSORTRANSIT_ENGINE": [
+    "transit",
+    "v0"
+   ],
+   "TENSORTRANSIT_ADMISSION": [
+    "density",
+    "quota",
+    "proportional",
+    "reuse_order",
+    "role_floor"
+   ],
+   "TENSORTRANSIT_PRESET": [
+    "baseline",
+    "recurrent_only",
+    "kv_only",
+    "naive_both",
+    "global"
+   ],
+   "TENSORTRANSIT_BUDGET_FRACTION": [
+    0.0,
+    1.0
+   ],
+   "TENSORTRANSIT_HIT_RATIO": [
+    0.05,
+    1.0
+   ],
+   "TENSORTRANSIT_WINDOW_ATTACH": [
+    "stream",
+    "capture_node",
+    "capture_node_strict"
+   ]
+  },
+  "setup_time_budget_s": 120,
+  "_note": "A cell's frontier is formed from every allowed configuration of that variant, so a candidate does not have to beat every existing strategy everywhere -- it has to create non-dominated territory that did not exist. The cap is what keeps that a frontier rather than a fit: an unbounded configuration search finds a winner on noise."
+ },
+ "planner_budget": {
+  "per_token_host_ns_target_share": 0.005,
+  "_note": "Planner plus executor host time under 0.5% of token latency. Measured by RuntimeStats::compile_ns and ExecutorStats::host_ns, asserted by tests/test_overhead_budget, and reported in every adapter stats line. A budget nobody gates on is a wish."
+ },
+ "hidden": {
+  "mode": "public_only",
+  "public": [
+   "workload families",
+   "parameter ranges",
+   "objective definitions",
+   "SLOs",
+   "normalization bounds",
+   "hypervolume math",
+   "statistics",
+   "aggregation",
+   "the workload instances themselves"
+  ],
+  "hidden": [],
+  "_note": "TTF-1 has NO hidden workload instances, and saying so is better than pretending. The pinned bench synthesizes its own prompts deterministically from a length parameter -- `short_prompt[i] = 100 + (i % 50)` -- so there is no corpus to draw a hidden subset from, no arrival distribution to sample, and a seed that selected nothing would be theatre. Every receipt records `mode: public` for that reason. What a generation WITH hidden instances needs, so that TTF-2 can have them: a bench that accepts a prompt file and an arrival schedule, and a runner that draws both from a published distribution using a seed the evaluator holds. A hidden seed may then select the prompt subset, the context instance, the arrival timing and the generation length; it may NOT alter the model, the runtime, an objective, the normalization, the correctness standard or the scoring method, because a seed that could do any of those would be a second, secret generation. The anti-gaming property TTF-1 does have is different and it is enforced rather than described: the instrument -- eval/, tools/tt-frontier, the frozen generation, the workload definitions and the runtime pin -- is overlaid from the BASE commit into both trees before anything is measured, so a submission cannot win by editing the ruler. CI proves it."
+ },
+ "correctness": {
+  "gate": "greedy replay, token-exact",
+  "tokens_compared": 64,
+  "control_replays": 3,
+  "_note": "Exact locality optimization must not change model semantics. The control is replayed against ITSELF first: a gate comparing one control replay to one candidate replay cannot tell 'the policy changed the output' from 'this runtime is not reproducible', and it has reported the second as the first. A checkpoint that does not reproduce is UNSCORABLE, which is a property of the runtime and not a failure of the candidate."
+ },
+ "hardware": {
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "count": 1,
+  "vram_gb": 32,
+  "driver": "595.84"
+ },
+ "runtime": {
+  "name": "SparkInfer",
+  "repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+  "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3"
+ },
+ "model": {
+  "name": "Qwen3.5-4B-Q4_K_M",
+  "repository": "unsloth/Qwen3.5-4B-GGUF",
+  "file": "Qwen3.5-4B-Q4_K_M.gguf",
+  "file_bytes": 2740937888,
+  "quantization": "Q4_K_M GGUF",
+  "architecture": "dense hybrid Gated-DeltaNet / full attention",
+  "layers": 32,
+  "recurrent_layers": 24,
+  "full_attention_interval": 4,
+  "lin_state_bytes_per_layer": 2097152,
+  "lin_conv_state_bytes_per_layer": 49152,
+  "recurrent_footprint_bytes_per_token": 51511296,
+  "weight_bytes_per_step": 2740937888,
+  "_geometry_note": "matrix state = linear_num_value_heads x value_head_dim x key_head_dim x 4 (fp32); conv = (kernel - 1) x (k_heads x k_dim x 2 + v_heads x v_dim) x 2 (bf16). The same formula reproduces the pinned model's measured 3145728 and 61440 exactly, which is the only reason to trust it on a model nobody had loaded. eval/screen_checkpoints.py.",
+  "_reproducibility": "Ten unhooked greedy replays over 128 tokens, all identical. Checked because it is rare: of five checkpoints screened on this device only this one and the pinned NVFP4 27B pass -- Qwen3.5-9B-Q4_K_M diverges at token 16 in one replay of three, Qwen3.5-2B-Q4_K_M in two of five, and every sparse-MoE candidate in all of them."
+ },
+ "_baseline_stability": "Per-cell control spreads are in reference.json as `control_spread_pct`, from three interleaved repeats. Read them before choosing what to work on: an effect smaller than a cell's own spread is not detectable there however good it is, and the paired bootstrap will correctly return INCONCLUSIVE.",
+ "_why_a_second_generation": "TTF-1 scores Qwen3.8-27B, whose decode step moves 18.21 GB. A persisting-L2 policy is bounded by 2 x 60 MiB / step, so on seven of TTF-1's ten cells that bound is BELOW the floor the measurement can resolve and no submission can be measured to win them (`tt-frontier generation show TTF-1 --reachable`). That is a true statement about the hardware and a useless one to hand a contributor.\n\nQwen3.5-4B-Q4_K_M moves 2.84 GB per step on the SAME device and the SAME runtime commit, and its 51.5 MB recurrent footprint FITS inside the 60 MiB persisting partition instead of overflowing it 2.4x. Its batch-1 ceiling is 3.76% against the pinned model's 0.696%, it passes the exactness gate -- ten unhooked greedy replays identical over 128 tokens, where the sparse-MoE candidates and Qwen3.5-9B and Qwen3.5-2B all fail it -- and the shipped policy measures +0.695% on it against a 0.112% noise floor. Resolved, at 6.2x.\n\nTTF-1 is not retired and its receipts stay attached to it. This is a second generation because the meaning of the evaluation changed, which is what a new TTF-N is for.",
+ "_status": "DRAFT -- not frozen and not scoreable. The cell list below is the full 4x3 grid as a CANDIDATE list; calibration on this device decides which of them run at all and writes reference.json, and a cell that cannot be run is removed before freezing, exactly as TTF-1 dropped ctx16384-c16 and ctx16384-c32. `tt-frontier compute` refuses a generation carrying this field."
+}
