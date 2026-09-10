@@ -876,10 +876,12 @@ def main():
             "tokens_packed": stats_n.get("stats", {}).get("tokens_packed"),
             "tokens_total": stats_n.get("stats", {}).get("tokens"),
             "max_rows_seen": stats_n.get("stats", {}).get("max_rows_seen"),
-            # The share the guard judged, kept beside the raw counts: an arm that passed at 88%
-            # packed and one that passed at 51% are not equally trustworthy, and a reader
-            # cannot tell which from the gain.
-            "packing": packed_path_used(stats_n, n),
+            # The share the guard judged, kept beside the raw counts: an arm that packed 98%
+            # of its decode steps and one that packed 51% are not equally trustworthy, and a
+            # reader cannot tell which from the gain. `a.cb_max_new` is passed for the same
+            # reason the guard takes it -- the denominator is decode steps, not every step the
+            # hook bracketed, and at long context most of those are prefill chunks.
+            "packing": packed_path_used(stats_n, n, a.cb_max_new),
         }
         if name in DEFAULT_WEIGHTS:
             workloads[name] = {"weight": DEFAULT_WEIGHTS[name],
