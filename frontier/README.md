@@ -185,3 +185,29 @@ verification catches everything else. If the meaning of the
 evaluation changes materially, the answer is a new `TTF-N` — never an edit. Historical results
 stay attached to the generation that produced them and stay auditable exactly as they were
 earned.
+
+### Why TTF-1 is not being replaced, having found five of its cells unwinnable
+
+`--reachable` says a persisting-L2 policy cannot be measured to win five of TTF-1's ten cells,
+two more cannot be batched by the pinned runtime as concurrency cells, and one objective on one
+cell has a 481% control spread. That is a strong case for a smaller matrix, and it was
+considered and rejected. Three reasons, in order of weight:
+
+1. **TTF-1 scores the frontier, not the persist family.** A cell whose recurrent traffic is
+   5.2% of the step and whose noise is 0.42% is a *good* cell. What cannot win it is a 60 MiB
+   carve-out. Dropping it would remove the largest untouched opportunity in this repository
+   from the thing that measures opportunity.
+2. **The reporting already carries every one of those facts.** A cell the runtime cannot batch
+   is probed, attributed and excluded with its evidence; a floor decision inside a published
+   spread is named; `resolution_summary` says what share of the matrix a receipt rests on; and
+   a PARTIAL receipt credits nothing. None of that requires a smaller matrix, and all of it
+   survives a submission that changes what is measurable.
+3. **A generation that shrinks whenever the current mechanism cannot win is not a ruler.** The
+   bands were removed because they measured against a prize that did not exist. Removing cells
+   because *one family* cannot reach them is the same mistake pointed the other way.
+
+`ctx4096-c32` is the one genuine candidate for removal — both its objectives have control
+spreads near 40%, so nothing can be measured there by anyone. It stays for now because the
+receipt says so on its face and no receipt has been earned against TTF-1 yet; a TTF-2 that drops
+it is the right change to make deliberately, with a calibration run behind it, rather than as a
+side effect of this release.
