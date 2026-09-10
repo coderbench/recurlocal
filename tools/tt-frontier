@@ -405,8 +405,12 @@ def cmd_run(args):
         "attribution": {
             "probed": sorted(attribution),
             "verdicts": attribution,
-            "probe_binary_is_baseline": bool(args.candidate_cb
-                                             and args.candidate_cb != args.cb_binary),
+            # True only when the probe ran a binary the candidate did not build. In the
+            # same-binary A/B a contributor runs locally these are one file, and the probe
+            # then answers the weaker question -- which the receipt has to say rather than
+            # imply.
+            "probe_independent_of_candidate": bool(args.candidate_cb
+                                                   and args.candidate_cb != args.cb_binary),
             "skipped": bool(args.no_attribution),
         },
         "cells_requested": cells,
