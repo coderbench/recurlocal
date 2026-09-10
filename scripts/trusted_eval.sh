@@ -33,6 +33,7 @@ MODEL="${TT_MODEL:-}"
 REPEATS=3
 CELLS=""
 CLEAN=0
+STAGE_ONLY=0
 PR=""
 ARCH="${CMAKE_CUDA_ARCHITECTURES:-120}"
 WORK_ROOT="${TT_WORK:-/tmp/tt-eval}"
@@ -52,11 +53,13 @@ while [ $# -gt 0 ]; do
         --candidate-config) CANDIDATE_CONFIGS+=("$2"); shift 2 ;;
         --main-config)      MAIN_CONFIGS+=("$2"); shift 2 ;;
         --clean)            CLEAN=1; shift ;;
+        --stage-only)       STAGE_ONLY=1; shift ;;
         *) echo "!! unknown option $1"; exit 2 ;;
     esac
 done
 [ -n "$CANDIDATE" ] || { echo "!! --candidate <ref> is required"; exit 2; }
-[ -n "$MODEL" ] || { echo "!! --model <path> is required (or set TT_MODEL)"; exit 2; }
+[ "$STAGE_ONLY" = 1 ] || [ -n "$MODEL" ] || \
+    { echo "!! --model <path> is required (or set TT_MODEL)"; exit 2; }
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -120,6 +123,19 @@ for side in baseline candidate; do
     git -C "$REPO" archive "$BASE_SHA" "${present[@]}" | tar -x -C "$WORK/$side"
 done
 echo ">> instrument: ${present[*]} from $BASE_SHA (into both trees)"
+
+# `--stage-only` stops here. Everything above is the part that decides whether the comparison
+# is HONEST -- two fresh trees, the instrument from the baseline in both, and a report of what
+# the candidate tried to change about it -- and none of it needs a GPU, a model or a ten-minute
+# build. That makes it testable in CI, which is where a rule of this kind has to be checked:
+# an anti-gaming property nothing exercises is one that holds only for honest submissions.
+if [ "$STAGE_ONLY" = 1 ]; then
+    echo ">> stage-only: workspace $WORK"
+    for side in baseline candidate; do
+        printf ">>   %-9s %s\n" "$side" "$(ls "$WORK/$side" | tr '\n' ' ')"
+    done
+    exit 0
+fi
 
 # --- build both, each against its OWN TensorTransit ---------------------------------------
 # One SparkInfer commit, one patch, one model: the ONLY difference between the two binaries

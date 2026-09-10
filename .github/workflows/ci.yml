@@ -207,6 +207,26 @@ jobs:
           # And the overlaid copy must be the BASE's, not the submission's.
           grep -q "usage: real_eval.py" <<<"$OUT" || { echo "::error::the base evaluator did not run"; exit 1; }
           echo "anti-gaming overlay ok"
+      - name: the trusted runner stages two trees and overlays the baseline's instrument
+        run: |
+          set -euo pipefail
+          BASE="$(git rev-parse HEAD~1)"
+          CAND="$(git rev-parse HEAD)"
+          OUT="$(TT_WORK=/tmp/tw bash scripts/trusted_eval.sh --baseline "$BASE"                   --candidate "$CAND" --stage-only 2>&1)"
+          echo "$OUT"
+          W="$(ls -d /tmp/tw/*/ | head -1)"
+          # Both trees exist, and each is the right commit's.
+          test -d "$W/baseline/src" && test -d "$W/candidate/src"             || { echo "::error::a tree is missing"; exit 1; }
+          # The INSTRUMENT in the candidate's tree is the BASELINE's, which is the whole
+          # property: a submission is scored on src/, include/, planners/, executors/ and
+          # adapters/, by a ruler it did not supply.
+          diff -q <(git show "$BASE:eval/real_eval.py") "$W/candidate/eval/real_eval.py"             || { echo "::error::the candidate tree kept its own evaluator"; exit 1; }
+          diff -q <(git show "$BASE:adapters/sparkinfer/pin.json")                   "$W/candidate/adapters/sparkinfer/pin.json"             || { echo "::error::the candidate tree kept its own runtime pin"; exit 1; }
+          # ...and what it IS scored on is its own.
+          diff -q <(git show "$CAND:src/plan.cpp") "$W/candidate/src/plan.cpp"             || { echo "::error::the candidate's own source was overwritten"; exit 1; }
+          rm -rf /tmp/tw
+          echo "trusted staging ok"
+
       - name: the trusted runner refuses a worker carrying a secret
         run: |
           set -euo pipefail
