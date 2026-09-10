@@ -15,9 +15,11 @@ the recurrent footprint at 1.02x the persisting cache instead of 2.4x, and batch
 measures **+1.63%** there against +0.10% on the dense model. Concurrency is the arm that cannot
 be measured on that checkpoint, because the runtime stops batching above 8 rows.
 
-Both are below the 2% floor as weighted matrices. The difference is that one is bounded out by
-arithmetic and the other has 2.0 points of headroom to a ceiling above the floor. Read the
-section for the model you intend to work on.
+Both are below the 2% floor as weighted matrices — 0.52% for the dense model against **1.94%**
+for the MoE, whose ceiling is 3.7x higher and still six hundredths of a point short. And the MoE
+result is not merely below the floor, it is **not scorable at all**: that checkpoint is not
+reproducible against itself, so the exact-locality gate cannot certify it. Read the section for
+the model you intend to work on, and read the correctness caveat before either.
 
 ---
 
@@ -189,6 +191,19 @@ already known. Reordered by what is still genuinely open:
    where most of the improvement comes from. Screen a candidate model with
    `traffic_budget.py --matrix` before integrating it — the geometry can live in the matrix spec,
    so a second model's rates cannot be scored against the first model's state shape.
+
+   **And the reason it is still not a scorable result.** The exact-locality gate requires
+   bit-identical greedy replay, and on this checkpoint that cannot be established: two
+   **unhooked** control runs diverge at token 2, because a few ULP in the prefill feed discrete
+   top-k expert routing and one flipped expert moves the argmax (the runtime documents this in
+   `kernels/include/sparkinfer/kernels/deterministic.h`). `SPARKINFER_DETERMINISTIC=1` does not
+   cover its Q4_K expert path. RecurLocal is not the cause — on the dense checkpoint the same
+   binary and policy give control, control and candidate bit-identical — but the gate cannot
+   answer, so `decide.py` refuses the run.
+
+   **If you want to work this surface, a reproducible MoE checkpoint is the first thing needed**,
+   ahead of any policy. Weighted, the persist family reaches 1.94% here against a 2.0% floor, so
+   even a scorable version of this result would land just under — see below.
 
 2. **Reuse the cache can actually serve — CLOSED, and the answer is no.** Every shipped policy
    targets reuse across a token, which is a full model pass away and 2.4–40x too large to hold.
