@@ -33,6 +33,9 @@ from frontier import ledger as ledger_mod                                   # no
 from frontier import report as report_mod                                   # noqa: E402
 from frontier.generations import GenerationError                            # noqa: E402
 from frontier.receipt import ReceiptError                                   # noqa: E402
+from frontier.compute import ComputeError                                   # noqa: E402
+from frontier.aggregate import AggregateError                               # noqa: E402
+from frontier.normalize import ObjectiveError                               # noqa: E402
 
 import os
 
@@ -533,7 +536,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         return args.func(args)
-    except (GenerationError, ReceiptError, ledger_mod.LedgerError) as exc:
+    except (GenerationError, ReceiptError, ComputeError, AggregateError,
+            ObjectiveError, ledger_mod.LedgerError) as exc:
         print(f"!! {exc}", file=sys.stderr)
         return 2
 

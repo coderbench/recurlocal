@@ -190,6 +190,25 @@ def compute_frontier(generation, results, *, allow_partial=False):
     frontier_main = _geomean(per_repeat["main"])
     frontier_candidate = _geomean(per_repeat["candidate"])
 
+    # The run's own noise floor: the peak-to-peak spread of the MAIN arm's frontier score
+    # across the repeats that produced it, as a percentage.
+    #
+    # A paired bootstrap alone is not enough at the repeat counts this generation allows, and
+    # that is a property of the estimator rather than a bug. A percentile bootstrap over three
+    # paired points has at most 27 distinct resamples; if all three paired ratios happen to
+    # fall on the same side of 1.0 -- which pure jitter does one time in four -- every resample
+    # does too and the lower bound clears zero however small the effect. A synthetic candidate
+    # identical to main to within 0.03% scored FRONTIER_GAIN this way, which is exactly the
+    # failure this repository has spent its whole history guarding against.
+    #
+    # So the confidence gate is joined by the rule the rest of the harness already uses: an
+    # axis whose spread sits inside its own run-to-run noise is OPEN, not solved. Both have to
+    # pass. This one needs no new generation field because it is measured from the run.
+    noise_floor_pct = _spread_pct(per_repeat["main"])
+    candidate_spread_pct = _spread_pct(per_repeat["candidate"])
+    floor = max(noise_floor_pct, candidate_spread_pct)
+    resolved = abs(stats.point * 100.0) > floor
+
     return FrontierComputation(
         generation=generation.name,
         generation_checksum=generation.checksum(),
@@ -198,7 +217,15 @@ def compute_frontier(generation, results, *, allow_partial=False):
         gain=stats.point,
         gain_percent=stats.point * 100.0,
         statistics=stats.to_json(),
-        qualifies=stats.qualifies(),
+        # BOTH gates. The bootstrap says the difference is unlikely to be zero; the noise
+        # floor says it is bigger than the spread of the runs that produced it. A result that
+        # passes one and fails the other is not a result.
+        qualifies=stats.qualifies() and resolved,
+        confidence_qualifies=stats.qualifies(),
+        resolved=resolved,
+        noise_floor_pct=floor,
+        main_spread_pct=noise_floor_pct,
+        candidate_spread_pct=candidate_spread_pct,
         per_repeat=dict(per_repeat),
         paired_repeats=repeats,
         unpaired_repeats=unpaired,
@@ -226,6 +253,17 @@ def compute_frontier(generation, results, *, allow_partial=False):
         partial=bool(missing_cells),
         weights={c: generation.weights[c] for c in scored_cells},
     )
+
+
+def _spread_pct(values):
+    """Peak-to-peak spread as a percentage of the median: this run's own noise floor, measured
+    rather than assumed. Fewer than two repeats has no spread to report, and reporting zero
+    there would read as "perfectly stable"."""
+    if len(values) < 2:
+        return float("inf")
+    ordered = sorted(values)
+    mid = _median(values)
+    return (ordered[-1] - ordered[0]) / mid * 100.0 if mid else float("inf")
 
 
 def _median(values):

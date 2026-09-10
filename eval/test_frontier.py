@@ -366,6 +366,36 @@ def test_compute_cases():
     check(result.gain < 0, "a candidate that OOMs where main succeeded LOSES frontier")
 
 
+def test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone():
+    section("the noise floor is a second gate")
+    generation = make_generation()
+    # Three paired repeats in which the candidate is very slightly ahead every time, by less
+    # than the run-to-run spread of the runs themselves. A percentile bootstrap over three
+    # points has at most 27 distinct resamples; if all three fall on the same side of 1.0 --
+    # which pure jitter does one time in four -- every resample does too and the lower bound
+    # clears zero however small the effect. That is a property of the estimator, and it is why
+    # the confidence gate is joined by the rule the rest of this harness already uses.
+    rows = []
+    main = [500.0, 506.0, 494.0]          # ~2.4% spread of its own
+    candidate = [500.4, 506.5, 494.3]     # ahead every time, by ~0.08%
+    for repeat, (m, c) in enumerate(zip(main, candidate), start=1):
+        for cell in generation.cells:
+            rows.append(records("main", cell, "base", repeat, m, 50.0))
+            rows.append(records("candidate", cell, "base", repeat, c, 50.0))
+    result = compute_frontier(generation, rows)
+    check(result.confidence_qualifies,
+          "the bootstrap alone says this is unlikely to be zero...")
+    check(not result.resolved,
+          "...and the run's own spread says it is inside the noise that produced it")
+    check(not result.qualifies, "so it does not qualify")
+    receipt = build_receipt(generation=generation, computation=result, correctness="PASS",
+                            provenance={})
+    check(receipt["status"] == "INCONCLUSIVE", "and the receipt says INCONCLUSIVE")
+    check(receipt["frontier"]["verified_gain_percent"] == 0.0, "and credits nothing")
+    check(receipt["statistics"]["noise_floor_pct"] > abs(result.gain * 100.0),
+          "with the floor it failed against on the page")
+
+
 def test_compute_guards():
     section("compute guards")
     generation = make_generation()
@@ -620,6 +650,7 @@ def test_reports_render():
 def main():
     for test in (test_normalization, test_pareto, test_hypervolume, test_aggregate,
                  test_confidence, test_generation, test_compute_cases, test_compute_guards,
+                 test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone,
                  test_regression_guard, test_receipt_and_result_match_their_schemas,
                  test_receipt_and_ledger, test_status_derivation,
                  test_no_size_bands, test_reports_render):

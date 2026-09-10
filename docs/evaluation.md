@@ -59,9 +59,20 @@ reachable — per cell, with the measured run-to-run spread beside it.
 2. **The whole matrix.** A cell that was not run is not averaged in as a zero and is not
    renormalised away — it is a missing cell, and the receipt says `PARTIAL` on its face.
    Otherwise omitting the arm with the most room is the cheapest way to raise a score.
-3. **Confidence as a gate, not a multiplier.** A paired bootstrap over interleaved repeats,
-   with a frozen seed and resample count. If the 99% lower bound is not above zero the status
-   is `INCONCLUSIVE` and the observed figure is *not* published as a contribution.
+3. **Two statistical gates, and both must pass.**
+   - A paired bootstrap over interleaved repeats, with a frozen seed and resample count. If
+     the 99% lower bound is not above zero the status is `INCONCLUSIVE`.
+   - The observed `dF` must also exceed the **run-to-run spread of the runs that produced it**.
+
+   The second exists because the first is not enough at three repeats, and that is a property
+   of the estimator rather than a bug. A percentile bootstrap over three paired points has at
+   most 27 distinct resamples; if all three paired ratios fall on the same side of 1.0 — which
+   pure jitter does one time in four — every resample does too and the lower bound clears zero
+   however small the effect. A synthetic candidate identical to `main` to within 0.03% scored
+   `FRONTIER_GAIN` that way while this was being built. So the rule the rest of the harness
+   already uses applies here too: **an axis whose spread sits inside its own noise is open, not
+   solved.** The receipt carries `noise_floor_pct`, `resolved` and `confidence_qualifies`
+   separately, so which gate failed is on the page.
 4. **The protected-workload guard.** A regression past the generation's limit on a protected
    cell is `REGRESSION_GUARD_FAIL` even when the aggregate `dF` is positive.
 

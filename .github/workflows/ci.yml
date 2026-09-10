@@ -84,6 +84,8 @@ jobs:
         # aggregation or the receipt's status derivation silently redefines every past
         # receipt, so it has to be a build failure and not a review question.
         run: python3 eval/test_frontier.py
+      - name: the frontier CLI, end to end
+        run: python3 eval/test_cli_pipeline.py
       - name: every frozen generation still loads and still hashes
         run: |
           python3 - <<'PY'

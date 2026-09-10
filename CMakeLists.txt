@@ -220,6 +220,12 @@ if(TENSORTRANSIT_BUILD_TESTS)
         # hypervolume, aggregation or the receipt's status derivation silently redefines every
         # past receipt, and this suite is what makes that a build failure.
         add_test(NAME frontier COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/eval/test_frontier.py)
+        # The COMMAND LINE, end to end, on a synthetic raw file built from the frozen
+        # generation. The golden tests above cover the scoring library; this covers the wiring
+        # a trusted evaluator and a contributor actually run -- argument parsing, the
+        # generation lookup, where the ledger is written, whether a non-zero exit means what it
+        # should. A break there would stay invisible until somebody spent GPU time to find it.
+        add_test(NAME frontier_cli COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/eval/test_cli_pipeline.py)
     else()
         message(STATUS "Python3 not found - skipping the eval decision and schema tests")
     endif()

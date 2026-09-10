@@ -44,9 +44,10 @@ def decide_status(computation, correctness: str) -> str:
     if computation.guard_violations:
         return "REGRESSION_GUARD_FAIL"
     if not computation.qualifies:
-        # Either the lower bound sits on or below zero, or there were too few paired repeats
-        # to have a bound at all. Both are "we do not know", and publishing the observed
-        # figure as a verified contribution is exactly what this status prevents.
+        # One of the two gates did not pass: the confidence lower bound is not above zero, or
+        # the observed difference is inside the run-to-run spread of the runs that produced it.
+        # Both are "we do not know", and publishing the observed figure as a verified
+        # contribution is exactly what this status prevents.
         if computation.gain <= 0.0 and computation.statistics.get("upper", 0.0) < 0.0:
             return "NO_FRONTIER_GAIN"
         return "INCONCLUSIVE"
@@ -171,6 +172,15 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
             "resamples": computation.statistics["resamples"],
             "seed": computation.statistics["seed"],
             "per_repeat_frontier": computation.per_repeat,
+            # The second gate. The bootstrap says the difference is unlikely to be zero; this
+            # says it is bigger than the run-to-run spread of the runs that produced it. A
+            # percentile bootstrap over three paired points cannot tell a consistent tiny
+            # effect from consistent tiny bias, so both have to pass.
+            "noise_floor_pct": computation.noise_floor_pct,
+            "main_spread_pct": computation.main_spread_pct,
+            "candidate_spread_pct": computation.candidate_spread_pct,
+            "resolved": computation.resolved,
+            "confidence_qualifies": computation.confidence_qualifies,
         },
         "regression_guard": {
             "protected_cells": generation.protected_cells,
