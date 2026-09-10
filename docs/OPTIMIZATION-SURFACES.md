@@ -438,6 +438,31 @@ name — `windows_applied=0, windows_attached_to_node=0, pre_touch_launches=0`. 
 answer to pressure is to do nothing *is* `baseline`. Sweep the axis with
 `--values proportional,fixed,sqrt,quota`.
 
+## Read this before quoting any number above: the gate cannot run on this checkpoint
+
+Every figure in this section is throughput, and throughput is all it is. The exact-locality
+track requires bit-identical greedy replay (sections 15 and 35), and on this checkpoint that
+**cannot be established**: two *unhooked* control runs of the same binary on the same prompt
+diverge at token 2.
+
+```
+control A: 13 271 760 1879 369 264 1103 314 4947 ...
+control B: 13 271 760 2614 369 264 1103 314  279 ...
+```
+
+`kernels/include/sparkinfer/kernels/deterministic.h` documents the mechanism: a few ULP in the
+prefill feed *discrete* top-k expert routing and int8 requant, so over 40 layers one flips an
+expert and moves the argmax. `SPARKINFER_DETERMINISTIC=1` exists and does not cover this
+checkpoint's Q4_K expert path — two controls still diverge with it set.
+
+**RecurLocal is not the cause.** On the dense Qwen3.8-27B, the same binary with the same policy
+at the same settings gives control, control and candidate bit-identical over every token
+compared. The nondeterminism belongs to the model and the runtime, not to the locality policy.
+
+So this whole section is an **unscorable** result: interesting, reproducible as timing, and
+refused by `decide.py` because the question the gate exists to answer has no answer here. A
+reproducible MoE checkpoint is the first thing a contributor to this surface needs.
+
 ## Concurrency, once the runtime can be made to batch this checkpoint
 
 Aggregate throughput at 16 and 32 sequences first came in at 453 and 456 tok/s — *below* the
