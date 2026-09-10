@@ -461,6 +461,24 @@ def test_a_floor_decision_inside_the_published_noise_is_named():
     check(result.cell_resolution["ctx128-c4"]["p99_itl_ms"]["resolves"] is False,
           "because a 400% change against a 481% published spread does not resolve")
 
+    summary = result.resolution_summary["p99_itl_ms"]
+    check("ctx128-c4" not in summary["resolved_cells"],
+          "and the cell is not counted as resolved in the summary")
+    check(0.0 <= summary["resolved_weight_share"] <= 1.0,
+          "the resolved share is a share")
+    check(summary["resolved_of_scored"].endswith(f"/{len(result.cells_scored)}"),
+          "counted against the cells that were actually scored, not the ones declared")
+
+    # And the rendering, because a diagnostic nobody sees is a diagnostic that does not exist.
+    receipt = build_receipt(generation=generation, computation=result, correctness="PASS",
+                            provenance={})
+    from frontier.report import markdown, pr_comment
+    check("### Resolution" in markdown(receipt), "the markdown report renders the resolution")
+    check("Resolution (cells moving more" in pr_comment(receipt),
+          "and so does the PR comment")
+    check("floor decision inside the published noise" in pr_comment(receipt).lower(),
+          "and the floor decision is named where a reviewer will see it")
+
 
 def test_compute_cases():
     section("frontier cases (spec section 51)")

@@ -259,6 +259,32 @@ def compute_frontier(generation, results, *, allow_partial=False):
             }
         cell_resolution[cell] = per_objective
 
+    # How much of the matrix this receipt is entitled to rest on, per objective: the share of
+    # scored WEIGHT whose observed change exceeds the spread the generation published for that
+    # cell. A receipt whose objectives resolve on a tenth of the matrix is not a weaker result
+    # than one that resolves everywhere; it is a different kind of statement, and the two have
+    # been reported as the same number until now.
+    resolution_summary = {}
+    for objective in generation.objectives:
+        key = objective.key
+        resolved_weight = unknown_weight = total_weight = 0.0
+        resolved_cells = []
+        for cell in scored_cells:
+            weight = float(generation.weights[cell])
+            total_weight += weight
+            verdict = (cell_resolution.get(cell, {}).get(key) or {}).get("resolves")
+            if verdict is None:
+                unknown_weight += weight
+            elif verdict:
+                resolved_weight += weight
+                resolved_cells.append(cell)
+        resolution_summary[key] = {
+            "resolved_cells": sorted(resolved_cells),
+            "resolved_of_scored": f"{len(resolved_cells)}/{len(scored_cells)}",
+            "resolved_weight_share": (resolved_weight / total_weight) if total_weight else 0.0,
+            "unknown_weight_share": (unknown_weight / total_weight) if total_weight else 0.0,
+        }
+
     # Cells whose score was decided at the floor on an axis the generation itself says cannot
     # be measured there. Loud because it is the difference between a result and an artifact.
     floor_on_noise = []
@@ -348,6 +374,7 @@ def compute_frontier(generation, results, *, allow_partial=False):
         # succeeds -- and rewarding it is right; letting it do so SILENTLY is not.
         cells_at_floor={variant: sorted(at_floor[variant]) for variant in ("main", "candidate")},
         cell_resolution=cell_resolution,
+        resolution_summary=resolution_summary,
         # A floor decision taken on an objective whose published control spread swallows the
         # observed change. The receipt names these because a score that rests on one is not
         # evidence about the candidate, whatever its confidence interval says.

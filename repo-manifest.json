@@ -117,6 +117,7 @@
     "results/rtx5090-setaside.json",
     "results/rtx5090-surfaces.json",
     "results/rtx5090-synthetic.json",
+    "results/rtx5090-ttf1-first-matrix.json",
     "schemas/frontier_result.schema.json",
     "schemas/plan.schema.json",
     "schemas/receipt.schema.json",

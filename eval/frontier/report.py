@@ -98,6 +98,16 @@ def pr_comment(receipt: dict) -> str:
                   f"operating point there, and an evaluator probe running no policy at all "
                   f"reproduced the same failure -- so the loss is the runtime's and not this "
                   f"submission's. This receipt is PARTIAL."]
+    resolution = receipt.get("resolution_summary") or {}
+    if resolution:
+        lines += ["", "Resolution (cells moving more than the spread the generation published "
+                      "for them):"]
+        for key, detail in sorted(resolution.items()):
+            unknown = detail.get("unknown_weight_share") or 0.0
+            lines.append(
+                f"- {key}: {detail.get('resolved_of_scored', '?')} cells, "
+                f"{(detail.get('resolved_weight_share') or 0.0) * 100:.0f}% of scored weight"
+                + (f" ({unknown * 100:.0f}% unmeasured)" if unknown else ""))
     aggregation = receipt.get("aggregation") or {}
     noisy = aggregation.get("floor_decided_inside_published_noise") or []
     if noisy:
@@ -291,6 +301,21 @@ def markdown(receipt: dict, *, raw_results_path=None) -> str:
                   f"through the geometric mean; it is the intended treatment of a lost or a "
                   f"newly-created operating region, and it is named here so that it cannot "
                   f"do so silently."]
+    resolution = receipt.get("resolution_summary") or {}
+    if resolution:
+        out += ["", "### Resolution", "",
+                "How much of the scored matrix this receipt is entitled to rest on. A cell "
+                "counts as resolved on an objective when the change observed there exceeds the "
+                "control spread the generation **published for that cell** at calibration -- "
+                "not one re-estimated from this run.", "",
+                "| objective | resolved cells | share of scored weight | unmeasured |",
+                "|---|---|--:|--:|"]
+        for key, detail in sorted(resolution.items()):
+            out.append(
+                f"| `{key}` | {detail.get('resolved_of_scored', '?')} "
+                f"({', '.join('`' + c + '`' for c in detail.get('resolved_cells', [])) or 'none'}) "
+                f"| {(detail.get('resolved_weight_share') or 0.0) * 100:.0f}% "
+                f"| {(detail.get('unknown_weight_share') or 0.0) * 100:.0f}% |")
     noisy = (receipt.get("aggregation") or {}).get("floor_decided_inside_published_noise") or []
     if noisy:
         rows = "; ".join(

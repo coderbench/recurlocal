@@ -342,6 +342,11 @@
    "type": "object",
    "additionalProperties": true,
    "description": "Per cell, per objective: the published control spread, the observed change, and whether the second exceeds the first. Diagnostic; it never moves a score. It says which cells the score is entitled to rest on."
+  },
+  "resolution_summary": {
+   "type": "object",
+   "additionalProperties": true,
+   "description": "Per objective: which scored cells moved by more than the spread the generation published for them, and what share of the scored weight that is. A receipt whose objectives resolve on a tenth of the matrix is not a weaker result than one that resolves everywhere -- it is a different kind of statement."
   }
  }
 }

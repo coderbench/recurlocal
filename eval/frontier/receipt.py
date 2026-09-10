@@ -185,6 +185,8 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
         # that cell. Diagnostic and never a score -- it says which cells the score is entitled
         # to rest on.
         "cell_resolution": getattr(computation, "cell_resolution", {}),
+        # How much of the scored matrix this receipt is entitled to rest on, per objective.
+        "resolution_summary": getattr(computation, "resolution_summary", {}),
         "cells": {
             cell: {
                 "gain": computation.cell_gain[cell],
