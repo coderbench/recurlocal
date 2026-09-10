@@ -91,19 +91,45 @@ measures at batch 1 — that is the single-sequence bench, while these cells run
 continuous-batching engine with the generation's long-prefill injection alongside. Two serving
 mixes, two answers, and the frontier scores the one that looks like serving.
 
-### 3.3 The cost model's ranking of admission rules is contradicted
+### 3.3 The cost model ranks admission rules on an axis the measurement does not separate — and the one it does separate is an axis the model has no term for
 
 The residency cost model fits the *magnitude* of the persist family better than the linear one
 it replaced — rms 0.271 against 0.485 points, with both resolved arms predicted to within a
-fifth of their own noise floor. But it predicts `quota` ≈ `density`, both far ahead of
-`proportional`, because saving goes as `resident^(1+beta)` and `quota` keeps tensors whole.
+fifth of their own noise floor. Its **ranking** is a different question, and the answer is
+sharper than "contradicted".
 
-Measured, the order is **`density` > `proportional` > `quota`**, and `quota` is the worst of
-the three.
+It predicts `quota` ≈ `density`, both far ahead of `proportional`, because saving goes as
+`resident^(1+beta)` and `quota` keeps tensors whole. The measured point estimates run
+`density` > `proportional` > `quota`. But **no pair of arms separates at that cell**: the
+largest gap between two arms is 0.247 points against a 0.283% floor, so the per-cell table
+above orders arms it cannot distinguish, and reading a ranking off it is reading noise. What
+*does* separate is the aggregate, where `quota` (−0.642%, CI −0.94…−0.39) and `density`
+(+0.056%, CI −0.26…+0.33) do not overlap.
 
-So a contributor tuning against the model's ranking would be tuning against something a
-measurement contradicts. Reconciling them is the highest-value open problem this release
-leaves, and it needs no GPU to start: the same three arms are one command on a trace.
+The axis that orders every arm is in the telemetry rather than in the model:
+
+| arm | `windows_attached_to_node` | at ctx128-c16 | aggregated |
+|---|--:|--:|--:|
+| `density` | **48** | +0.389% | +0.056% |
+| `global` | **77** | +0.372% | −0.157% |
+| `recurrent_v0` | 144 | +0.071% | −0.429% |
+| `proportional` | 144 | +0.142% | −0.485% |
+| `quota` | 144 | +0.089% | −0.642% |
+
+Both views order the arms the same way the counter does. The two that resolve against the
+control are the two with the fewest windows; the three that are mutually indistinguishable are
+the three that attach the same number. The residency model prices bytes, whole-line residency,
+survival against interference, and what the reservation costs the traffic it displaces. It has
+**no per-window term**, so it cannot express this and did not predict it.
+
+That is correlational, and the five arms are confounded — they differ in *what* they persist as
+well as in *how many* windows they use. The experiment that separates them needs no new
+mechanism and is the highest-value open problem this release leaves: hold the admission rule at
+`density` and vary **only** the window count (`--max-windows-per-kernel`, or a cap on how many
+tensors are admitted) so committed bytes and modelled residency stay matched. If the gain still
+tracks window count, the model needs a per-window cost term and *fewer, larger windows* is the
+direction to tune. If it does not, the correlation is an artifact of what these five arms
+happen to persist.
 
 ### 3.4 The tail-latency objective cannot be resolved yet
 
