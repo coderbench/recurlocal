@@ -390,6 +390,20 @@ commit. An engine that emitted its own field names would be reported as unhooked
 base-commit evaluator against a perfectly good build. What has no 0.1 counterpart goes in a
 `"transit"` object appended to the same line, which an older reader ignores.
 
+**Mapping a counter onto a 0.1 name means mapping its MEANING too, and 0.2.1 got one wrong.**
+`stats.layers` is *bracketed recurrent layers*, whatever the policy did with them — the 0.1
+controller increments it on every layer it walks. The transit engine published its *windowed*
+layer count under that name, which is a different question, and the consequence was not
+cosmetic: `eval/real_eval.py` refuses a run whose `layers` is zero as "the hook initialised but
+bracketed no recurrent layer", so `TENSORTRANSIT=baseline` — the hook installed with no window,
+which brackets every layer and windows none — failed that guard **by construction** and the
+specification's five-arm run could never start. Fixed in 0.2.1; the windowed count is
+`transit.layers_windowed`.
+
+The rule this leaves: a counter mapped onto a 0.1 name answers the 0.1 question. If it answers
+a different one, it belongs in the `"transit"` object under a name of its own, however close
+the two questions look.
+
 ## 7. Explicitly not stable
 
 None of the following is part of the contract. All of it may change in a patch release,
