@@ -182,6 +182,48 @@ adjacent statements. Attaching to an already-instantiated graph is **not** avail
 CUDA 13.3 has no exec-level attribute setter and `cudaGraphExecUpdate` rejects attribute
 changes outright.
 
+### Measured — the dense concurrency-32 collapse, reproduced, and it is not what it was called
+
+`docs/OPTIMIZATION-SURFACES.md` has said for two releases that the dense model's intermittent
+32-sequence collapse is "the runtime falling off its batched decode path". It reproduces, and
+that description does not survive the measurement.
+
+Two consecutive, identical, isolated runs of `qwen3_gguf_cb_bench` on Qwen3.8-27B at 32
+sequences, nothing between them:
+
+| | run 1 | run 2 |
+|---|--:|--:|
+| aggregate | **910.9 tok/s** | **589.9 tok/s** |
+| mean inter-token latency | 19.32 ms | **19.31 ms** |
+| decode tokens | 2056 | 2056 |
+| wall | 2.257 s | 3.486 s |
+
+**Per-token decode is identical to two decimal places.** A run that had fallen onto a per-row
+decode path would show it in the inter-token latency; this one does not. The lost 1.2 seconds
+is wall time that is not attributable to per-token decode — the long-prefill request, the
+scheduler, or something else outside the loop the phrase "batched decode path" names.
+
+The obvious candidate was tested and **falsified**. The NVFP4 projection dispatcher has a
+silent third tier — a per-row loop that runs the projection one row at a time and returns
+success, invisible to `[dflash-verify]` and to `tokens_packed`
+(`qwen35_prefill.cpp:3202-3216`). `SPARKINFER_QWEN38_NVFP4_DP4A_PROJ=0` forces that tier
+permanently. If it were the collapse, forcing it would reproduce a ~35% loss:
+
+| | default | `DP4A_PROJ=0` (per-row loop forced) |
+|---|--:|--:|
+| c=8 | 348.0, 356.1 tok/s | 288.7, 289.3 tok/s |
+| c=32 | 910.9, **589.9** tok/s | 847.5, **846.4** tok/s |
+
+The forced row loop costs about 19% at 8 sequences and 7% at 32, and it is **stable** — two
+runs within 0.1%. The collapse is 35% and intermittent. So the per-row fallback is real, is
+worth naming, and is *not* this. Forcing it actually removes the variance.
+
+What this leaves is narrower and better posed than what it replaces: something outside the
+per-token decode loop occasionally costs a dense 32-sequence run about a third of its wall
+time, and it is not a locality policy (it hit `baseline`), not the packed-decode refusal (that
+is the MoE's Q4_K failure), and not the NVFP4 per-row fallback. `docs/OPTIMIZATION-SURFACES.md`
+no longer says otherwise.
+
 ### Blocked — the spec's chain of evidence cannot be closed on this box
 
 Section 20 of the overview asks for HBM read and write traffic, L2 hit rate, L2 sectors and

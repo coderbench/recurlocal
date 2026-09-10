@@ -138,9 +138,13 @@ attribution was wrong, and the code proves it.** The two arms that collapsed wer
 cannot have caused a collapse in arms that never invoke it. The dedicated 12-run probe agrees:
 `capture_failed: 0` in all twelve runs, including four `capture_node` runs.
 
-What is actually known:
+What is actually known, and one line of it has been **retracted**:
 
-- the collapse is the runtime falling off its batched decode path, not a cache effect;
+- ~~the collapse is the runtime falling off its batched decode path~~ — **it is not.** Two
+  consecutive isolated runs at 32 sequences gave 910.9 and 589.9 tok/s with mean inter-token
+  latencies of 19.32 and 19.31 ms. Per-token decode is identical; the lost 1.2 s of wall time
+  is somewhere else. A run that had fallen onto a per-row decode path would show it in the
+  latency. It is not a cache effect either;
 - it costs about 28% of aggregate throughput when it happens;
 - it appeared in a 2-repeat screen and in one targeted rerun, and in **zero** of twelve
   isolated runs;
