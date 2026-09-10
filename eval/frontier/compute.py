@@ -204,6 +204,15 @@ def compute_frontier(generation, results, *, allow_partial=False):
     # So the confidence gate is joined by the rule the rest of the harness already uses: an
     # axis whose spread sits inside its own run-to-run noise is OPEN, not solved. Both have to
     # pass. This one needs no new generation field because it is measured from the run.
+    #
+    # The floor is each ARM's own absolute spread, not the spread of the paired ratios, and the
+    # objection to that is fair: pairing exists to cancel common-mode drift, so the paired
+    # spread is the smaller and in one sense the more correct number. It is not used here for
+    # the reason above -- a consistently-signed jitter has a tiny paired spread and would sail
+    # through. The absolute spread is deliberately the conservative choice, it is the same rule
+    # `eval/decide.py::resolution` has always applied, and the cost of it is a real small effect
+    # on a noisy box being reported INCONCLUSIVE rather than credited. The generation allows
+    # nine repeats; spending them is the remedy, and it is the honest one.
     noise_floor_pct = _spread_pct(per_repeat["main"])
     candidate_spread_pct = _spread_pct(per_repeat["candidate"])
     floor = max(noise_floor_pct, candidate_spread_pct)
