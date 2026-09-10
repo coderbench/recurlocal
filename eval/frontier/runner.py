@@ -80,7 +80,15 @@ def declares_a_policy(env) -> bool:
 SERVING_GUARDS = ("OOM", "TIMEOUT", "UNBATCHED")
 
 # The hook with no window: the same telemetry, no policy.
-ATTRIBUTION_ENV = {"TENSORTRANSIT": "baseline", "TENSORTRANSIT_WINDOW_ATTACH": "capture_node"}
+#
+# `RECURLOCAL_STATS` is not optional here and leaving it out cost a whole probe. The adapter
+# prints its stats line only when asked, `require_hook_engaged` refuses a run that printed none,
+# and the refusal classifies as UNHOOKED -- which is not a serving guard, so every probe came
+# back "candidate" and every loss stayed charged. Conservative, and useless. The runner adds
+# this to every candidate configuration; the probe's environment is built here and was missing
+# it.
+ATTRIBUTION_ENV = {"TENSORTRANSIT": "baseline", "TENSORTRANSIT_WINDOW_ATTACH": "capture_node",
+                   "RECURLOCAL_STATS": "1"}
 
 
 def classify_guard(message: str) -> str:

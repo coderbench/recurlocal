@@ -349,6 +349,15 @@ def test_attribution_of_a_serving_loss():
     check(not mixed.cells_unservable,
           "a cell the candidate served in any repeat is scored, not dropped")
 
+    # The probe's environment must ASK for telemetry. Leaving `RECURLOCAL_STATS` out cost a
+    # whole probe: the adapter prints its stats line only when asked, the harness refuses a run
+    # that printed none, and that refusal is UNHOOKED -- not a serving guard -- so every probe
+    # came back "candidate" and every loss stayed charged. Conservative, and useless.
+    check(runner_mod.ATTRIBUTION_ENV.get("RECURLOCAL_STATS") == "1",
+          "the probe asks the adapter to print the counters the verdict is read from")
+    check(runner_mod.declares_a_policy(runner_mod.ATTRIBUTION_ENV) is False,
+          "and it still declares no policy, so the null-candidate guard leaves it alone")
+
     # Which cells even get probed. A probe costs a model load; it is spent only where the
     # answer can change the score.
     scan = matrix(flat, lost)
