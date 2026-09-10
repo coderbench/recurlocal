@@ -307,11 +307,19 @@ The hot-set accounting was wrong and is now right: on this model `TokenFootprint
 where `CurrentLayer` reported **0**. It changed no batch-1 number, because at batch 1 there
 is 1.65% to fight over. It is the input every concurrency policy depends on.
 
-`windows_attached_to_node` is 48/48 under `--window-attach capture_node`, so the persisting
-policy really is present in the replayed graph there — and 0 under the safe default, which is
-the whole point of the section above. Telemetry is what distinguishes "the policy did not
-help" from "the policy was never applied", and those are different results with the same
-number.
+`windows_attached_to_node` is non-zero under `--window-attach capture_node` and 0 under the
+default, which is the whole point of the section above: telemetry is what distinguishes "the
+policy did not help" from "the policy was never applied", and those are different results with
+the same number.
+
+**This sentence used to read "48 of 48, so the persisting policy really is present in the
+replayed graph there", and that was an inference the counter does not support.**
+`windows_attached_to_node` counts attach CALLS that marked at least one node, not nodes — the
+48 was a count of hook invocations that happened to equal the node count. A counter that says
+a setter returned success says nothing about what survives into a replayed graph.
+`window_nodes_attached` now counts nodes, and `tools/capture_attr_probe.cu` answers the
+question the inference was standing in for by reading the attribute back off the finished
+graph. See the section above.
 
 ---
 

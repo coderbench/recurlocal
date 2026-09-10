@@ -182,6 +182,36 @@ adjacent statements. Attaching to an already-instantiated graph is **not** avail
 CUDA 13.3 has no exec-level attribute setter and `cudaGraphExecUpdate` rejects attribute
 changes outright.
 
+### Blocked — the spec's chain of evidence cannot be closed on this box
+
+Section 20 of the overview asks for HBM read and write traffic, L2 hit rate, L2 sectors and
+DRAM throughput as the middle link of a five-stage chain of evidence. **Nothing in this
+repository has ever produced one of those numbers**; every locality claim here is inferred
+from end-to-end throughput, and that is the weakest link in the chain.
+
+Nsight Compute 2026.2.1.0 is installed at `/usr/local/cuda/bin/ncu` and is **unusable on this
+box**. `/proc/driver/nvidia/params` reports `RmProfilingAdminOnly: 1`, and every on-device
+query returns `ERR_NVGPUCTRPERM` — including as root, because the restriction is a driver
+module parameter set on the host, not a permission inside the container. Item E is blocked
+before any command can be written, and no amount of work inside this environment moves it.
+
+Two things worth recording for whoever has a box where it is not blocked:
+
+- **GB202 exposes eviction-class-tagged L2 counters** —
+  `lts__t_sectors_aperture_device_evict_last*`, `_evict_first*`, `_evict_normal*`, 528
+  sector-level variants. Those would prove *directly*, and immune to cache flushing, that a
+  persisting window reached the hardware with the `hitRatio` that was asked for. No throughput
+  number in this repository can make that claim, and `tools/capture_attr_probe.cu` can only
+  make it about the graph, not about the cache.
+- **And there is a limit no permission fixes.** `--graph-profiling node` (per-kernel
+  attribution) and `--graph-profiling graph` (cross-launch cache residency) are mutually
+  exclusive in ncu. The recurrent state written at layer *i* is re-read at layer *i* of the
+  **next token**, so the effect this project is about lives *between* kernel launches. The
+  counters could validate the traffic denominator every ceiling here rests on, and could prove
+  the policy was delivered — but they can never, in one measurement, show "these kernels' DRAM
+  bytes fell because the window kept their state resident". That is a property of the
+  instrument, and it should be stated before someone spends a week on it expecting otherwise.
+
 ### Measured — no reproducible sparse-MoE hybrid checkpoint fits this device
 
 The MoE result was unscorable because two unhooked control runs diverge. The task was to find
