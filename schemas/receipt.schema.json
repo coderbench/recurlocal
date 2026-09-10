@@ -23,6 +23,8 @@
     "runtime": {"type": "object", "additionalProperties": true},
     "model": {"type": "object", "additionalProperties": true},
     "environment_fingerprint": {"type": ["string", "null"]},
+    "mode": {"type": "string", "description": "`authoritative` is the trusted evaluator's run; `public` is a contributor iterating locally."},
+    "instances": {"type": "string", "description": "Whether the generation's workload instances are public or hidden. TTF-1's are public, and its generation.json says why rather than pretending otherwise."},
     "correctness": {"enum": ["PASS", "FAIL", "BUILD_FAIL", "UNSCORABLE", "SKIPPED"]},
     "correctness_method": {"type": "string"},
     "frontier": {

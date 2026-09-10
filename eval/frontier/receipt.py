@@ -87,6 +87,14 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
         "model": provenance.get("model", {}),
         "environment_fingerprint": provenance.get("environment_fingerprint"),
 
+        # Whether this was a contributor iterating locally or the trusted evaluator's run, and
+        # whether the generation's workload instances are public or hidden. Recorded because a
+        # receipt that does not say which cannot be compared with one that was scored the other
+        # way -- and because "TTF-1 has no hidden instances" is a fact about the pinned bench
+        # that a future generation will not share.
+        "mode": provenance.get("mode", "unspecified"),
+        "instances": provenance.get("instances", "unspecified"),
+
         "correctness": correctness,
         "correctness_method": provenance.get("correctness_method",
                                              "greedy replay, token-exact"),
