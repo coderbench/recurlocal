@@ -5,12 +5,25 @@ Notable changes to TensorTransit (RecurLocal through 0.1). Format loosely follow
 
 No performance claim appears here without a measurement behind it. See `docs/FRONTIER.md`.
 
-## [0.2.1] - The core in the measured path, and a scoring regime that can be reached
+## [0.2.1] - The core in the measured path, and a ruler that says what it cannot measure
 
 0.2.0 built the generalization and left it disconnected from every measured number. This
 release connects it, and then changes what the numbers are scored against — because once the
 surface was reachable it became obvious that the scoring regime pointing at it was describing
 a prize that does not exist on this hardware.
+
+Two things came out of connecting it, and neither was the plan:
+
+- **Asked per cell instead of weighted, the ceiling closes the question.** A persisting-L2
+  policy cannot be *measured* to win seven of TTF-1's ten cells — its ceiling there is smaller
+  than the floor — including the cell every headline in this repository was measured in. A null
+  control confirms it from the other side: two byte-identical plans differ by more than that
+  cell's entire ceiling. The recurrent traffic at concurrency is still 5–9% of the step and
+  still five to twelve times the noise; reaching it is not a planner problem, and
+  [`docs/VERDICT.md`](docs/VERDICT.md) section 7 names the four things that could.
+- **The first full run of the generation found five defects in the evaluator, not in the
+  submission.** Its receipt read −99.5%. Each is fixed, tested, and named below with the
+  incident it caused.
 
 ### Fixed — the blocker: the new core was in no measured path
 
