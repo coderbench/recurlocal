@@ -1,0 +1,9 @@
+{
+ "canonical_receipts": 0,
+ "compounded_expansion_percent": 0.0,
+ "generation": "TTF-1",
+ "history": [],
+ "note": "Compounded multiplicatively: each dF is measured against the `main` of its own moment, so two +5% contributions are +10.25% together, not +10%. Receipts with any status other than FRONTIER_GAIN credit nothing and are listed for audit.",
+ "superseded_receipts": [],
+ "verified_frontier_receipts": 0
+}

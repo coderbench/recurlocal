@@ -400,6 +400,11 @@ bool configure_transit(Adapter& a) noexcept {
     s.attach = a.config.window_attach;
     s.budget_fraction = a.config.persisting_budget_fraction;
     s.register_kv = env_int("TENSORTRANSIT_REGISTER_KV", 1) != 0;
+    // A trace recorded from the LIVE runtime, which is the only way an offline comparison
+    // gets real KV block sizes and real per-layer demand instead of a hand-written geometry.
+    if (const char* out = env_lookup("TENSORTRANSIT_TRACE_OUT")) s.trace_out = out;
+    s.trace_model = env_or("TENSORTRANSIT_TRACE_MODEL", "");
+    s.trace_runtime_commit = env_or("TENSORTRANSIT_TRACE_RUNTIME_COMMIT", "");
     a.transit_settings = s;
     return true;
 }
@@ -912,7 +917,7 @@ void write_transit_stats_json(std::FILE* out) noexcept {
         "\"planner_ns\":%llu,\"executor_ns\":%llu,\"record_ns\":%llu,"
         "\"attach_calls\":%llu,\"attach_skipped_wrong_kernel\":%llu,"
         "\"stale_tensor_refs\":%llu,\"actions_skipped\":%llu,"
-        "\"stream_applied\":%llu,\"clear_applied\":%llu,"
+        "\"stream_applied\":%llu,\"stream_deferred\":%llu,\"clear_applied\":%llu,"
         "\"executor_steps\":%llu,\"executor_kernels\":%llu,\"declines\":{",
         e.planner_name().c_str(), to_string(cfg.admission), to_string(cfg.reuse_metric),
         to_string(cfg.window_binding), to_string(cfg.window_preference),
@@ -927,7 +932,8 @@ void write_transit_stats_json(std::FILE* out) noexcept {
         (unsigned long long)e.counters().attach_calls,
         (unsigned long long)e.counters().attach_skipped_wrong_kernel,
         (unsigned long long)x.stale_tensor_refs, (unsigned long long)x.actions_skipped,
-        (unsigned long long)x.stream_applied, (unsigned long long)x.clear_applied,
+        (unsigned long long)x.stream_applied, (unsigned long long)x.stream_deferred,
+        (unsigned long long)x.clear_applied,
         (unsigned long long)x.steps, (unsigned long long)x.kernels);
     for (std::size_t i = 0; i < e.declines_size() && i < 8; ++i)
         std::fprintf(out, "%s\"%s\":%llu", i ? "," : "", kDecline[i],

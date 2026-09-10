@@ -441,9 +441,15 @@ void cap_windows_per_kernel(TransitPlan* plan, const TransitPlannerConfig& confi
 
     std::vector<TransitAction>& actions = plan->actions();
     // Kernels that carry more Persist bindings than the hardware can deliver.
+    // Persist AND Stream: a kernel node carries ONE access-policy window and both kinds set
+    // it, so a plan that put one of each before the same kernel would have the second
+    // silently replace the first.
+    const auto windowed = [](TransitActionKind kind) {
+        return kind == TransitActionKind::Persist || kind == TransitActionKind::Stream;
+    };
     std::vector<KernelId> kernels;
     for (const TransitAction& a : actions)
-        if (a.kind == TransitActionKind::Persist &&
+        if (windowed(a.kind) &&
             std::find(kernels.begin(), kernels.end(), a.before_kernel) == kernels.end())
             kernels.push_back(a.before_kernel);
 
@@ -452,7 +458,7 @@ void cap_windows_per_kernel(TransitPlan* plan, const TransitPlannerConfig& confi
     for (const KernelId kernel : kernels) {
         std::vector<std::size_t> here;
         for (std::size_t i = 0; i < actions.size(); ++i)
-            if (actions[i].kind == TransitActionKind::Persist && actions[i].before_kernel == kernel)
+            if (windowed(actions[i].kind) && actions[i].before_kernel == kernel)
                 here.push_back(i);
         if (static_cast<int>(here.size()) <= cap) continue;
 
@@ -468,7 +474,7 @@ void cap_windows_per_kernel(TransitPlan* plan, const TransitPlannerConfig& confi
     // Tensors that kept at least one binding somewhere: those are admitted, just not here.
     std::vector<TensorId> survivors;
     for (const TransitAction& a : actions) {
-        if (a.kind != TransitActionKind::Persist) continue;
+        if (!windowed(a.kind)) continue;
         const bool lost = std::find(dropped.begin(), dropped.end(),
                                     std::make_pair(a.tensor, a.before_kernel)) != dropped.end();
         if (lost) continue;
@@ -480,7 +486,7 @@ void cap_windows_per_kernel(TransitPlan* plan, const TransitPlannerConfig& confi
     kept.reserve(actions.size());
     std::vector<TensorId> declined_now;
     for (const TransitAction& a : actions) {
-        const bool is_persist = a.kind == TransitActionKind::Persist;
+        const bool is_persist = windowed(a.kind);
         const bool is_clear = a.kind == TransitActionKind::ClearPolicy;
         const KernelId kernel = is_persist ? a.before_kernel : a.after_kernel;
         if ((is_persist || is_clear) &&

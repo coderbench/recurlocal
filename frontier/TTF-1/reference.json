@@ -1,0 +1,177 @@
+{
+ "calibrated_from": "/tmp/claude-1006/-home-coder-bench-recurlocal/5fd7f932-2c71-4722-9ad0-d1b7fc069456/scratchpad/ttf1-calibration.json",
+ "cell_bounds": {
+  "ctx128-c1": {
+   "goodput_tps": {
+    "control_spread_pct": 0.1437,
+    "hi": 278.4,
+    "lo": 0.0,
+    "measured_control": 69.6,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 0.9393,
+    "hi": 0.0,
+    "lo": 48.546,
+    "measured_control": 16.182,
+    "repeats": 3
+   }
+  },
+  "ctx128-c16": {
+   "goodput_tps": {
+    "control_spread_pct": 0.4238,
+    "hi": 2265.2,
+    "lo": 0.0,
+    "measured_control": 566.3,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 6.6927,
+    "hi": 0.0,
+    "lo": 135.729,
+    "measured_control": 45.243,
+    "repeats": 3
+   }
+  },
+  "ctx128-c32": {
+   "goodput_tps": {
+    "control_spread_pct": 1.7378,
+    "hi": 3636.8,
+    "lo": 0.0,
+    "measured_control": 909.2,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 481.0431,
+    "hi": 0.0,
+    "lo": 136.494,
+    "measured_control": 45.498,
+    "repeats": 3
+   }
+  },
+  "ctx128-c4": {
+   "goodput_tps": {
+    "control_spread_pct": 0.09,
+    "hi": 888.4,
+    "lo": 0.0,
+    "measured_control": 222.1,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 0.7784,
+    "hi": 0.0,
+    "lo": 112.92,
+    "measured_control": 37.64,
+    "repeats": 3
+   }
+  },
+  "ctx16384-c1": {
+   "goodput_tps": {
+    "control_spread_pct": 0.0,
+    "hi": 90.4,
+    "lo": 0.0,
+    "measured_control": 22.6,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 1.871,
+    "hi": 0.0,
+    "lo": 50.988,
+    "measured_control": 16.996,
+    "repeats": 3
+   }
+  },
+  "ctx16384-c4": {
+   "goodput_tps": {
+    "control_spread_pct": 0.0,
+    "hi": 119.2,
+    "lo": 0.0,
+    "measured_control": 29.8,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 4.3662,
+    "hi": 0.0,
+    "lo": 50.982,
+    "measured_control": 16.994,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c1": {
+   "goodput_tps": {
+    "control_spread_pct": 0.1786,
+    "hi": 224.0,
+    "lo": 0.0,
+    "measured_control": 56.0,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 1.2888,
+    "hi": 0.0,
+    "lo": 48.882,
+    "measured_control": 16.294,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c16": {
+   "goodput_tps": {
+    "control_spread_pct": 0.2041,
+    "hi": 588.0,
+    "lo": 0.0,
+    "measured_control": 147.0,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 4.8462,
+    "hi": 0.0,
+    "lo": 141.822,
+    "measured_control": 47.274,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c32": {
+   "goodput_tps": {
+    "control_spread_pct": 39.0083,
+    "hi": 726.0,
+    "lo": 0.0,
+    "measured_control": 181.5,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 41.6631,
+    "hi": 0.0,
+    "lo": 167.94,
+    "measured_control": 55.98,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c4": {
+   "goodput_tps": {
+    "control_spread_pct": 0.156,
+    "hi": 256.4,
+    "lo": 0.0,
+    "measured_control": 64.1,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 4.6591,
+    "hi": 0.0,
+    "lo": 49.323,
+    "measured_control": 16.441,
+    "repeats": 3
+   }
+  }
+ },
+ "generation": "TTF-1",
+ "headroom_multiple": 4.0,
+ "note": "Frozen for the lifetime of this generation. `measured_control` is recorded so a reader can see where the control sat inside the bounds; it is not used in scoring. A maximized objective anchored at lo=0 contributes its own ratio to dF, which keeps this generation's numbers comparable with the throughput figures in results/.",
+ "slo_multiple": 3.0,
+ "unmeasurable_cells": {
+  "ctx16384-c16": [
+   "OOM"
+  ],
+  "ctx16384-c32": [
+   "EVAL_ERROR"
+  ]
+ }
+}

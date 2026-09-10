@@ -116,8 +116,10 @@ def cmd_calibrate(args):
     generation = resolve_generation(args.generation)
     records, _ = load_results(args.results)
     by_cell = {}
+    failed = {}
     for record in records:
         if record.get("status", "OK") != "OK":
+            failed.setdefault(record["workload_id"], []).append(record.get("status"))
             continue
         by_cell.setdefault(record["workload_id"], []).append(record["metrics"])
 
@@ -142,6 +144,13 @@ def cmd_calibrate(args):
                 cell_bounds[objective.key] = {"lo": round(control * args.slo_multiple, 3),
                                               "hi": 0.0}
             cell_bounds[objective.key]["measured_control"] = round(control, 4)
+            # The cell's own run-to-run spread, published rather than implied (spec section
+            # 32). A contributor cannot know what effect size is realistically detectable
+            # without it, and a cell whose spread exceeds the regression guard's threshold
+            # cannot be protected by that guard without rejecting good submissions on noise.
+            spread = (max(values) - min(values)) / control * 100.0 if control else 0.0
+            cell_bounds[objective.key]["control_spread_pct"] = round(spread, 4)
+            cell_bounds[objective.key]["repeats"] = len(values)
         bounds[cell] = cell_bounds
 
     document = {
@@ -155,6 +164,13 @@ def cmd_calibrate(args):
                  "ratio to dF, which keeps this generation's numbers comparable with the "
                  "throughput figures in results/."),
         "cell_bounds": bounds,
+        # Cells that produced NO usable measurement during calibration. Recorded rather than
+        # dropped: "this generation does not declare that cell" and "that cell cannot be run
+        # on this hardware" are different facts, and only the second one tells a contributor
+        # why the matrix has a hole in it.
+        "unmeasurable_cells": {cell: sorted(set(statuses))
+                               for cell, statuses in sorted(failed.items())
+                               if cell not in bounds},
     }
     text = json.dumps(document, indent=1, sort_keys=True) + "\n"
     if args.write:

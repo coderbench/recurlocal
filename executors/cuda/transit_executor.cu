@@ -165,7 +165,30 @@ void CudaTransitExecutor::apply(const TransitAction* const* actions, int count) 
             case TransitActionKind::Stream: {
                 const TensorDesc* desc = resolve(action);
                 if (!desc) { ++stats_.actions_skipped; break; }
-                if (graph_capture_active()) { ++stats_.actions_skipped; break; }
+                if (graph_capture_active()) {
+                    // A streaming window is the same host-side stream attribute a persisting
+                    // one is, so under capture it is absent from every replay unless it goes
+                    // on the NODE. Skipping it instead -- which is what this did -- made the
+                    // Stream action unreachable in the ONE regime this project is about:
+                    // production decode is captured, so the arm that tells the weight stream
+                    // to get out of the way was never actually telling it anything.
+                    //
+                    // A kernel node carries ONE access-policy window, which is why the
+                    // planner's max_windows_per_kernel counts Persist and Stream together:
+                    // the plan says which one it meant, rather than letting the last write
+                    // win inside this switch.
+                    cudaAccessPolicyWindow window{};
+                    window.base_ptr = const_cast<void*>(action.ptr);
+                    window.num_bytes = action.bytes;
+                    window.hitRatio = 1.0f;
+                    window.hitProp = cudaAccessPropertyStreaming;
+                    window.missProp = cudaAccessPropertyStreaming;
+                    pending_window_ = window;
+                    window_pending_node_attach_ = true;
+                    ++stats_.stream_deferred;
+                    ++stats_.actions_applied;
+                    break;
+                }
                 const cudaError_t err = set_streaming_policy_window(
                     compute_, const_cast<void*>(action.ptr), action.bytes);
                 if (err != cudaSuccess) { ++stats_.actions_failed; break; }

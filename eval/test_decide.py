@@ -30,14 +30,41 @@ def flat(ratio, weights=None):
             for name, w in weights.items()}
 
 
-class ImpactBands(unittest.TestCase):
-    def test_tier_boundaries(self):
-        # (gain %, expected tier) straight from overview section 26.
-        for gain, tier in [(0.0, "none"), (1.99, "none"), (2.0, "XS"), (3.99, "XS"),
-                           (4.0, "S"), (6.99, "S"), (7.0, "M"), (9.99, "M"),
-                           (10.0, "L"), (17.99, "L"), (18.0, "XL"), (40.0, "XL")]:
-            with self.subTest(gain=gain):
-                self.assertEqual(label.band(gain, label.IMPACT)[1], tier)
+class Statuses(unittest.TestCase):
+    def test_there_is_no_impact_band_table(self):
+        # The bands are gone and their absence is load-bearing, so it is asserted rather than
+        # left to a reader noticing. The lowest paying step was 2% weighted throughput gain
+        # and the physical ceiling for the whole shipped policy family is 0.52% on the scored
+        # model -- a submission could remove every recoverable byte and score `none`. A band
+        # structure whose lowest step sits above what the hardware can deliver is a broken
+        # instrument, and re-adding one would silently re-break it.
+        self.assertFalse(hasattr(label, "IMPACT"),
+                         "decide.IMPACT is back; see frontier/README.md for why it went away")
+        source = Path(label.__file__).read_text()
+        for banned in ('"XL"', '"XS"', 'impact = band('):
+            self.assertNotIn(banned, source, f"{banned} is back in decide.py")
+
+    def test_the_status_vocabulary_is_the_ledgers(self):
+        # One language for a single-axis A/B and for a full frontier evaluation. Two
+        # vocabularies for the same outcomes is how a verdict comes to mean two things.
+        self.assertEqual(set(label.STATUSES),
+                         {"FRONTIER_GAIN", "NO_FRONTIER_GAIN", "INCONCLUSIVE",
+                          "CORRECTNESS_FAIL", "REGRESSION_GUARD_FAIL", "BUILD_FAIL",
+                          "EVAL_ERROR"})
+
+    def test_status_follows_from_the_numbers(self):
+        clear = label.score_real(real_doc(flat(1.10)))
+        self.assertEqual(clear["status"], "FRONTIER_GAIN")
+        self.assertTrue(clear["significant"])
+
+        flatline = label.score_real(real_doc(flat(1.0)))
+        self.assertEqual(flatline["status"], "NO_FRONTIER_GAIN")
+
+        tiny = label.score_real(real_doc(flat(1.001)))
+        self.assertEqual(tiny["status"], "NO_FRONTIER_GAIN",
+                         "a gain below the floor is not a gain, but it is also not a band")
+        self.assertAlmostEqual(tiny["weighted_gain_pct"], 0.1, places=6,
+                               msg="and the continuous figure is still reported as itself")
 
     def test_go_no_go_boundaries(self):
         # Overview section 21.
@@ -48,9 +75,11 @@ class ImpactBands(unittest.TestCase):
                 self.assertEqual(label.band(gain, label.GO_NO_GO)[1], decision)
 
     def test_section_37_minimum_is_promising(self):
-        # "at minimum >= 4% real end-to-end would justify continued serious development"
+        # "at minimum >= 4% real end-to-end would justify continued serious development".
+        # GO_NO_GO survives the band removal on purpose: it answers whether this research
+        # direction should continue, which is the project's decision about ITSELF, not a
+        # label attached to somebody's submission.
         self.assertEqual(label.band(4.0, label.GO_NO_GO)[1], "promising")
-        self.assertEqual(label.band(4.0, label.IMPACT)[1], "S")
 
 
 class RealScoring(unittest.TestCase):
@@ -58,7 +87,7 @@ class RealScoring(unittest.TestCase):
         out = label.score_real(real_doc(flat(1.10)))
         self.assertTrue(out["scored"])
         self.assertAlmostEqual(out["weighted_gain_pct"], 10.0, places=9)
-        self.assertEqual(out["impact"], "L")
+        self.assertEqual(out["status"], "FRONTIER_GAIN")
         self.assertEqual(out["verdict"], "expand")
 
     def test_weighted_geometric_mean(self):
@@ -68,7 +97,7 @@ class RealScoring(unittest.TestCase):
         out = label.score_real(doc)
         expected = math.exp(sum(label.DEFAULT_WEIGHTS[n] * math.log(r) for n, r in ratios.items()))
         self.assertAlmostEqual(out["weighted_ratio"], expected, places=12)
-        self.assertEqual(out["impact"], "S")
+        self.assertEqual(out["status"], "FRONTIER_GAIN")
         self.assertEqual(out["verdict"], "promising")
 
     def test_partial_matrix_renormalises_rather_than_inventing_arms(self):
@@ -90,7 +119,7 @@ class RealScoring(unittest.TestCase):
                         "b": {"weight": 0.5, "baseline_tps": 100.0, "candidate_tps": 50.0}})
         out = label.score_real(doc, allow_regression=True)
         self.assertAlmostEqual(out["weighted_ratio"], 1.0, places=12)
-        self.assertEqual(out["impact"], "none")
+        self.assertEqual(out["status"], "NO_FRONTIER_GAIN")
 
     def test_regression_guard_blocks(self):
         doc = real_doc({"batch1": {"weight": 0.5, "baseline_tps": 100.0, "candidate_tps": 130.0},
@@ -99,7 +128,7 @@ class RealScoring(unittest.TestCase):
         self.assertFalse(out["scored"])
         self.assertEqual(out["verdict"], "REGRESSION")
         self.assertEqual(out["regressed_workloads"], ["concurrency32"])
-        self.assertIsNone(out["impact"])
+        self.assertEqual(out["status"], "REGRESSION_GUARD_FAIL")
 
     def test_exactly_two_percent_regression_is_allowed(self):
         doc = real_doc({"batch1": {"weight": 0.5, "baseline_tps": 100.0, "candidate_tps": 130.0},
@@ -118,7 +147,7 @@ class RealScoring(unittest.TestCase):
         out = label.score_real(real_doc(flat(2.0), identical=False))
         self.assertFalse(out["scored"])
         self.assertEqual(out["verdict"], "REJECT")
-        self.assertIsNone(out["impact"])
+        self.assertEqual(out["status"], "CORRECTNESS_FAIL")
 
     def test_missing_correctness_is_rejected(self):
         out = label.score_real({"workloads": flat(1.10)})
@@ -128,7 +157,7 @@ class RealScoring(unittest.TestCase):
         out = label.score_real(real_doc(flat(1.015)))
         self.assertTrue(out["scored"])
         self.assertFalse(out["significant"])
-        self.assertEqual(out["impact"], "none")
+        self.assertEqual(out["status"], "NO_FRONTIER_GAIN")
 
     def test_default_weights_apply_by_name(self):
         doc = real_doc({n: {"baseline_tps": 100.0, "candidate_tps": 110.0} for n in label.DEFAULT_WEIGHTS})
@@ -152,7 +181,7 @@ class SyntheticRefusal(unittest.TestCase):
     def test_large_synthetic_gain_is_never_tiered(self):
         out = label.score_synthetic(dict(self.BASE))
         self.assertFalse(out["scored"])
-        self.assertIsNone(out["impact"])
+        self.assertEqual(out["status"], "EVAL_ERROR")
         self.assertEqual(out["verdict"], "SYNTHETIC-ONLY")
         self.assertEqual(out["best_synthetic_gain_pct"], 35.0)
 
@@ -177,12 +206,12 @@ class CommandLine(unittest.TestCase):
     def test_scored_improvement_exits_zero(self):
         code, out = self.run_label(["--real"], real_doc(flat(1.10)))
         self.assertEqual(code, 0)
-        self.assertEqual(out["impact"], "L")
+        self.assertEqual(out["status"], "FRONTIER_GAIN")
 
     def test_synthetic_exits_nonzero_so_it_cannot_be_mistaken_for_a_pass(self):
         code, out = self.run_label(["--synthetic"], SyntheticRefusal.BASE)
         self.assertEqual(code, 1)
-        self.assertIsNone(out["impact"])
+        self.assertEqual(out["status"], "EVAL_ERROR")
 
     def test_regression_exits_nonzero(self):
         code, _ = self.run_label(["--real"], real_doc(
@@ -327,8 +356,8 @@ class WorkloadCoverage(unittest.TestCase):
     def test_an_incomplete_matrix_cannot_be_significant_however_large_the_gain(self):
         out = label.score_real(self._partial(ratio=1.10))
         self.assertAlmostEqual(out["weighted_gain_pct"], 10.0, places=9)
-        self.assertEqual(out["impact"], "L")          # still described...
-        self.assertFalse(out["significant"])          # ...but not banked
+        self.assertEqual(out["status"], "INCONCLUSIVE")   # a hole in the matrix is not a gain
+        self.assertFalse(out["significant"])
         self.assertIn("concurrency32", out["reason"])
 
     def test_allow_partial_is_the_only_way_through_and_it_is_recorded(self):
@@ -485,10 +514,11 @@ class MatrixCeiling(unittest.TestCase):
         self.assertAlmostEqual(out["arms"]["concurrency4"]["measured_ms_per_token"],
                                4 / 329.43 * 1000.0, places=6)
 
-    def test_bands_are_the_scorers_bands(self):
+    def test_the_ceiling_is_continuous_and_uses_the_scorers_go_no_go(self):
         out = self._run(self._spec())
         best = out["best_possible_weighted_gain_pct"]
-        self.assertEqual(out["best_possible_impact"], label.band(best, label.IMPACT)[1])
+        self.assertAlmostEqual(out["best_possible_gain_pct"], best, places=12,
+                               msg="the ceiling is reported as a continuous figure, not a band")
         self.assertEqual(out["best_possible_verdict"], label.band(best, label.GO_NO_GO)[1])
 
     def test_the_ceiling_is_in_throughput_terms_not_traffic_share(self):

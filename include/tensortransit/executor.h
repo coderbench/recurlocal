@@ -61,6 +61,11 @@ struct ExecutorStats {
     // from actions_skipped so that "the prefetch arm applied no prefetch" is answerable
     // without subtracting two other counters.
     std::uint64_t prefetch_skipped = 0;
+    // Streaming windows handed to the node attach because a capture was active. The same
+    // story as `persist_deferred`, for the other half of a shared cache budget: a stream
+    // attribute is host-side state a graph never records, so under capture a Stream action
+    // that was applied to the stream would be absent from every replay.
+    std::uint64_t stream_deferred = 0;
 
     bool applied_anything() const noexcept {
         return actions_applied != 0 || persist_attached_to_node != 0;

@@ -43,9 +43,21 @@ GO_NO_GO = [(10.0, "expand", "expand immediately"),
             (2.0, "weak", "weak; probably reject"),
             (float("-inf"), "reject", "reject the core hypothesis")]
 
-# Section 26 — the project's own impact bands, for describing a result once it exists.
-# Explicitly not Gittensor scoring, and not a contributor reward scale.
-IMPACT = [(18.0, "XL"), (10.0, "L"), (7.0, "M"), (4.0, "S"), (2.0, "XS"), (float("-inf"), "none")]
+# There is no impact band table any more, and its absence is the point.
+#
+# Until 0.2.1 this file sorted a weighted throughput gain into XS/S/M/L/XL with the lowest
+# paying step at 2%. The physical ceiling for the whole shipped policy family is 0.52%
+# weighted on the scored model and 1.94% on the best model this project has ever found, so a
+# submission could remove every recoverable byte of recurrent traffic and score `none`. A band
+# structure whose lowest paying step sits above what the hardware can deliver is not a strict
+# regime; it is a broken instrument, and what it tells a contributor is false.
+#
+# What replaces it is a STATUS -- evaluation state, not impact magnitude -- from the same
+# vocabulary the Transit Frontier Ledger uses, so a single-axis A/B and a full frontier
+# evaluation describe their outcomes in one language. The continuous number is reported as
+# itself, beside its noise floor, and is never bucketed.
+STATUSES = ("FRONTIER_GAIN", "NO_FRONTIER_GAIN", "INCONCLUSIVE", "CORRECTNESS_FAIL",
+            "REGRESSION_GUARD_FAIL", "BUILD_FAIL", "EVAL_ERROR")
 
 # Section 44 — default workload matrix and weights.
 DEFAULT_WEIGHTS = {"batch1": 0.40, "concurrency4": 0.20, "concurrency16": 0.20, "concurrency32": 0.20}
@@ -113,7 +125,7 @@ def score_real(doc, allow_regression=False, allow_partial=False):
         else:
             reason = ("the exact-locality gate did not produce a verdict; "
                       f"correctness.output_identical={correctness.get('output_identical')!r}")
-        out.update(scored=False, impact=None, verdict="REJECT", reason=reason)
+        out.update(scored=False, status="CORRECTNESS_FAIL", verdict="REJECT", reason=reason)
         return out
     out["correctness_method"] = correctness.get("method", "unspecified")
 
@@ -162,7 +174,7 @@ def score_real(doc, allow_regression=False, allow_partial=False):
     out["weighted_ratio"] = gm
 
     if regressions and not allow_regression:
-        out.update(scored=False, impact=None, verdict="REGRESSION",
+        out.update(scored=False, status="REGRESSION_GUARD_FAIL", verdict="REGRESSION",
                    regressed_workloads=regressions,
                    reason=f"{', '.join(regressions)} regressed more than "
                           f"{(1 - REGRESSION_GUARD) * 100:.0f}%; maintainers must approve the tradeoff "
@@ -181,10 +193,18 @@ def score_real(doc, allow_regression=False, allow_partial=False):
 
     blocking = missing if not allow_partial else []
     _, decision, decision_text = band(gain_pct, GO_NO_GO)
-    _, impact = band(gain_pct, IMPACT)
-    out.update(scored=True, impact=impact, verdict=decision, go_no_go=decision_text,
-               partial=bool(missing),
-               significant=gain_pct >= SIGNIFICANCE_PCT and not unresolved and not blocking)
+    # GO_NO_GO stays. It answers a different question from a submission's score -- "should this
+    # research direction continue" -- and it is the project's decision about itself, not a
+    # label attached to somebody's PR.
+    significant = gain_pct >= SIGNIFICANCE_PCT and not unresolved and not blocking
+    if unresolved or blocking:
+        status = "INCONCLUSIVE"
+    elif gain_pct > 0.0 and significant:
+        status = "FRONTIER_GAIN"
+    else:
+        status = "NO_FRONTIER_GAIN"
+    out.update(scored=True, status=status, verdict=decision, go_no_go=decision_text,
+               partial=bool(missing), significant=significant)
     if missing and allow_partial:
         out["partial_waived"] = True
     reasons = []
@@ -208,7 +228,7 @@ def score_real(doc, allow_regression=False, allow_partial=False):
 def score_synthetic(doc):
     """Report the synthetic number; never let it stand in for a serving result."""
     out = {"schema_version": SCHEMA_VERSION, "track": "synthetic",
-           "scored": False, "impact": None,
+           "scored": False, "status": "EVAL_ERROR",
            "best_mode": doc.get("best_mode"),
            "best_synthetic_gain_pct": doc.get("best_synthetic_gain_pct"),
            "provenance": doc.get("environment", {})}
@@ -247,7 +267,7 @@ def summarize(v, stream=sys.stderr):
     gain = v.get("weighted_gain_pct")
     head = f"\nverdict: {v['verdict']}"
     if gain is not None:
-        head += (f"   weighted gain {gain:+.3f}%   impact {v.get('impact') or 'none'}"
+        head += (f"   weighted gain {gain:+.3f}%   status {v.get('status') or 'EVAL_ERROR'}"
                  f"   significant {str(bool(v.get('significant'))).lower()}")
     print(head, file=stream)
     for name, w in sorted((v.get("workloads") or {}).items()):

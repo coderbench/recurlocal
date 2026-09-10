@@ -42,32 +42,60 @@ Every number measured on one RTX 5090, three interleaved pairs per arm, in
 `results/rtx5090-baseline-matrix.json`. Ceilings from
 `eval/traffic_budget.py --matrix configs/rtx5090-section44-ceiling.json`.
 
-**Weighted across the section 44 matrix, the highest score physically available is 5.22%** — a
-submission that removed *all* recurrent-state traffic on every arm. That is impact `S`,
-go/no-go "promising". The bands above it — `M`, `L`, `XL` — are unreachable on this model and
-this device however good the policy, and no amount of contributor effort changes that. Know it
-before you spend a week here.
+**Weighted across the section 44 matrix, the highest THROUGHPUT gain physically available is
+5.22%** — a submission that removed *all* recurrent-state traffic on every arm. That is the
+bound on one of the frontier's two objectives, it is a property of this model and this device,
+and no amount of contributor effort changes it. Know it before you spend a week here.
 
-### The impact bands
+### How a submission is scored
 
-| weighted real gain | impact |
-|---|---|
-| <2% | none |
-| 2–4% | XS |
-| 4–7% | S |
-| 7–10% | M |
-| 10–18% | L |
-| >18% | XL |
+**There are no impact bands any more.** A submission gets one continuous number:
 
-These are applied by `eval/decide.py`, not by a reviewer's judgement — the table is
-`IMPACT` in that file and drift there would silently redefine every past verdict, so it is
-covered by the same `ctest` run as the planner. The weighted score is a geometric mean over
-the workload matrix (C1 0.40, C4 0.20, C16 0.20, C32 0.20), so one cherry-picked win cannot
-carry a submission that loses elsewhere, and **no important case may regress more than 2%**.
+```text
+Frontier Gain: dF = F(candidate) / F(main) - 1
+```
 
-A result below 2% is reported with its noise floor and labelled `none`. That is not a failure
-of the submission; most of this repository's own results are in that band, and saying so is
-the point.
+`F` is the normalized Pareto hypervolume of the serving frontier — goodput against p99
+inter-token latency — aggregated over the frozen workload cells of a benchmark generation. The
+whole system is [`frontier/README.md`](../frontier/README.md), the scorer is `eval/frontier/`
+and the command is `tools/tt-frontier`.
+
+**Why the bands went away, since the answer matters to anyone deciding whether to spend a
+week here.** Until 0.2.1 the scorer sorted weighted throughput gain into `XS`/`S`/`M`/`L`/`XL`
+with the lowest paying step at 2%. The numbers in the two tables above are why that was
+indefensible: the physical ceiling for the whole shipped policy family is **0.52% weighted on
+this model** and **1.94% on the best model this project has ever found**. A submission could
+remove every recoverable byte of recurrent traffic and score `none`. A band structure whose
+lowest paying step sits above what the hardware can deliver is not a strict regime — it is a
+broken instrument that tells contributors the room is bigger than it is, and that anything
+smaller does not count.
+
+`dF` is continuous, so a real 0.3% expansion is reported as a real 0.3% expansion. What
+replaces the bands is *calibration*: `frontier/TTF-1/reference.json` publishes, per cell, the
+measured control rate and the measured run-to-run spread, so the size of the prize and the
+noise you have to beat are both on the page before you start.
+
+A receipt has to clear four things, in this order:
+
+1. **Correctness.** Token-exact greedy replay, against a control replayed against itself first.
+2. **Coverage.** A cell that was not run is a MISSING cell; the receipt says `PARTIAL` on its
+   face rather than renormalising the hole away.
+3. **Confidence.** A paired bootstrap over interleaved repeats, frozen seed and resample
+   count. A 99% lower bound at or below zero is `INCONCLUSIVE`, and the observed figure is not
+   published as a contribution.
+4. **The protected-workload guard.** A regression past the generation's limit on a protected
+   cell is `REGRESSION_GUARD_FAIL` however positive the aggregate is.
+
+Statuses describe evaluation state — `FRONTIER_GAIN`, `NO_FRONTIER_GAIN`, `INCONCLUSIVE`,
+`CORRECTNESS_FAIL`, `REGRESSION_GUARD_FAIL`, `BUILD_FAIL`, `EVAL_ERROR` — and none of them
+categorises impact magnitude.
+
+**The second objective is new and it is where the unexplored room is.** The old regime scored
+throughput and nothing else, so the 0.52% ceiling above was the whole story. The frontier is
+two-dimensional, and the tail-latency dimension has a mechanism the throughput ceiling does not
+bound in the same way: a resident state removes a variable-latency HBM round trip from the
+critical path, which moves a p99 more than it moves an average. Nobody has measured it. See
+"Where the open problems are".
 
 ### The ceiling that actually binds
 

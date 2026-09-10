@@ -96,6 +96,18 @@ struct Settings {
     bool register_kv = true;
     // Prefetch needs scratch for the (discarded) pre-touch results.
     std::size_t scratch_floats = 1024;
+    // Where to write the recorded Transit Graph, once, after the first compile. Empty
+    // disables it.
+    //
+    // This is what turns the offline planning loop from a synthetic exercise into a real one.
+    // tests/golden/*.json carry the MEASURED recurrent geometry of Qwen3.8-27B and a
+    // SYNTHETIC KV block size, with the weight traffic divided evenly across layers -- so
+    // every comparison run against them is sharp about the recurrent half and approximate
+    // about everything else. A trace recorded here has the runtime's real KV slice sizes, its
+    // real layer interleaving, and its real per-layer demand.
+    std::string trace_out;
+    std::string trace_model;
+    std::string trace_runtime_commit;
 };
 
 // What the engine did, in the currency the evaluation harness already parses.
@@ -200,6 +212,7 @@ private:
     };
 
     void rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcept;
+    void maybe_write_trace() noexcept;
     void snapshot_plan() noexcept;
 
     TransitRuntime runtime_;
@@ -221,6 +234,7 @@ private:
     cudaStream_t compute_ = nullptr;
     bool initialised_ = false;
     bool have_signature_ = false;
+    bool trace_written_ = false;
     const char* error_ = nullptr;
     int device_ = 0;
     int pending_layer_ = -1;

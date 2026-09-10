@@ -298,7 +298,7 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None
     total_weight = sum(w for _, w in ratios.values())
     gm = math.exp(sum(w * math.log(r) for r, w in ratios.values()) / total_weight)
     best_pct = (gm - 1.0) * 100.0
-    _, impact = decide.band(best_pct, decide.IMPACT)
+
     _, decision, decision_text = decide.band(best_pct, decide.GO_NO_GO)
 
     missing = sorted(n for n, v in arms.items() if not v.get("measured"))
@@ -313,11 +313,13 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None
         "arms_without_a_measured_rate": missing,
         "weights_covered": round(total_weight, 4),
         "best_possible_weighted_gain_pct": best_pct,
-        "best_possible_impact": impact,
+        # The continuous figure, not a band. There is no band table any more; see the
+        # comment where decide.IMPACT used to be, and frontier/README.md.
+        "best_possible_gain_pct": best_pct,
         "best_possible_verdict": decision,
         "best_possible_go_no_go": decision_text,
         "significance_floor_pct": decide.SIGNIFICANCE_PCT,
-        "reachable_bands": [t for th, t in decide.IMPACT if best_pct >= th],
+        "clears_significance_floor": best_pct >= decide.SIGNIFICANCE_PCT,
     }
     if persist_ratios:
         pw = sum(w for _, w in persist_ratios.values())
@@ -335,16 +337,18 @@ def matrix_ceiling(m, spec, bandwidth_gbs, output=None, persisting_l2_bytes=None
         out["conclusion"] = ("no submission can clear the significance floor on this matrix; "
                              "the traffic to recover is not there")
     else:
-        out["conclusion"] = (f"a submission that made recurrent state free would score "
-                             f"{best_pct:.2f}% ({impact}); bands above that are unreachable "
-                             "on this model and device, however good the policy")
+        out["conclusion"] = (f"a submission that made recurrent state free would gain "
+                             f"{best_pct:.2f}% of throughput on this matrix; that is the bound "
+                             "on ONE of the frontier's two objectives, on this model and this "
+                             "device, however good the policy")
 
     text = json.dumps(out, indent=2)
     if output:
         output.write_text(text + "\n")
     print(text)
-    print(f"\nbest possible weighted gain: {best_pct:.2f}%  ->  impact {impact}, "
-          f"go/no-go {decision}", file=sys.stderr)
+    print(f"\nbest possible weighted THROUGHPUT gain: {best_pct:.2f}%  ->  "
+          f"go/no-go {decision}. This bounds one objective; the frontier also scores p99 "
+          f"inter-token latency, which this arithmetic says nothing about.", file=sys.stderr)
     if missing:
         print(f"arms with no measured rate (excluded): {', '.join(missing)}", file=sys.stderr)
     return 0

@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include "tensortransit/trace.h"
+
 namespace tensortransit {
 namespace sparkinfer {
 namespace transit {
@@ -281,20 +283,31 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
     state.granted_budget_bytes = executor_.set_aside_bytes();
     runtime_.compile(state);
     snapshot_plan();
+    maybe_write_trace();
 
     // Which state kind holds the window at each layer, so `after_launch` is a lookup. The
     // rule is the v0 engine's: ask which allocation the resolved region fell in, rather than
     // re-deriving the choice and letting the two drift.
     for (const TransitAction& action : runtime_.plan().actions()) {
-        if (action.kind != TransitActionKind::Persist) continue;
+        // Persist AND Stream: both set the one access-policy window a kernel node carries,
+        // and both are host-side stream state that a capture never records -- so both have to
+        // reach the node, and both need to know WHICH launch reads the bytes they cover.
+        if (action.kind != TransitActionKind::Persist &&
+            action.kind != TransitActionKind::Stream) continue;
         if (action.before_kernel == kInvalidKernelId) continue;
         const auto layer = static_cast<std::size_t>(action.before_kernel - 1);
         if (layer >= window_kind_.size()) continue;
         const auto* p = static_cast<const unsigned char*>(action.ptr);
+        const bool is_state = state_base && p >= state_base && p < state_base + state_alloc;
         const bool is_conv = conv_base && p >= conv_base && p < conv_base + conv_alloc;
-        window_kind_[layer] = static_cast<signed char>(is_conv ? StateKernel::Conv
-                                                               : StateKernel::Gdn);
-        window_reduced_[layer] = action.hit_ratio < settings_.planner_config.hit_ratio;
+        // Anything that is neither recurrent allocation is KV, and the attention kernel is
+        // what reads it.
+        const StateKernel which = is_conv ? StateKernel::Conv
+                                          : (is_state ? StateKernel::Gdn
+                                                      : StateKernel::Attention);
+        window_kind_[layer] = static_cast<signed char>(which);
+        window_reduced_[layer] = action.kind == TransitActionKind::Persist &&
+                                 action.hit_ratio < settings_.planner_config.hit_ratio;
     }
     // The live set the plan would have to hold against the budget it was given. This is the
     // 0.1 `hot_set_oversubscribed` question asked of the whole graph rather than of one
@@ -302,6 +315,33 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
     // impossible -- every recurrent layer's state is equally live across a token.
     const PlanCostModel& cost = runtime_.plan().cost();
     oversubscribed_ = cost.budget_bytes != 0 && cost.peak_live_bytes > cost.budget_bytes;
+}
+
+void Engine::maybe_write_trace() noexcept {
+    // Once per process, after the first compile: the graph is stable across tokens by
+    // construction (that is what the plan cache keys on), so a second write would be the same
+    // file and a write per token would put file I/O on the decode path.
+    if (trace_written_ || settings_.trace_out.empty()) return;
+    trace_written_ = true;
+    TraceMetadata meta{};
+    meta.device = device_;
+    meta.model = settings_.trace_model;
+    meta.runtime = "SparkInfer";
+    meta.runtime_commit = settings_.trace_runtime_commit;
+    meta.phase = "decode";
+    meta.active_requests = runtime_.plan().cost().budget_bytes ? recurrent_layers_ : 1;
+    meta.cyclic = true;
+    meta.notes = "recorded from the live SparkInfer adapter";
+    std::string error;
+    if (!write_trace_file(settings_.trace_out, runtime_.graph(), runtime_.registry(), meta,
+                          &error)) {
+        std::fprintf(stderr, "[recurlocal] could not write trace to %s: %s\n",
+                     settings_.trace_out.c_str(), error.c_str());
+    } else {
+        std::fprintf(stderr, "[recurlocal] wrote trace %s (%zu tensors, %zu kernels)\n",
+                     settings_.trace_out.c_str(), runtime_.registry().size(),
+                     runtime_.graph().kernels().size());
+    }
 }
 
 void Engine::snapshot_plan() noexcept {
