@@ -1244,6 +1244,31 @@ static void test_quota_admits_the_budget_once_not_once_per_period() {
     CHECK(admitted_bytes <= p.effective_l2_budget());
 }
 
+static void test_quota_walking_more_ordinals_than_declared_still_spends_one_budget() {
+    // The controller's layer ordinal resets once per token (begin_sequence), so it normally
+    // runs 0..recurrent_layers-1 and the modulo is a no-op. It is there for the caller that
+    // does not reset, or that walks more layers than its geometry declares: without it the
+    // spread pattern repeats and admits a multiple of the budget, which is the same defect
+    // the byte-derived period had.
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+    cfg.hot_set_policy = HotSetPolicy::Quota;
+    cfg.persisting_budget_fraction = 1.0;
+    LocalityPlanner p(rtx5090(), cfg);
+    const auto geom = moe_geometry(4);
+    const std::size_t layer_state = geom.bytes_per_layer;
+
+    int in_one_token = 0, over_three_tokens = 0;
+    for (int i = 0; i < 30; ++i)
+        if (p.plan_for_layer(layer_state, true, geom, i).use_persisting_window) ++in_one_token;
+    for (int i = 0; i < 90; ++i)   // three tokens' worth of ordinals without a reset
+        if (p.plan_for_layer(layer_state, true, geom, i).use_persisting_window) ++over_three_tokens;
+    CHECK(over_three_tokens == in_one_token * 3);   // the same layers, not three budgets
+    CHECK(in_one_token > 0);
+    CHECK(in_one_token < 30);                       // it IS rationing at four sequences
+}
+
 static void test_quota_still_admits_when_the_hot_set_has_saturated() {
     // `hot` saturates to SIZE_MAX by design - "a wrong answer here must never be a small
     // one". The old unit count then computed `hot + window - 1`, which wrapped, making the
@@ -1456,6 +1481,7 @@ int main() {
     test_a_device_that_allows_no_window_at_all_installs_none();
     test_quota_without_an_ordinal_says_it_fell_back_to_fixed();
     test_quota_admits_the_budget_once_not_once_per_period();
+    test_quota_walking_more_ordinals_than_declared_still_spends_one_budget();
     test_quota_still_admits_when_the_hot_set_has_saturated();
     test_a_backoff_never_asks_for_more_residency_than_the_set_aside_holds();
     test_the_oversubscription_flag_describes_the_workload_not_the_device();
