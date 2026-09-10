@@ -723,17 +723,36 @@ is a contribution that needs one GPU run and then no hardware at all.
 
 ## Surfaces that need a GPU
 
-### 5. The second proof track, measured
+### 5. The second proof track — blocked on a hook change, and the blocker is one function
 
-Run the five arms on hardware and settle whether coordination beats independent policies.
-**The prerequisite is closed**: the adapter registers KV as of 0.2.1, so the arms are
+Run the five arms on hardware and settle whether coordination beats independent policies. One
+prerequisite closed in 0.2.1 and a second one opened.
+
+**Closed:** the adapter registers KV, so the arms are
 `TENSORTRANSIT_PRESET=baseline|recurrent_only|kv_only|naive_both|global` on the real model
 through the measured path, and `tools/tt-frontier run` takes them as a portfolio.
 
-**Known before starting:** on the pinned dense model this contest is for less than a point of
-throughput, and the interesting regime is a model whose decode step moves under **6.42 GB**.
-What is *not* known is what any of it does to a p99 tail, which is the frontier's other
-objective and has never been measured.
+**Open, and it decides the whole track:** the global arm's distinguishing action is a `Stream`
+hint on `ModelWeight`, and that action **cannot reach a kernel**. The adapter registers the
+weight stream as one *synthetic* tensor per layer with a fabricated address
+(`d.ptr = layer + 1; d.device = -1`) because the real weights are thousands of separate
+allocations; it exists so the graph has an honest denominator for reuse distance.
+`CudaTransitExecutor::resolve` refuses any tensor with `device < 0` and counts it in
+`stale_tensor_refs`. Both sides are right, and the consequence is that `stream_applied` is zero
+on every arm this project has ever measured and would stay zero however many arms were run.
+
+**The fix is a hook change, not a design change,** and it is the highest-leverage thing on this
+page after the concurrency item: declare the per-layer weight buffers the runtime already owns —
+`w.wqkv`, `w.ssm_out` and the rest have real device pointers — instead of one fabricated tensor
+per layer. A Stream window on a real weight buffer is what `cudaAccessPropertyStreaming` is for.
+The executor stops refusing it, `stream_applied` becomes a number, and the track becomes
+measurable for the first time.
+
+**Known before starting, whichever end you pick up:** on the pinned dense model this contest is
+for less than a point of throughput; under the one access-policy window a kernel node carries,
+the global arm's model-level advantage does not survive on either trace recorded from the
+runtime (docs/VERDICT.md section 4); and what any of it does to a p99 tail is unmeasured and
+unbounded by any arithmetic here.
 
 ### 6. `WindowBinding::Sticky`
 
