@@ -363,9 +363,17 @@ void Engine::maybe_write_trace(int sequences) noexcept {
     // which is exactly the hand-written approximation the recording was meant to replace.
     //
     // Rebuilds are rare by construction (three in a 128-token run; the plan cache exists to
-    // make them rare), so this is not file I/O on the decode path -- and the LAST one is the
-    // steady-state graph, which is the one worth having.
+    // make them rare), so this is not file I/O on the decode path.
+    //
+    // Kept: the rebuild with the MOST sequences, not the last one. A measured c=16 run
+    // rebuilds at 1, 1, 16, 15 and 1 as requests arrive and drain, so "the last rebuild" is
+    // the tail of the drain -- and the first recorded c=16 trace was byte-identical to the
+    // c=1 trace for exactly that reason. The workload the run was asked to serve is the one
+    // at the peak. `>=` rather than `>` so a single-sequence run still rewrites, which is what
+    // gets KV into the file at all.
     if (settings_.trace_out.empty()) return;
+    if (sequences < counters_.trace_sequences) return;
+    counters_.trace_sequences = sequences > 0 ? sequences : 1;
     ++counters_.traces_written;
     TraceMetadata meta{};
     meta.device = device_;

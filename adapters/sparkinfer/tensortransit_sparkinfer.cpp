@@ -132,6 +132,17 @@ struct Adapter {
     // contiguous, and a schedule that skipped every other *absolute* layer would skip
     // whichever ones the full-attention interval happened to align with.
     int recurrent_ordinal = 0;
+    // Every RECURRENT layer this adapter has bracketed, cumulatively. Not the engine's
+    // `Counters::layers`, which counts the layers that carried a WINDOW -- a different
+    // question with the same name.
+    //
+    // The 0.1 controller increments its `stats_.layers` on every bracketed recurrent layer
+    // whatever the policy did, and `eval/real_eval.py` refuses a run whose `layers` is zero as
+    // "the hook initialised but bracketed no recurrent layer". Publishing the windowed count
+    // under that name made the `baseline` arm -- the hook installed with no window, one of the
+    // five arms the specification names -- fail that guard by construction: it brackets every
+    // layer and windows none.
+    std::uint64_t recurrent_layers_bracketed = 0;
     // The absolute layer index the last before_layer()/before_attention_layer() opened.
     // after_layer() carries no argument -- the 0.1 hook never needed one -- and the transit
     // engine closes a kernel by id, so the id has to be remembered rather than guessed.
@@ -692,6 +703,7 @@ void before_layer(int layer) noexcept {
     if (a.use_transit) {
         if (a.packed) ++a.layers_packed;
         ++a.recurrent_ordinal;
+        ++a.recurrent_layers_bracketed;
         a.last_layer = layer;
         a.transit_engine.before_layer(layer);
         return;
@@ -805,7 +817,9 @@ void write_stats_json(std::FILE* out) noexcept {
         const ExecutorStats x = a.transit_engine.total_executor_stats();
         const transit::Counters& t = a.transit_engine.counters();
         s = ControllerStats{};
-        s.layers = t.layers;
+        // The 0.1 meaning: bracketed recurrent layers, whatever the policy did with them.
+        // `t.layers` is the WINDOWED count and goes in the transit block under its own name.
+        s.layers = a.recurrent_layers_bracketed;
         s.windows_applied = x.persist_applied;
         s.windows_deferred_to_caller = x.persist_deferred;
         s.windows_attached_to_node = x.persist_attached_to_node;
@@ -849,6 +863,7 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"geometry\":{\"recurrent_layers\":%d,\"bytes_per_layer\":%zu,\"sequences\":%d,"
         "\"max_sequences_declared\":%d,\"bytes_per_layer_at_max\":%zu,"
         "\"streamed_bytes_per_token\":%zu},"
+        "\"trace\":{\"writes\":%llu,\"sequences\":%d},"
         "\"registry\":{\"recurrent_tensors\":%llu,\"recurrent_bytes\":%llu,"
         "\"kv_tensors\":%llu,\"kv_bytes\":%llu,"
         "\"weight_tensors\":%llu,\"weight_bytes\":%llu},"
@@ -876,6 +891,11 @@ void write_stats_json(std::FILE* out) noexcept {
         a.geometry.recurrent_layers, a.geometry.bytes_per_layer, a.geometry.sequences,
         a.max_geometry_sequences, a.max_geometry_bytes_per_layer,
         a.geometry.streamed_bytes_per_token,
+        // Which graph reached the trace file, and how many rebuilds it took. A concurrency
+        // run rebuilds as requests arrive and again as they drain, so a reader needs to know
+        // the file holds the peak rather than the tail.
+        (unsigned long long)(a.use_transit ? a.transit_engine.counters().traces_written : 0),
+        a.use_transit ? a.transit_engine.counters().trace_sequences : 0,
         // What the graph in force is MADE OF, by role. Zero KV tensors on an arm whose preset
         // targets KV is not a weak result, it is an unmeasured one, and the two are
         // indistinguishable from outside the run unless the run says so. `eval/real_eval.py`
@@ -929,6 +949,7 @@ void write_transit_stats_json(std::FILE* out) noexcept {
         "\"window_preference\":\"%s\",\"max_windows_per_kernel\":%d,"
         "\"plan_digest\":\"%016llx\","
         "\"recurrent_tensors\":%d,\"kv_tensors\":%d,\"kv_declared\":%s,"
+        "\"layers_windowed\":%llu,"
         "\"committed_bytes\":%zu,\"predicted_saved_bytes\":%zu,"
         "\"step_traffic_bytes\":%zu,"
         "\"compiles\":%llu,\"plan_reuses\":%llu,\"reuse_rate\":%.6f,"
@@ -943,6 +964,7 @@ void write_transit_stats_json(std::FILE* out) noexcept {
         cfg.max_windows_per_kernel,
         (unsigned long long)e.plan_digest(),
         e.recurrent_layers(), e.kv_layers(), a.kv_declared ? "true" : "false",
+        (unsigned long long)e.counters().layers,
         e.committed_bytes(), e.predicted_saved_bytes(), e.step_traffic_bytes(),
         (unsigned long long)r.compiles, (unsigned long long)r.plan_reuses, r.reuse_rate(),
         (unsigned long long)e.counters().recompiles_geometry, to_string(r.last_reason),

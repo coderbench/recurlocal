@@ -137,6 +137,33 @@ same for a preset or planner named `baseline`. The unhooked-run message also ind
 `env_extra['RECURLOCAL']` directly, so the guard raised `KeyError` from inside its own error
 path rather than reporting.
 
+### Fixed — one counter name, two meanings, and the `baseline` arm failed on it
+
+`RECURLOCAL_STATS`'s `stats.layers` means *bracketed recurrent layers* for the 0.1 controller,
+whatever the policy did with them — and `eval/real_eval.py` refuses a run whose `layers` is zero
+as "the hook initialised but bracketed no recurrent layer", which is a genuine and load-bearing
+guard: it is how a run that never reached the hook site is told apart from one that did.
+
+The transit engine published its **windowed** layer count under that name. `TENSORTRANSIT=
+baseline` brackets every layer and windows none, so it produced `layers: 0` and the guard
+refused it **by construction**. That is what stopped the specification's five-arm run: it never
+reached a benchmark, it failed at the correctness gate on the first arm.
+
+`stats.layers` is now the bracketed count for both engines, which is what the mapping always
+claimed. The windowed count keeps its own name, `transit.layers_windowed`, in the block that
+exists for counters the 0.1 line has no field for. Two spellings of one variable is a
+compatibility shim; two meanings of one counter is a bug, and this is the second one this
+release found.
+
+### Fixed — the recorded "c=16" trace was the drain, not the workload
+
+`TENSORTRANSIT_TRACE_OUT` kept the last rebuild. A concurrency run rebuilds as requests arrive
+and again as they finish — a measured c=16 run rebuilds at 1, 1, 16, 15 and 1 — so the last one
+is the tail of the drain, and the first recorded c=16 trace came back byte-identical to the c=1
+trace, with `active_requests: 1`. It now keeps the rebuild with the **most** sequences, and the
+stats line reports `trace.sequences` and `trace.writes` so a reader can tell which graph is in
+the file.
+
 ### Added — the stats line says which tensor families the graph was made of
 
 `registry`: `recurrent_tensors`/`bytes`, `kv_tensors`/`bytes`, `weight_tensors`/`bytes`, from

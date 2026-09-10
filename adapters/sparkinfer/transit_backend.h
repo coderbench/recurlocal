@@ -130,6 +130,11 @@ struct Counters {
     // Traces written. More than one is normal and is the point: the first graph an engine
     // builds has no KV in it, because the runtime declares its pools after it opens the token.
     std::uint64_t traces_written = 0;
+    // How many sequences the graph in the trace FILE was built for. A concurrency run rebuilds
+    // as requests arrive and again as they drain -- 1, 1, 16, 15, 1 on a measured c=16 run --
+    // so "the last rebuild" is the drain, not the steady state, and a trace recorded there
+    // describes a workload nobody asked for.
+    int trace_sequences = 0;
 };
 
 // What the graph in force is actually MADE OF, by role, and it is telemetry rather than a
