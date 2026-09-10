@@ -187,6 +187,15 @@ telemetry, no policy — and stamps the record `runtime`, `candidate` or `unreso
 The probe runs the baseline build deliberately. A candidate that could make its own probe fail
 would get a cell it lost *dropped* rather than scored, which is strictly to its advantage.
 
+### Added — the prose is checked against the data it cites
+
+"Do not let anyone type benchmark numbers by hand" was enforced for reports, which are
+generated, and not for documents, which are not. `eval/test_schemas.py` now reads every
+per-cell figure out of `docs/VERDICT.md` section 8 and compares it with
+`results/rtx5090-ttf1-first-matrix.json` — thirteen numbers, in ctest, failing loudly on a
+drift of more than a thousandth of a point. A figure that drifts in prose is worse than one in
+a report, because prose is what a contributor reads before deciding whether to spend a week.
+
 ### Added — `tt-frontier generation show --reachable`
 
 One command for the question a contributor should ask first: which cells are worth trying to

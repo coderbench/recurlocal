@@ -12,8 +12,10 @@ otherwise that part is skipped rather than silently passing, and says so.
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -206,6 +208,10 @@ def main():
         print("note: not evaluator artifacts (no schema_version), not validated: "
               + ", ".join(unversioned))
 
+    quoted, quote_failures = check_documented_numbers()
+    checked += quoted
+    failures += quote_failures
+
     if failures:
         for failure in failures:
             print(f"FAIL {failure}")
@@ -214,6 +220,51 @@ def main():
     print(f"Ran {checked} tests")
     print(f"schema tests passed ({checked} document(s) validated)")
     return 0
+
+
+def check_documented_numbers():
+    """Every benchmark figure in a document is checked against the file it cites.
+
+    "Do not let anyone type benchmark numbers by hand" is the rule this repository turns on,
+    and it was enforced for reports -- which are generated -- and not for prose, which is not.
+    A number that drifts in a document is worse than one in a report, because prose is what a
+    contributor reads before deciding whether to spend a week.
+
+    Deliberately narrow: it checks the tables that carry per-cell measurements against the
+    result file those tables name. Adding a table here is cheap; a table nothing checks is how
+    a document comes to disagree with its own evidence.
+    """
+    root = Path(__file__).resolve().parent.parent
+    results = root / "results" / "rtx5090-ttf1-first-matrix.json"
+    verdict = root / "docs" / "VERDICT.md"
+    if not results.exists() or not verdict.exists():
+        return 0, []
+    doc = json.loads(results.read_text())
+    text = verdict.read_text()
+    checked, failures = 0, []
+
+    for cell, quoted in re.findall(r"\| `(ctx\d+-c\d+)` \| ([+-\u2212\u00b1]?[\d.]+)% \|", text):
+        want = float(quoted.replace("\u2212", "-").replace("\u00b1", ""))
+        got = (doc["cells"].get(cell) or {}).get("goodput_delta_pct")
+        checked += 1
+        if got is None:
+            failures.append(f"docs/VERDICT.md quotes {cell} at {want:+.3f}% and "
+                            f"{results.name} has no goodput delta for it")
+        elif abs(got - want) > 0.002:
+            failures.append(f"docs/VERDICT.md quotes {cell} at {want:+.3f}% and "
+                            f"{results.name} says {got:+.3f}%")
+
+    scaling = (doc.get("main_concurrency_scaling") or {}).get("cells") or {}
+    for cell, record in scaling.items():
+        found = re.search(rf"`{re.escape(cell)}` \| [\d.]+ \| \*?\*?([\d.]+)x", text)
+        if not found:
+            continue
+        checked += 1
+        want = float(found.group(1))
+        if abs(want - record["scale"]) > 0.02:
+            failures.append(f"docs/VERDICT.md quotes {cell} scaling at {want:.2f}x and "
+                            f"{results.name} says {record['scale']:.2f}x")
+    return checked, failures
 
 
 if __name__ == "__main__":
