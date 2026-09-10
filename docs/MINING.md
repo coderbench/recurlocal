@@ -18,7 +18,8 @@ be measured on that checkpoint, because the runtime stops batching above 8 rows.
 Both are below the 2% floor as weighted matrices — 0.52% for the dense model against **1.94%**
 for the MoE, whose ceiling is 3.7x higher and still six hundredths of a point short. And the MoE
 result is not merely below the floor, it is **not scorable at all**: that checkpoint is not
-reproducible against itself, so the exact-locality gate cannot certify it. Read the section for
+reproducible against itself, no checkpoint that this runtime can load and that fits 32 GB is,
+and the dense control is only reproducible because the gate is 64 tokens long. Read the section for
 the model you intend to work on, and read the correctness caveat before either.
 
 ---
@@ -201,9 +202,21 @@ already known. Reordered by what is still genuinely open:
    binary and policy give control, control and candidate bit-identical — but the gate cannot
    answer, so `decide.py` refuses the run.
 
-   **If you want to work this surface, a reproducible MoE checkpoint is the first thing needed**,
-   ahead of any policy. Weighted, the persist family reaches 1.94% here against a 2.0% floor, so
-   even a scorable version of this result would land just under — see below.
+   **That has now been searched, and there is no reproducible MoE checkpoint to find.** Four
+   were screened on hardware and none passes; the runtime accepts only F32, F16, Q8_0, Q4_K,
+   Q5_K and Q6_K expert tensors (`qwen35.cpp:114`), which rules out every MXFP4 and IQ variant
+   at load, and the two Q8_0/BF16 files that would be genuinely different quantizations exceed
+   32 GB of VRAM. Six environment configurations were tried on the checkpoint that does load —
+   including `SPARKINFER_PREFILL_BATCHED=0`, which replaces the batched prefill the runtime's
+   own header blames, and a pin of every split-K, PDL and n-splits switch at once — and none is
+   reproducible. What the pinned set *does* fix is the prefill seed token; a 64-token
+   generation still forks in every replay, so the residual nondeterminism is in the per-token
+   decode loop, which `deterministic_mode()` never reaches. The full survey is in the
+   changelog.
+
+   Do not spend a week looking for a checkpoint. The surface is unscorable on this runtime and
+   this device, and weighted the persist family reaches 1.94% here against a 2.0% floor — so
+   even a scorable version of this result would land just under. See below.
 
 2. **Reuse the cache can actually serve — CLOSED, and the answer is no.** Every shipped policy
    targets reuse across a token, which is a full model pass away and 2.4–40x too large to hold.

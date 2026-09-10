@@ -6,6 +6,100 @@ No performance claim appears here without a measurement behind it. See `docs/FRO
 
 ## [Unreleased]
 
+### Added, and measured — the set-aside is sized from the workload, not from a constant
+
+`SetAsidePolicy`. Every number this repository has published reserved
+`persisting_budget_fraction` of the device's persisting-L2 capacity — a constant chosen before
+anything is known about the workload — and `results/rtx5090-moe-scored.json` already showed
+that constant is wrong in both directions: `budget_fraction 1.00` is the best setting at batch 1
+on the sparse-MoE checkpoint (+1.63% against +1.26%) and the worst at four concurrent sequences
+(-1.29% against -0.46%). The inputs to do better were already there — the runtime declares its
+sequence count and the hot-set model already computes the footprint — and only the policy was
+missing.
+
+Three values, `Fixed` the control:
+
+- **`Fixed`** — `persisting_budget_fraction` of capacity, whatever the workload. Exactly what
+  every prior number was measured under, and still the default.
+- **`FitFootprint`** — `min(footprint, capacity)`. Never reserve more than the footprint can
+  use: holding 60 MiB for a 10 MiB working set takes 50 MiB from the cache the rest of the step
+  streams through and buys nothing with it. Parameter-free.
+- **`Residency`** — `FitFootprint`, plus decline outright when the fraction of the footprint
+  the capacity could hold falls below `min_residency`.
+
+`persisting_budget_fraction` is deliberately **not** applied under the two workload-aware
+values. Turning both dials would leave them unable to reach the setting the workload wants
+without the caller also changing the constant they exist to replace, which is the whole defect.
+
+**The threshold is bracketed by measurement, not fitted.** The persist family is measured to
+pay at a resident fraction of 0.977 (MoE, batch 1) and not to pay at 0.478 and below (the same
+model at four sequences, -0.46%, inside its own 0.46% floor). Anything in that interval orders
+the evidence correctly; 0.50 sits at its lower edge, so the rule gives up as little as the
+evidence allows. The cost is stated rather than hidden: the **dense** checkpoint at batch 1
+sits at 0.409 and measures a resolved +0.10%, so `Residency` declines a real if tiny gain
+there. `--axis min-residency` is how that prediction gets falsified.
+
+**Measured, batch 1 on the MoE checkpoint**, control 503.4 tok/s, three interleaved pairs,
+noise floor **0.071%**:
+
+| `set_aside_policy` | set-aside asked for | gain |
+|---|--:|--:|
+| `fixed` (the shipped constant, at the shipped 0.75) | 45 MiB | +1.285% |
+| **`fit_footprint`** | **60 MiB** | **+1.509%** |
+| `residency` (threshold 0.50, footprint holds 0.977) | 60 MiB | +1.441% |
+
+Axis spread **0.224%** against a 0.071% floor — **resolved**. Sizing the reservation from the
+footprint is worth **0.22 points over the shipped constant with no dial touched by the
+operator**, and it reaches the +1.5% that previously required someone to know to set
+`RECURLOCAL_BUDGET_FRACTION=1.00` by hand. `fit_footprint` and `residency` differ by 0.069
+points, inside the floor, which is the consistency check this measurement had to pass: at a
+resident fraction of 0.977 the two rules compute the *same* reservation, so any difference
+between them is noise and it is.
+
+**And the sign flips at concurrency, on the same axis**, four sequences, `SPARKINFER_PACKED_MAX_ROWS=8`
+on both arms, one warm-up discarded, control 545.1 tok/s, noise floor **0.367%**:
+
+| `set_aside_policy` | set-aside asked for | gain |
+|---|--:|--:|
+| `fixed` | 45 MiB | -0.073% |
+| `fit_footprint` | 60 MiB | **-0.992%** |
+
+Axis spread **0.92%** against a 0.367% floor — **resolved**, and `fixed` wins. This is the
+trade the whole design is about, and it had never been measured on one axis before: previously
+it had to be inferred by comparing two different configurations across two different sweeps.
+Fifteen more MiB of set-aside is worth **+0.22 points at batch 1 and -0.92 points at four
+sequences**, on the same model, the same box and the same binary.
+
+`residency` is excluded from the concurrency arm deliberately. At four sequences the resident
+fraction is 0.478, below its threshold, so it declines the reservation outright — and
+`real_eval.py`'s null-candidate guard refuses an arm that installed no policy, **by name**,
+which is correct: a policy whose response to pressure is to do nothing *is* `baseline`, and
+scoring it would report the hook's overhead as a locality result. So its value on that arm is
+`baseline` by construction rather than by measurement, and the guard's refusal is the
+observation that it declined.
+
+**Neither constant is best on both arms, and that is the result.** `fixed` wins at concurrency
+and loses at batch 1; `fit_footprint` wins at batch 1 and loses at concurrency; `residency` is
+the only one that is best-or-tied on both, because it is the only one that asks how much of the
+footprint the reservation could hold before deciding how much to reserve.
+
+| arm | resident fraction | `fixed` | `fit_footprint` | `residency` |
+|---|--:|--:|--:|--:|
+| batch 1 | 0.977 | +1.285% | **+1.509%** | +1.441% |
+| concurrency 4 | 0.478 | **-0.073%** | -0.992% | declines (= `baseline`) |
+| concurrency 16 | 0.120 | — | — | declines |
+| concurrency 32 | 0.060 | — | — | declines |
+
+`results/rtx5090-setaside.json` carries the data. Registered on `eval/real_sweep.py` as
+`--axis set-aside-policy` and `--axis min-residency`, on `eval/sweep.py`, and on the synthetic
+benchmark as `--set-aside-policy`.
+
+The set-aside is requested once at `initialize()`, before any workload is known, so the
+controller gained `declare_geometry()`: it recomputes the reservation when the geometry
+changes, is a no-op under `Fixed`, a no-op when the answer has not moved, and a no-op while
+the compute stream is capturing — `cudaDeviceSetLimit` is a device-wide operation and a graph
+capture is not the place for one.
+
 ### Corrected — `capture_node` is documented as safe, and this repository said otherwise
 
 Every persist number here comes from `WindowAttach::CaptureNode`, which sets an access-policy
