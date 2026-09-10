@@ -294,7 +294,7 @@ def main():
     src.add_argument("--real", type=Path, metavar="REAL_RESULT_JSON",
                      help="real end-to-end workload matrix to score")
     ap.add_argument("--allow-regression", action="store_true",
-                    help="score despite a workload regressing more than 2% (maintainer decision)")
+                    help="score despite a workload regressing more than 2%% (maintainer decision)")
     ap.add_argument("--allow-partial", action="store_true",
                     help="let an incomplete section 44 workload matrix clear the significance "
                          "floor (maintainer decision); the verdict still reports what is missing")

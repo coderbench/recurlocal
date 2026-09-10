@@ -289,6 +289,27 @@ class HarnessIntegrity(unittest.TestCase):
         self.assertFalse(real_eval.is_control({"RECURLOCAL": "persist"}))
         self.assertFalse(real_eval.is_control({"RECURLOCAL": "baseline"}))
 
+    def test_every_eval_entry_point_can_print_its_own_help(self):
+        """`--help` is the first thing anyone types, and `decide.py --help` crashed.
+
+        argparse `%`-expands help strings, so a literal "2%" in `--allow-regression`'s help
+        raised `ValueError: unsupported format character` from inside `print_help`. Nothing
+        else exercises the help text, so it had been broken since the flag was added -- and it
+        is the one command a contributor runs before any of the ones that are tested.
+        """
+        import subprocess
+        root = Path(__file__).resolve().parent.parent
+        entries = sorted(p for p in (root / "eval").glob("*.py")
+                         if not p.name.startswith("test_")) + [root / "tools" / "tt-frontier"]
+        for entry in entries:
+            with self.subTest(entry=entry.name):
+                done = subprocess.run([sys.executable, str(entry), "--help"],
+                                      capture_output=True, text=True, timeout=60)
+                self.assertEqual(done.returncode, 0,
+                                 f"{entry.name} --help exited {done.returncode}\n"
+                                 f"{done.stderr[-800:]}")
+                self.assertIn("usage:", done.stdout)
+
     def test_the_baseline_arm_is_recognised_under_both_spellings(self):
         # The incident: `TENSORTRANSIT=baseline` -- the hook with no window, one of the five
         # arms the specification names -- was refused as a NULL CANDIDATE. `is_control` read
