@@ -265,6 +265,14 @@ visible at all — 0.22% of a 22.6 tok/s cell, 0.006% of a 909 tok/s one. Two ce
 0.000% spread because three repeats printed the same number, and their real floor is the
 resolution.
 
+**That is arithmetic, and it has now been confirmed by a null control.** `survival` and
+`density` compile to the *same plan* — identical digests on every golden trace, asserted by
+`tests/test_golden.cpp` — so the paired difference between them is noise with the policy held
+constant. Over five interleaved repeats it is a median of **+0.230%** at `ctx128-c16`, with a
+peak-to-peak of **1.29%**, against that cell's 0.249% ceiling
+(`results/rtx5090-0.2.1-null-control.json`). Two arms running the same bytes differ by more than
+a perfect policy could ever deliver there.
+
 **Where the floor exceeds the persist ceiling, nothing this project ships can be measured to
 win.** Not a better admission rule, not a better window shape, not a better hot-set heuristic:
 the room is smaller than the noise, and that is arithmetic rather than an implementation

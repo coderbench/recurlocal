@@ -1,0 +1,304 @@
+{
+ "schema_version": 1,
+ "what_this_is": "Five paired interleaved repeats of three admission rules against a scrubbed control, on the three TTF-1 cells the earlier arms sweep used. It was designed to settle whether the gain tracks the NUMBER of windows a plan attaches -- `density` and `reuse_order` commit the same bytes and hold the same bytes resident while differing 30 windows to 4 on the golden trace. IT DID NOT SETTLE THAT: on the device all three arms attached 48 windows. What it did produce is the cleanest noise measurement this repository has, because one of the three arms is a null control.",
+ "provenance": {
+  "attribution": {
+   "probe_independent_of_candidate": false,
+   "probed": [],
+   "skipped": false,
+   "verdicts": {}
+  },
+  "baseline_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "candidate_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "cells_requested": [
+   "ctx128-c1",
+   "ctx128-c4",
+   "ctx128-c16"
+  ],
+  "correctness": {
+   "compared_against": "baseline build",
+   "control_binary": "/root/work/si-work/sparkinfer/build/runtime/qwen3_gguf_generate",
+   "control_replays": 3,
+   "correctness": "PASS",
+   "method": "greedy replay, token-exact",
+   "runtime_reproducible": true,
+   "tokens_compared": 64
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "hardware": {
+   "count": 1,
+   "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "instances": "public_only",
+  "long_prefill": 4096,
+  "main_concurrency_scaling": {
+   "ctx128-c16": {
+    "baseline_cell": "ctx128-c1",
+    "concurrency": 16,
+    "scale": 8.159,
+    "share_of_ideal": 0.51
+   },
+   "ctx128-c4": {
+    "baseline_cell": "ctx128-c1",
+    "concurrency": 4,
+    "scale": 3.194,
+    "share_of_ideal": 0.798
+   }
+  },
+  "max_new": 64,
+  "mode": "authoritative",
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "repeats": 5,
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  }
+ },
+ "adapter_telemetry": {
+  "density": {
+   "windows_attached_to_node": 48,
+   "windows_applied": 0,
+   "layers": 48,
+   "plan_digest": "28b82579bee3a3e6",
+   "admission": "density",
+   "declines": {
+    "below_min_hit_ratio": 0,
+    "budget_exhausted": 65,
+    "no_reuse": 0,
+    "none": 0,
+    "not_supported": 15,
+    "reuse_too_far": 0,
+    "role_excluded": 32,
+    "too_large": 0
+   }
+  },
+  "reuse_order": {
+   "windows_attached_to_node": 48,
+   "windows_applied": 0,
+   "layers": 48,
+   "plan_digest": "b30866d1460f8623",
+   "admission": "reuse_order",
+   "declines": {
+    "below_min_hit_ratio": 0,
+    "budget_exhausted": 80,
+    "no_reuse": 0,
+    "none": 0,
+    "not_supported": 0,
+    "reuse_too_far": 0,
+    "role_excluded": 32,
+    "too_large": 0
+   }
+  },
+  "survival": {
+   "windows_attached_to_node": 48,
+   "windows_applied": 0,
+   "layers": 48,
+   "plan_digest": "28b82579bee3a3e6",
+   "admission": "survival",
+   "declines": {
+    "below_min_hit_ratio": 0,
+    "budget_exhausted": 65,
+    "no_reuse": 0,
+    "none": 0,
+    "not_supported": 15,
+    "reuse_too_far": 0,
+    "role_excluded": 32,
+    "too_large": 0
+   }
+  }
+ },
+ "paired_differences": {
+  "ctx128-c1": {
+   "survival_minus_density": {
+    "per_repeat_pct": [
+     -0.1449,
+     -0.1449,
+     -0.1447,
+     -0.1449,
+     0.0
+    ],
+    "median_pct": -0.1449,
+    "peak_to_peak_pct": 0.1449
+   },
+   "reuse_order_minus_density": {
+    "per_repeat_pct": [
+     0.0,
+     0.1449,
+     -0.2894,
+     0.0,
+     -0.1451
+    ],
+    "median_pct": 0.0,
+    "peak_to_peak_pct": 0.4343
+   },
+   "density_minus_control": {
+    "per_repeat_pct": [
+     -0.1447,
+     -0.289,
+     -0.1445,
+     -0.289,
+     -0.4335
+    ],
+    "median_pct": -0.289,
+    "peak_to_peak_pct": 0.289
+   },
+   "reuse_order_minus_control": {
+    "per_repeat_pct": [
+     -0.1447,
+     -0.1445,
+     -0.4335,
+     -0.289,
+     -0.578
+    ],
+    "median_pct": -0.289,
+    "peak_to_peak_pct": 0.4335
+   },
+   "survival_minus_control": {
+    "per_repeat_pct": [
+     -0.2894,
+     -0.4335,
+     -0.289,
+     -0.4335,
+     -0.4335
+    ],
+    "median_pct": -0.4335,
+    "peak_to_peak_pct": 0.1445
+   }
+  },
+  "ctx128-c16": {
+   "survival_minus_density": {
+    "per_repeat_pct": [
+     0.1242,
+     0.2304,
+     0.2309,
+     -0.1418,
+     1.1478
+    ],
+    "median_pct": 0.2304,
+    "peak_to_peak_pct": 1.2896
+   },
+   "reuse_order_minus_density": {
+    "per_repeat_pct": [
+     -0.0887,
+     0.1418,
+     0.302,
+     0.2482,
+     -0.1942
+    ],
+    "median_pct": 0.1418,
+    "peak_to_peak_pct": 0.4962
+   },
+   "density_minus_control": {
+    "per_repeat_pct": [
+     -0.1594,
+     0.1064,
+     -0.3011,
+     0.231,
+     0.1769
+    ],
+    "median_pct": 0.1064,
+    "peak_to_peak_pct": 0.5321
+   },
+   "reuse_order_minus_control": {
+    "per_repeat_pct": [
+     -0.248,
+     0.2484,
+     0.0,
+     0.4798,
+     -0.0177
+    ],
+    "median_pct": 0.0,
+    "peak_to_peak_pct": 0.7278
+   },
+   "survival_minus_control": {
+    "per_repeat_pct": [
+     -0.0354,
+     0.3371,
+     -0.0708,
+     0.0889,
+     1.3267
+    ],
+    "median_pct": 0.0889,
+    "peak_to_peak_pct": 1.3975
+   }
+  },
+  "ctx128-c4": {
+   "survival_minus_density": {
+    "per_repeat_pct": [
+     -0.091,
+     0.3189,
+     -0.1818,
+     -0.0455,
+     0.3191
+    ],
+    "median_pct": -0.0455,
+    "peak_to_peak_pct": 0.5009
+   },
+   "reuse_order_minus_density": {
+    "per_repeat_pct": [
+     -0.091,
+     0.2733,
+     -0.2273,
+     0.0,
+     0.3646
+    ],
+    "median_pct": 0.0,
+    "peak_to_peak_pct": 0.5919
+   },
+   "density_minus_control": {
+    "per_repeat_pct": [
+     -0.5882,
+     -0.5437,
+     -0.4975,
+     -0.227,
+     -0.7689
+    ],
+    "median_pct": -0.5437,
+    "peak_to_peak_pct": 0.5419
+   },
+   "reuse_order_minus_control": {
+    "per_repeat_pct": [
+     -0.6787,
+     -0.2719,
+     -0.7237,
+     -0.227,
+     -0.4071
+    ],
+    "median_pct": -0.4071,
+    "peak_to_peak_pct": 0.4967
+   },
+   "survival_minus_control": {
+    "per_repeat_pct": [
+     -0.6787,
+     -0.2266,
+     -0.6784,
+     -0.2724,
+     -0.4523
+    ],
+    "median_pct": -0.4523,
+    "peak_to_peak_pct": 0.4521
+   }
+  }
+ },
+ "findings": [
+  {
+   "finding": "The experiment did not vary what it was designed to vary.",
+   "detail": "`windows_attached_to_node` is 48 for `density`, 48 for `reuse_order` and 48 for `survival`. On tests/golden/trace_live_c1.json the two rules emit 29 and 15 persist actions -- but over the SAME 15 distinct kernels, and what reaches the device is one access-policy window per kernel node. The design was read off a plan's action count and the device counts kernels. Nothing here is evidence for or against the window-count reading of the 0.2.1 arms sweep; a next attempt has to pick arms that differ in `windows_attached_to_node` and check that counter BEFORE spending the box."
+  },
+  {
+   "finding": "Two byte-identical plans differ by more than most results this project has reported.",
+   "detail": "`survival` and `density` compile to the same plan -- identical digests on all four golden traces, asserted by tests/test_golden.cpp -- so the paired difference between them is pure noise with the policy held constant. Measured over five interleaved repeats: median -0.145% at ctx128-c1, -0.045% at ctx128-c4, +0.230% at ctx128-c16, with peak-to-peak 0.145%, 0.501% and 1.290%.\n\nAt ctx128-c1 the -0.145% is exactly one least-significant digit of the bench's own output (0.1 of 69.2 tok/s), so that cell's arm-to-arm floor is set by the printer. At ctx128-c16 it is not: 0.230% of 564 tok/s is 1.3 tok/s against a 0.018% print resolution.\n\nThe consequence is the point. That cell's persist-family ceiling is 0.249%. Two arms running the SAME plan differ by 0.230% there. No admission rule can be distinguished from another in that cell by this instrument, which is what `tools/tt-frontier generation show TTF-1 --reachable` says from arithmetic alone."
+  },
+  {
+   "finding": "The shipped family is a resolved regression at one and four sequences.",
+   "detail": "`density` against the control: -0.289% median at ctx128-c1 with all five repeats negative, -0.544% median at ctx128-c4 with all five negative and peak-to-peak 0.542%, and +0.106% median at ctx128-c16 straddling zero from -0.301% to +0.231%. `reuse_order` and `survival` agree within their own floor at every cell. Three admission rules, one answer: the family costs about half a point where it can be measured at all."
+  }
+ ],
+ "how_to_reproduce": {
+  "command": "tools/tt-frontier run --generation TTF-1 --cells ctx128-c1,ctx128-c4,ctx128-c16 --repeats 5 --main-config 'control=' --candidate-config 'density=TENSORTRANSIT=persist,TENSORTRANSIT_WINDOW_ATTACH=capture_node,TENSORTRANSIT_PLANNER=budgeted,TENSORTRANSIT_ADMISSION=density' ..."
+ }
+}
