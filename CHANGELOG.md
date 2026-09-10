@@ -125,6 +125,37 @@ telemetry, no policy — and stamps the record `runtime`, `candidate` or `unreso
 The probe runs the baseline build deliberately. A candidate that could make its own probe fail
 would get a cell it lost *dropped* rather than scored, which is strictly to its advantage.
 
+### Added — the receipt says which cells the score is entitled to rest on
+
+`frontier/TTF-1/reference.json` has always published each cell's measured control spread, per
+objective, so a contributor can see the noise before spending a week. Nothing read it back.
+
+Every receipt now carries `cell_resolution`: per cell, per objective, the change observed and
+the spread the generation **froze at calibration**, and whether the first exceeds the second.
+It changes no score — it says which cells a score is entitled to rest on. And a floor decision
+taken inside that spread is named on the receipt's face as
+`aggregation.floor_decided_inside_published_noise`, in the box, in the Markdown and in the PR
+comment.
+
+The first full TTF-1 receipt is why. It read **−99.5%**, and the cell that decided it,
+`ctx128-c32`, reached the floor on a p99 change of 183% against a control spread this project
+had itself calibrated at **481%**. Its p50 and p95 were identical to the control's in every
+repeat. A number like that is not a result and a receipt should not be able to publish it
+without saying what it rests on.
+
+The same document is what says four of TTF-1's ten cells cannot be measured as concurrency
+cells on this runtime at all — see `results/rtx5090-ttf1-first-matrix.json` and
+docs/VERDICT.md section 8.
+
+### Added — the control cannot report a collapse, but its own scaling can
+
+`concurrency_scaling()` compares each cell's control throughput with the **same-context c=1
+cell of the same matrix**, both measured minutes apart on one box. It needs no adapter
+telemetry, which is the whole point: the packed-path guard reads the adapter's counters, the
+control is unhooked, and a control that fell off the batched path cannot be seen to. Its
+arithmetic can — 1.15x for four concurrent sequences at `ctx4096-c4` against 3.20x at
+`ctx128-c4`. Recorded in provenance and attached to every attribution verdict.
+
 ### Fixed — the `baseline` arm was refused for applying no policy
 
 `RECURLOCAL` and `TENSORTRANSIT` are two spellings of one variable (docs/STABILITY.md section
