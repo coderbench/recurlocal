@@ -100,6 +100,59 @@ role-floor arbitration alone, and measures the same as it within noise.
 [`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
 maintainer has to answer before handing this to contributors.
 
+### Fixed — a cell that collapses in BOTH arms was charged to the candidate
+
+`eval/real_eval.py` refuses a concurrency measurement whose tokens did not go through the
+runtime's packed decode path, because a run that decoded one row at a time is not that cell's
+number. The guard reads the adapter's own `tokens_packed`/`tokens` counters — and the control
+arm is unhooked by construction, so it emits none and **cannot be seen to fail the same way**.
+
+The first full TTF-1 matrix lost four long-context concurrency cells to it. Charged to the
+candidate, each one is scored at the generation's cell floor, and one floor-decided cell moves
+dF through the geometric mean further than any policy in this repository ever has — a synthetic
+reproduction of the exact shape puts it at **−99.8%** against a **0%** truth.
+
+So a serving loss is now a question before it is a verdict. `tools/tt-frontier run` re-runs each
+such cell once on the **baseline** binary with the hook installed and no window — the same
+telemetry, no policy — and stamps the record `runtime`, `candidate` or `unresolved`:
+
+- `runtime`: the failure reproduced with nothing running. The cell is not scored, it is named
+  in `coverage.unservable_cells` with the probe's own evidence beside it, and the receipt is
+  PARTIAL on its face.
+- `candidate` or `unresolved`: the loss stays where it was. `unresolved` is the default, so a
+  matrix run with `--no-attribution` behaves exactly as before.
+
+The probe runs the baseline build deliberately. A candidate that could make its own probe fail
+would get a cell it lost *dropped* rather than scored, which is strictly to its advantage.
+
+### Fixed — the `baseline` arm was refused for applying no policy
+
+`RECURLOCAL` and `TENSORTRANSIT` are two spellings of one variable (docs/STABILITY.md section
+6a). Two *readings* of it is a bug: `is_control` read both, and the null-candidate guard read
+only `RECURLOCAL`. An arm configured `TENSORTRANSIT=baseline` — the hook installed with no
+window, which is how the hook's own cost is measured and is one of the five arms the
+specification names — therefore looked like a policy arm that had applied no policy, and was
+refused for doing exactly what it was asked to do. One reader now, `declared_mode`, and the
+same for a preset or planner named `baseline`. The unhooked-run message also indexed
+`env_extra['RECURLOCAL']` directly, so the guard raised `KeyError` from inside its own error
+path rather than reporting.
+
+### Added — the stats line says which tensor families the graph was made of
+
+`registry`: `recurrent_tensors`/`bytes`, `kv_tensors`/`bytes`, `weight_tensors`/`bytes`, from
+the graph in force. Zero KV tensors on an arm whose preset is *about* KV is not a weak result,
+it is an unmeasured one, and from outside a run the two are indistinguishable — which is what
+made "the second proof track cannot be measured at all" a sentence nobody could check.
+
+`eval/real_eval.py` now refuses such an arm as `UNMEASURABLE ARM`, in the same class as NULL
+CANDIDATE, and reports it as a configuration failure rather than a serving one. A `global` or
+`naive_both` arm that registered no `ModelWeight` tensor is *not* refused — that is a legitimate
+configuration — but the result carries `untested_mechanisms: ["stream"]`, because the 0.2.1 arms
+sweep measured `stream_applied = 0` on every arm and the number was read as evidence about
+coordination until the counters said otherwise. A build too old to emit `registry` is not
+accused: the guard returns without an opinion, which matters because `eval/run_from_base.sh`
+runs the *base* commit's evaluator against a candidate's build.
+
 ### Fixed — the sanitizers covered the code a submission cannot change
 
 `scripts/sanitize.sh` ran memcheck, initcheck and synccheck over the 0.1 controller and
@@ -334,6 +387,19 @@ instrument is now one list used for both the overlay and the report — `eval`,
 `adapters/sparkinfer/pin.json` — and a **CI job proves it** by submitting a tree that relaxes a
 guard, moves the runtime pin and edits a frozen generation, then asserting all three are named
 and none is used.
+
+The *other* entry point was the half nothing ran. `TT_ENTRY=frontier` routes to the staged
+`tools/tt-frontier`, and until now CI only proved `--help` worked through it. A second job now
+stages a submission that raises the frozen generation's `cell_floor` to 1.0 — which would turn
+every cell into a floor decision — computes a real receipt through the overlay, and asserts the
+receipt carries the **base** generation's checksum and is not floor-decided.
+
+### Added — `scripts/check.sh`, the whole pre-PR list in one command
+
+Build, `ctest`, re-fit the cost model against the measurements in `results/`, load every frozen
+generation, audit every ledger; `--cuda` adds the device tests and `--sanitize` adds
+compute-sanitizer over both engines. The list used to be four commands in three documents,
+which is a list people run three quarters of.
 
 ### Added — plan replay, closing the offline loop
 
