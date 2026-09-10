@@ -165,7 +165,13 @@ def measure_cell(cb_binary, model, cell_id, env, label, *, max_new, long_prefill
                          ("p95_itl_ms", r"p95_itl_ms=([0-9.]+)"),
                          ("p50_itl_ms", r"p50_itl_ms=([0-9.]+)"),
                          ("mean_itl_ms", r"mean_itl_ms=([0-9.]+)"),
-                         ("max_itl_ms", r"max_itl_ms=([0-9.]+)")):
+                         ("max_itl_ms", r"max_itl_ms=([0-9.]+)"),
+                         # How many gaps the percentiles were computed FROM. Nearest-rank p99
+                         # over N samples picks index floor(0.99N), which is the maximum for
+                         # any N below about a hundred -- so without this a receipt cannot
+                         # tell a tail from an extremum, and the first full TTF-1 matrix had a
+                         # cell whose p99 and max were the same number in two repeats of three.
+                         ("itl_samples", r"itl_samples=([0-9]+)")):
         found = re.search(pattern, out)
         if found:
             metrics[key] = float(found.group(1))
