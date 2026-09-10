@@ -660,10 +660,52 @@ class ControlReproducibility(unittest.TestCase):
 
     def test_the_runner_compares_the_control_against_itself_before_the_candidate(self):
         src = inspect.getsource(real_eval)
-        i = src.index('"control (reproducibility)"')
+        i = src.index('f"control (reproducibility {r + 1})"')
         j = src.index('"candidate")', i)
-        self.assertLess(i, j, "the second control replay must precede the candidate's")
+        self.assertLess(i, j, "the control replays must precede the candidate's")
         self.assertIn("runtime_reproducible", src)
+
+    def test_one_agreeing_pair_is_not_enough_to_certify_a_runtime(self):
+        # Nondeterminism seeded by a few ULP does not fork every replay -- it forks the ones
+        # where some argmax along the way happens to be close. Measured on the sparse-MoE
+        # checkpoint at a 256-token prompt, five unhooked single-token replays returned
+        # 8894, 8894, 25001, 25001, 8894: a single pair drawn from that agrees more often than
+        # not. A gate that asks once certifies a runtime that is not reproducible at all.
+        src = inspect.getsource(real_eval)
+        self.assertIn("gate_control_replays", src)
+        self.assertIn("all(ids == ctrl_ids for ids in ctrl_replays[1:])", src)
+
+    def test_the_replay_count_has_a_floor_of_two(self):
+        # --gate-control-replays 1 or 0 would silently disable the self-check, which is the
+        # single thing standing between "this candidate changed the output" and "this runtime
+        # disagrees with itself". The floor is not negotiable from the command line.
+        src = inspect.getsource(real_eval)
+        self.assertIn("max(2, a.gate_control_replays)", src)
+
+    def test_a_divergent_replay_is_reported_with_which_replay_found_it(self):
+        # A 2 means the runtime forked immediately; a 5 means four replays agreed before one
+        # did not -- exactly the case a single-pair check would have certified. The number is
+        # the difference between "not reproducible" and "not reproducibly reproducible", and a
+        # reader cannot tell them apart without it.
+        src = inspect.getsource(real_eval)
+        self.assertIn('correctness["control_first_divergent_replay"] = len(ctrl_replays)', src)
+
+    def test_the_verdict_names_how_many_replays_disagreed(self):
+        doc = self._doc(output_identical=None, runtime_reproducible=False)
+        doc["correctness"].update(control_replays=4, control_first_divergent_replay=4,
+                                  control_first_divergence=11)
+        reason = label.score_real(doc)["reason"]
+        self.assertIn("4 of 4 unhooked control replays", reason)
+        self.assertIn("token 11", reason)
+
+    def test_an_older_result_without_the_replay_counts_still_reads(self):
+        # Results written before the replay count existed must still produce a sentence, not a
+        # None in the middle of one.
+        doc = self._doc(output_identical=None, runtime_reproducible=False)
+        doc["correctness"]["control_first_divergence"] = 2
+        reason = label.score_real(doc)["reason"]
+        self.assertIn("two control runs", reason)
+        self.assertNotIn("None of None", reason)
 
     def test_the_runner_leaves_output_identical_none_when_the_control_is_unstable(self):
         src = inspect.getsource(real_eval)

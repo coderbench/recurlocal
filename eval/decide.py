@@ -100,12 +100,16 @@ def score_real(doc, allow_regression=False, allow_partial=False):
                       "bit-identical greedy replay against the control "
                       f"(first divergence at token {correctness.get('first_divergence')})")
         elif correctness.get("runtime_reproducible") is False:
-            reason = ("INCONCLUSIVE, and not the candidate's fault: two control runs of this "
-                      "runtime on this model disagree with each other (first divergence at "
-                      f"token {correctness.get('control_first_divergence')}), so a "
-                      "candidate/control difference cannot be attributed to the candidate. The "
-                      "exact-locality gate needs a reproducible runtime and checkpoint; this "
-                      "result cannot be scored either way")
+            n = correctness.get("control_replays")
+            which = correctness.get("control_first_divergent_replay")
+            how_many = (f"{which} of {n} unhooked control replays"
+                        if which and n else "two control runs")
+            reason = ("INCONCLUSIVE, and not the candidate's fault: "
+                      f"{how_many} of this runtime on this model disagree with each other "
+                      f"(first divergence at token {correctness.get('control_first_divergence')}"
+                      "), so a candidate/control difference cannot be attributed to the "
+                      "candidate. The exact-locality gate needs a reproducible runtime and "
+                      "checkpoint; this result cannot be scored either way")
         else:
             reason = ("the exact-locality gate did not produce a verdict; "
                       f"correctness.output_identical={correctness.get('output_identical')!r}")

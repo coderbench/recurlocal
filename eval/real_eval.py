@@ -384,6 +384,11 @@ def main():
     ap.add_argument("--gate-tokens", type=int, default=64, help="tokens compared by the exactness gate")
     ap.add_argument("--gate-prompt", default="9707,3837,1879,13,25001,752,911",
                     help="prompt token ids for the greedy replay gate")
+    ap.add_argument("--gate-control-replays", type=int, default=3, metavar="N",
+                    help="unhooked control replays that must ALL agree before the runtime is "
+                         "called reproducible. One agreeing pair is one sample, not evidence: "
+                         "a runtime that forks half its replays certifies as reproducible half "
+                         "the time. Minimum 2.")
     ap.add_argument("--candidate", nargs="+", required=True, metavar="KEY=VALUE",
                     help="environment that turns the hook on, e.g. RECURLOCAL=combined")
     ap.add_argument("--control", nargs="*", default=[], metavar="KEY=VALUE",
@@ -476,14 +481,33 @@ def main():
         # choice, and the harness called that a candidate that changed model output. The
         # candidate had changed nothing; on the dense checkpoint the same binary is
         # bit-identical across control, control and candidate.
-        ctrl_ids_2, _ = greedy_replay(a.generate, a.model, prompt, a.gate_tokens, ctrl_env,
-                                      "control (reproducibility)")
-        runtime_reproducible = ctrl_ids == ctrl_ids_2
+        #
+        # And it takes MORE THAN ONE re-run to answer. Nondeterminism seeded by a few ULP does
+        # not fork every replay -- it forks the ones where some argmax along the way happens to
+        # be close. Measured on the sparse-MoE checkpoint at a 256-token prompt, five unhooked
+        # single-token replays returned 8894, 8894, 25001, 25001, 8894: any single pair drawn
+        # from that has a better-than-even chance of agreeing and certifying a runtime that is
+        # not reproducible at all. One agreeing pair is not evidence of reproducibility; it is
+        # one sample. So the control is replayed --gate-control-replays times and EVERY replay
+        # must agree, which turns a coin flip into (1/2)^(n-1) and is the difference between a
+        # gate that answers the question and one that usually answers it.
+        ctrl_replays = [ctrl_ids]
+        for r in range(1, max(2, a.gate_control_replays)):
+            ids, _ = greedy_replay(a.generate, a.model, prompt, a.gate_tokens, ctrl_env,
+                                   f"control (reproducibility {r + 1})")
+            ctrl_replays.append(ids)
+            # Stop at the first disagreement: the question is already answered, and the
+            # remaining replays would only cost model loads to re-answer it.
+            if ids != ctrl_ids:
+                break
+        runtime_reproducible = all(ids == ctrl_ids for ids in ctrl_replays[1:])
         cand_ids, gate_stats = greedy_replay(a.generate, a.model, prompt, a.gate_tokens, cand_env, "candidate")
         identical = ctrl_ids == cand_ids
         correctness.update(tokens_compared=len(ctrl_ids),
                            prompt_ids=prompt,
                            runtime_reproducible=runtime_reproducible,
+                           control_replays=len(ctrl_replays),
+                           control_replays_requested=max(2, a.gate_control_replays),
                            candidate_matches_control=identical,
                            first_divergence=None if identical else next(
                                (i for i, (x, y) in enumerate(zip(ctrl_ids, cand_ids)) if x != y),
@@ -500,16 +524,26 @@ def main():
                                      "attributed to the candidate. Not a candidate defect and "
                                      "not scorable; the exact-locality gate needs a runtime "
                                      "and checkpoint that are reproducible.")
+            forked = next(ids for ids in ctrl_replays[1:] if ids != ctrl_ids)
             correctness["control_first_divergence"] = next(
-                (i for i, (x, y) in enumerate(zip(ctrl_ids, ctrl_ids_2)) if x != y),
-                min(len(ctrl_ids), len(ctrl_ids_2)))
+                (i for i, (x, y) in enumerate(zip(ctrl_ids, forked)) if x != y),
+                min(len(ctrl_ids), len(forked)))
+            # Which replay it took to find out. A 2 here means the runtime forked immediately;
+            # a 5 means four replays agreed before one did not, which is exactly the case a
+            # single-pair check would have certified as reproducible.
+            correctness["control_first_divergent_replay"] = len(ctrl_replays)
         if gate_stats:
             correctness["candidate_hook_active"] = hook_ran(gate_stats)
         if verbose:
             if not runtime_reproducible:
-                print(f"    CONTROL IS NOT REPRODUCIBLE: two unhooked runs diverge at token "
-                      f"{correctness['control_first_divergence']}. The gate cannot attribute a "
-                      "difference to the candidate; correctness is inconclusive, not failed.",
+                print(f"    CONTROL IS NOT REPRODUCIBLE: unhooked replay "
+                      f"{correctness['control_first_divergent_replay']} of "
+                      f"{correctness['control_replays_requested']} diverges from replay 1 at "
+                      f"token {correctness['control_first_divergence']}. The gate cannot "
+                      "attribute a difference to the candidate; correctness is inconclusive, "
+                      "not failed.", flush=True)
+            else:
+                print(f"    control reproducible over {len(ctrl_replays)} unhooked replays",
                       flush=True)
             print(f"    candidate vs control: {'identical' if identical else 'DIVERGED'} over "
                   f"{len(ctrl_ids)} tokens", flush=True)
