@@ -151,14 +151,46 @@ the three that attach the same number. The residency model prices bytes, whole-l
 survival against interference, and what the reservation costs the traffic it displaces. It has
 **no per-window term**, so it cannot express this and did not predict it.
 
-That is correlational, and the five arms are confounded — they differ in *what* they persist as
-well as in *how many* windows they use. The experiment that separates them needs no new
-mechanism and is the highest-value open problem this release leaves: hold the admission rule at
-`density` and vary **only** the window count (`--max-windows-per-kernel`, or a cap on how many
-tensors are admitted) so committed bytes and modelled residency stay matched. If the gain still
-tracks window count, the model needs a per-window cost term and *fewer, larger windows* is the
-direction to tune. If it does not, the correlation is an artifact of what these five arms
-happen to persist.
+That is correlational, and the five arms are confounded. **The experiment that was supposed to
+separate them did not**, and the reason is worth more than the experiment: `density` and
+`reuse_order` emit 29 and 15 persist actions on the recorded trace, over the *same 15 kernels*,
+and the device carries one access-policy window per kernel node — so both reported
+`windows_attached_to_node: 48` and nothing varied
+(`results/rtx5090-0.2.1-null-control.json`).
+
+**A better explanation turned up while re-recording the traces, and it is mechanistic rather
+than correlational.** Two graphs recorded from the live adapter, at one sequence and at sixteen:
+
+| | c=1 | c=16 |
+|---|--:|--:|
+| recurrent state declared | 153.9 MB | **78.4 MB** |
+| KV declared | 134.7 MB | **4.7 MB** |
+| `step_traffic_bytes` | 18.94 GB | **18.66 GB** |
+| computed ceiling | 1.00669 | **1.00679** |
+
+Sixteen sequences move *sixteen times* the recurrent state. The graph declares one sequence's
+slices at both concurrencies, so **the planner cannot tell the two workloads apart**. Three
+causes, none of them in the core: `TensorDesc::request_local` — "footprint scales with
+concurrency" — is set by every adapter and **read by nothing**; the hook hardcodes `rows = 1`
+for KV; and `TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN` is an operator-declared batch-1 constant.
+Only `recurrent_v0` reads `RuntimeState::active_requests`, and every arm of the admission axis
+uses `budgeted`, which does not.
+
+That is enough to explain the whole disagreement. A window covers one address range — row 0's
+slice — so at sixteen sequences it saves a *sixteenth* of the state traffic while *sixteen*
+sequences' worth flows past between two uses of it. The benefit divides by concurrency and the
+interference multiplies by it, and the survival term is exactly the ratio of the two. With
+concurrency out of both halves the model says the family helps at concurrency; the measurement
+says it does not; and `AdmissionRule::Survival` never fires because, counted for one sequence,
+everything survives.
+
+**Reproducible with no GPU.** `tests/golden/trace_live_c1.json` and `trace_live_c16.json` are
+both committed, `tensortransit plan` on each is the whole experiment, and
+`results/rtx5090-0.2.1-concurrency-blind-graph.json` has the numbers. It is not fixed here on
+purpose: scaling a request-local tensor's footprint and reuse distance by `active_requests`
+moves every digest in `tests/golden/plans.golden`, and a change that large belongs in a release
+that can measure its effect rather than in the one that found it. The golden tests pin the
+current behaviour on both traces, so the fix will show up as a digest change nobody can miss.
 
 ### 3.4 The tail-latency objective cannot be resolved yet, and nine repeats do not rescue it
 
