@@ -41,12 +41,31 @@ def check(name, document, schema, failures):
 
 
 def find_cli():
+    """The most recently BUILT CLI, and say which one it is.
+
+    This used to return the first path that existed, in a fixed order beginning with
+    `build/`. A developer with a stale `build/` from an earlier version therefore validated
+    THAT binary's plan output against the CURRENT schema, and the check passed while the
+    binary they were actually changing emitted fields the schema rejected. A schema test that
+    can pass against a different build is not a schema test.
+
+    Printing the path is half the fix: a check whose subject is ambiguous should say what it
+    chose.
+    """
+    found = []
     for candidate in ("build/tensortransit", "build-cpu/tensortransit",
-                      "build/bin/tensortransit"):
+                      "build/bin/tensortransit", "build-cuda/tensortransit"):
         path = os.path.join(ROOT, candidate)
         if os.path.isfile(path) and os.access(path, os.X_OK):
-            return path
-    return None
+            found.append(path)
+    if not found:
+        return None
+    newest = max(found, key=os.path.getmtime)
+    if len(found) > 1:
+        others = [os.path.relpath(p, ROOT) for p in found if p != newest]
+        print(f"note: several CLI builds present; using the newest "
+              f"({os.path.relpath(newest, ROOT)}), ignoring {', '.join(others)}")
+    return newest
 
 
 def main():
@@ -85,6 +104,8 @@ def main():
     plan_schema = load(os.path.join(ROOT, "schemas/plan.schema.json"))
     cli = find_cli()
     if cli:
+        version = subprocess.run([cli, "version"], capture_output=True, text=True).stdout.strip()
+        print(f"plan schema checked against {os.path.relpath(cli, ROOT)} ({version})")
         for preset_args in (["--planner", "budgeted", "--admission", "density"],
                             ["--planner", "budgeted", "--admission", "role_floor"],
                             ["--planner", "recurrent_v0"],

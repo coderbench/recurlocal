@@ -26,6 +26,16 @@
         "predicted_traffic_share": {"type": "number", "minimum": 0, "maximum": 1},
         "predicted_throughput_ratio": {"type": "number", "minimum": 0},
         "ceiling_throughput_ratio": {"type": "number", "minimum": 0},
+        "resident_bytes": {"type": "integer", "minimum": 0,
+          "description": "What the plan asks the persisting partition to hold: quantised to cache lines and charged once per tensor. NOT committed_bytes -- per-consumer binding commits the same region several times, and a hit ratio means a committed region is not wholly resident."},
+        "stream_relieved_bytes": {"type": "integer", "minimum": 0,
+          "description": "Interference a Stream action takes out of the picture. Zero under the linear model, which is why a Stream action was priced at zero there."},
+        "predicted_gross_saved_bytes": {"type": "integer", "minimum": 0,
+          "description": "The saving BEFORE the reservation's own cost. Kept apart from the net figure so a reader can see a plan whose policy works and whose set-aside is not worth it -- which is what the concurrency arms measure, and a single net number cannot say."},
+        "reservation_cost_bytes": {"type": "integer", "minimum": 0,
+          "description": "What the set-aside costs the traffic it displaces. The only term that can make a prediction negative, and the concurrency arms are negative."},
+        "cost_model": {"enum": ["linear", "residency"],
+          "description": "Which model produced predicted_saved_bytes, recorded next to the number: the two can differ by an order of magnitude on the same plan, and a prediction whose model is not on the page is this project's recurring failure."},
         "basis": {"const": "model"},
         "note": {"type": "string"}
       }
