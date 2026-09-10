@@ -102,6 +102,52 @@ def parse_cell(cell_id: str):
     return int(match.group(1)), int(match.group(2))
 
 
+def wait_for_free_device(settle_seconds, *, timeout=180.0, verbose=False):
+    """Wait for the previous run's weights to be released, THEN settle.
+
+    The box operating rule is that two evals racing for VRAM turn the loser into a
+    plausible-looking number, and the remedy has been a fixed sleep between runs. A fixed sleep
+    is the crude form of the right idea: what has to be true before the next 18 GB allocation is
+    that the device is free, and that is a condition rather than a duration. Measured on the
+    reference box, a 35-second settle over a 60-run matrix is 35 minutes of a GPU reading 0%
+    utilisation, and the device is usually free within two.
+
+    So: poll until no compute process holds the device, then settle for `settle_seconds`. The
+    guarantee is stronger than the old one -- the old sleep could expire while a process was
+    still holding memory -- and the wall time is shorter.
+
+    Falls back to the plain sleep wherever `nvidia-smi` cannot be run, because a harness that
+    skipped the wait when it could not check would be the failure this exists to prevent.
+    """
+    if not settle_seconds:
+        return {"waited_for_device_s": 0.0, "settled_s": 0.0, "method": "disabled"}
+    started = time.time()
+    method = "device-free"
+    while True:
+        try:
+            done = subprocess.run(
+                ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=20)
+        except (OSError, subprocess.SubprocessError):
+            method = "fixed sleep (nvidia-smi unavailable)"
+            break
+        if done.returncode != 0:
+            method = "fixed sleep (nvidia-smi failed)"
+            break
+        if not done.stdout.strip():
+            break
+        if time.time() - started > timeout:
+            method = "device still busy after timeout"
+            break
+        time.sleep(0.5)
+    waited = time.time() - started
+    if verbose and waited > 1.0:
+        print(f"    waited {waited:.1f}s for the device to clear", flush=True)
+    time.sleep(settle_seconds)
+    return {"waited_for_device_s": round(waited, 2),
+            "settled_s": float(settle_seconds), "method": method}
+
+
 def measure_cell(cb_binary, model, cell_id, env, label, *, max_new, long_prefill,
                  expect_policy, verbose=False):
     """One configuration, one cell, once. Returns (metrics, status, detail).
@@ -198,10 +244,11 @@ def run_matrix(*, generation, cells, model, variants, repeats, max_new, long_pre
             for variant in ("main", "candidate"):
                 spec = variants[variant]
                 for config in spec["configs"]:
-                    if settle_seconds:
-                        # The box operating rule that cost this project a result: two evals
-                        # racing for VRAM turn the loser into a plausible-looking number.
-                        time.sleep(settle_seconds)
+                    # The box operating rule that cost this project a result: two evals racing
+                    # for VRAM turn the loser into a plausible-looking number. Waiting for the
+                    # device to be FREE and then settling is a stronger guarantee than sleeping
+                    # and hoping, and it is faster.
+                    wait_for_free_device(settle_seconds, verbose=verbose)
                     label = f"{variant}/{config['config_id']}/{cell}/r{repeat}"
                     if verbose:
                         print(f">> {label}", flush=True)
@@ -416,8 +463,7 @@ def attribute_serving_losses(*, cells, model, baseline_cb_binary, max_new, long_
     """
     verdicts = {}
     for cell in cells:
-        if settle_seconds:
-            time.sleep(settle_seconds)
+        wait_for_free_device(settle_seconds, verbose=verbose)
         label = f"attribution/baseline/{cell}"
         if verbose:
             print(f">> {label}", flush=True)

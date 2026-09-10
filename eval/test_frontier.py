@@ -414,6 +414,38 @@ def test_attribution_of_a_serving_loss():
         check("credits" in str(exc), "a PARTIAL receipt that credits a gain does not verify")
 
 
+def test_the_settle_waits_for_the_device_rather_than_for_a_clock():
+    """A fixed sleep between runs is the crude form of the right idea.
+
+    What has to be true before the next 18 GB allocation is that the device is FREE, which is a
+    condition, not a duration -- and a sleep can expire while a process still holds memory,
+    which is the failure the sleep exists to prevent. Measured on the reference box a 35-second
+    settle over a 60-run matrix is 35 minutes of a GPU reading 0% utilisation.
+
+    The fallback matters as much as the wait: a harness that skipped the check when it could not
+    run `nvidia-smi` would drop the guarantee exactly where it cannot verify it, so it sleeps.
+    """
+    section("the settle waits for a condition")
+    import time as _time
+    from frontier.runner import wait_for_free_device
+
+    check(wait_for_free_device(0)["method"] == "disabled",
+          "a zero settle does nothing at all, so an operator can turn it off")
+
+    started = _time.time()
+    record = wait_for_free_device(1)
+    elapsed = _time.time() - started
+    check(elapsed >= 1.0, "and a non-zero settle still settles")
+    check(record["settled_s"] == 1.0, "for the time it was asked to")
+    check(record["method"] in ("device-free", "fixed sleep (nvidia-smi unavailable)",
+                               "fixed sleep (nvidia-smi failed)",
+                               "device still busy after timeout"),
+          f"and says which of the four things it did (got {record['method']!r})")
+    check(record["waited_for_device_s"] >= 0.0,
+          "reporting how long the device took to clear, which is the number that says whether "
+          "the fixed part is doing anything")
+
+
 def test_a_run_that_scheduled_serially_is_named_and_still_scored():
     """The c=32 collapse this repository has carried as unexplained since 0.1, diagnosed.
 
@@ -940,6 +972,7 @@ def test_reports_render():
 def main():
     for test in (test_normalization, test_pareto, test_hypervolume, test_aggregate,
                  test_confidence, test_generation, test_attribution_of_a_serving_loss,
+                 test_the_settle_waits_for_the_device_rather_than_for_a_clock,
                  test_a_run_that_scheduled_serially_is_named_and_still_scored,
                  test_a_floor_decision_inside_the_published_noise_is_named,
                  test_compute_cases, test_compute_guards,

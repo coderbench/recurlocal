@@ -390,6 +390,23 @@ from the base commit; `frontier/TTF-N/` keeps a copy beside the receipts. Both a
 definition, the checksum covers it, and a receipt whose generation moved does not verify — so
 two copies that drifted would make a ledger unauditable in a way nothing else here would catch.
 
+### Changed — the settle between runs waits for the device instead of for a clock
+
+Two evals racing for VRAM turn the loser into a plausible-looking number, and the remedy has
+been a fixed sleep between runs. A fixed sleep is the crude form of the right idea: what has to
+be true before the next 18 GB allocation is that the device is **free**, which is a condition
+rather than a duration — and a sleep can expire while a process is still holding memory, which
+is the failure it exists to prevent.
+
+`wait_for_free_device` polls `nvidia-smi --query-compute-apps` until nothing holds the device,
+then settles for the configured time. Stronger guarantee, shorter wall clock: measured on the
+reference box, twelve consecutive one-second samples of `utilization.gpu` during a 54-run matrix
+all read **0%**, and a completed 18-run phase spent 353 of 962 seconds inside a bench process —
+37%, the rest sleeping. The device is usually free within two seconds.
+
+Where `nvidia-smi` cannot be run it falls back to the plain sleep, because a harness that
+skipped the check exactly where it could not verify it would be dropping the guarantee.
+
 ### Changed — the authoritative runner defaults to five repeats, not the generation's minimum
 
 Three is a floor and it is not a recommendation. The same arm measured **+0.07%** and **−0.39%**
