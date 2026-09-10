@@ -1,0 +1,202 @@
+{
+ "calibrated_from": "/tmp/claude-1006/-home-coder-bench-recurlocal/5fd7f932-2c71-4722-9ad0-d1b7fc069456/scratchpad/ttf2-calibration.json",
+ "cell_bounds": {
+  "ctx128-c1": {
+   "goodput_tps": {
+    "control_spread_pct": 0.3986,
+    "hi": 903.2,
+    "lo": 0.0,
+    "measured_control": 225.8,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 4.1415,
+    "hi": 0.0,
+    "lo": 16.878,
+    "measured_control": 5.626,
+    "repeats": 3
+   }
+  },
+  "ctx128-c16": {
+   "goodput_tps": {
+    "control_spread_pct": 0.4393,
+    "hi": 1274.8,
+    "lo": 0.0,
+    "measured_control": 318.7,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 7.1879,
+    "hi": 0.0,
+    "lo": 301.59,
+    "measured_control": 100.53,
+    "repeats": 3
+   }
+  },
+  "ctx128-c32": {
+   "goodput_tps": {
+    "control_spread_pct": 0.1233,
+    "hi": 1298.0,
+    "lo": 0.0,
+    "measured_control": 324.5,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 2.3212,
+    "hi": 0.0,
+    "lo": 565.05,
+    "measured_control": 188.35,
+    "repeats": 3
+   }
+  },
+  "ctx128-c4": {
+   "goodput_tps": {
+    "control_spread_pct": 0.3477,
+    "hi": 1150.4,
+    "lo": 0.0,
+    "measured_control": 287.6,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 2.0692,
+    "hi": 0.0,
+    "lo": 79.305,
+    "measured_control": 26.435,
+    "repeats": 3
+   }
+  },
+  "ctx16384-c1": {
+   "goodput_tps": {
+    "control_spread_pct": 0.4573,
+    "hi": 262.4,
+    "lo": 0.0,
+    "measured_control": 65.6,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 3.7037,
+    "hi": 0.0,
+    "lo": 17.496,
+    "measured_control": 5.832,
+    "repeats": 3
+   }
+  },
+  "ctx16384-c16": {
+   "goodput_tps": {
+    "control_spread_pct": 0.1025,
+    "hi": 390.4,
+    "lo": 0.0,
+    "measured_control": 97.6,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 3.532,
+    "hi": 0.0,
+    "lo": 315.546,
+    "measured_control": 105.182,
+    "repeats": 3
+   }
+  },
+  "ctx16384-c32": {
+   "goodput_tps": {
+    "control_spread_pct": 0.202,
+    "hi": 396.0,
+    "lo": 0.0,
+    "measured_control": 99.0,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 29.6085,
+    "hi": 0.0,
+    "lo": 623.526,
+    "measured_control": 207.842,
+    "repeats": 3
+   }
+  },
+  "ctx16384-c4": {
+   "goodput_tps": {
+    "control_spread_pct": 0.2265,
+    "hi": 353.2,
+    "lo": 0.0,
+    "measured_control": 88.3,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 2.4412,
+    "hi": 0.0,
+    "lo": 16.836,
+    "measured_control": 5.612,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c1": {
+   "goodput_tps": {
+    "control_spread_pct": 0.4502,
+    "hi": 710.8,
+    "lo": 0.0,
+    "measured_control": 177.7,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 1.7167,
+    "hi": 0.0,
+    "lo": 16.776,
+    "measured_control": 5.592,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c16": {
+   "goodput_tps": {
+    "control_spread_pct": 0.1806,
+    "hi": 886.0,
+    "lo": 0.0,
+    "measured_control": 221.5,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 4.5941,
+    "hi": 0.0,
+    "lo": 319.584,
+    "measured_control": 106.528,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c32": {
+   "goodput_tps": {
+    "control_spread_pct": 0.179,
+    "hi": 894.0,
+    "lo": 0.0,
+    "measured_control": 223.5,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 31.77,
+    "hi": 0.0,
+    "lo": 587.403,
+    "measured_control": 195.801,
+    "repeats": 3
+   }
+  },
+  "ctx4096-c4": {
+   "goodput_tps": {
+    "control_spread_pct": 0.1427,
+    "hi": 840.8,
+    "lo": 0.0,
+    "measured_control": 210.2,
+    "repeats": 3
+   },
+   "p99_itl_ms": {
+    "control_spread_pct": 3.5765,
+    "hi": 0.0,
+    "lo": 16.944,
+    "measured_control": 5.648,
+    "repeats": 3
+   }
+  }
+ },
+ "generation": "TTF-2",
+ "headroom_multiple": 4.0,
+ "note": "Frozen for the lifetime of this generation. `measured_control` is recorded so a reader can see where the control sat inside the bounds; it is not used in scoring. A maximized objective anchored at lo=0 contributes its own ratio to dF, which keeps this generation's numbers comparable with the throughput figures in results/.",
+ "slo_multiple": 3.0,
+ "unmeasurable_cells": {}
+}
