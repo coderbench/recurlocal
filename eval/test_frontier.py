@@ -412,6 +412,43 @@ def test_regression_guard():
           "and nothing is credited")
 
 
+def test_receipt_and_result_match_their_schemas():
+    section("schemas")
+    try:
+        import jsonschema
+    except ImportError:
+        check(True, "jsonschema is absent; the schema check is skipped (CI installs it)")
+        return
+    generation = make_generation()
+    flat = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+            "ctx128-c4": {"base": (500.0, 50.0, "OK")}}
+    better = {"ctx128-c1": {"base": (600.0, 40.0, "OK")},
+              "ctx128-c4": {"base": (620.0, 41.0, "OK")}}
+    raw = matrix(flat, better)
+    result = compute_frontier(generation, raw)
+    receipt = build_receipt(generation=generation, computation=result, correctness="PASS",
+                            provenance={"baseline_commit": "aaa", "candidate_commit": "bbb"},
+                            pr=1)
+
+    root = Path(__file__).resolve().parent.parent / "schemas"
+    receipt_schema = json.loads((root / "receipt.schema.json").read_text())
+    result_schema = json.loads((root / "frontier_result.schema.json").read_text())
+    try:
+        jsonschema.Draft202012Validator(receipt_schema).validate(receipt)
+        check(True, "a receipt validates against schemas/receipt.schema.json")
+    except jsonschema.ValidationError as exc:
+        check(False, f"receipt does not match its schema: {exc.message} at {list(exc.path)}")
+
+    document = {"result_schema_version": 1, "provenance": {},
+                "results": [dict(r, status=r.get("status", "OK"),
+                                 result_schema_version=1) for r in raw]}
+    try:
+        jsonschema.Draft202012Validator(result_schema).validate(document)
+        check(True, "raw results validate against schemas/frontier_result.schema.json")
+    except jsonschema.ValidationError as exc:
+        check(False, f"raw results do not match the schema: {exc.message} at {list(exc.path)}")
+
+
 def test_receipt_and_ledger():
     section("receipt and ledger")
     generation = make_generation()
@@ -559,7 +596,8 @@ def test_reports_render():
 def main():
     for test in (test_normalization, test_pareto, test_hypervolume, test_aggregate,
                  test_confidence, test_generation, test_compute_cases, test_compute_guards,
-                 test_regression_guard, test_receipt_and_ledger, test_status_derivation,
+                 test_regression_guard, test_receipt_and_result_match_their_schemas,
+                 test_receipt_and_ledger, test_status_derivation,
                  test_no_size_bands, test_reports_render):
         test()
     print()

@@ -96,6 +96,45 @@ during capture is absent from every replay while its telemetry still counts it a
 `persist_attached_to_node` is the only counter that can distinguish a policy that ran from
 one that merely reported itself.
 
+## Two engines, one binary
+
+The SparkInfer adapter carries both the 0.1 controller and the pipeline above, selected by
+`TENSORTRANSIT_ENGINE`:
+
+```text
+TENSORTRANSIT_ENGINE=transit   TensorRegistry -> TransitGraph -> ITransitPlanner
+                               -> CudaTransitExecutor          (the default)
+TENSORTRANSIT_ENGINE=v0        CudaLocalityController          (the 0.1 policy, the control)
+```
+
+Both, in one binary, deliberately. Until 0.2.1 the adapter drove `v0` directly and the whole
+pipeline above was reachable only from the CLI and the tests, so a contributor who wrote a
+planner changed nothing about the number the evaluator prints. Replacing `v0` outright would
+have made the migration unverifiable — "it changed nothing" would have been an assertion.
+Keeping both makes it an A/B against one model load on one box, and
+`results/rtx5090-0.2.1-rewiring-check.json` is that A/B: token-exact on both, 96 windows
+attached to captured graph nodes on both, zero capture invalidations on both, and gains that
+overlap inside their own noise floors.
+
+What the adapter registers on the transit path:
+
+| declared | as | why |
+|---|---|---|
+| per recurrent layer: the fp32 matrix state and the bf16 conv window | `RecurrentState`, `ReadWrite` | one global read and one global write per layer, which is what the pinned runtime's own kernel comment says |
+| per full-attention layer: the K and V slices actually read this step | `KVCache`, `Read` | live bytes, not the pool stride: the pool is sized for the longest context the server will ever hold |
+| per layer, when the operator declares a step figure | `ModelWeight` | the denominator and the interference. Fabricated address, `device = -1`, so the executor refuses to let it reach a driver |
+
+One kernel per **absolute layer index**, in order, so a hybrid model's attention layers sit
+between two recurrent ones where they belong — reuse distance in bytes is a question about what
+runs in between, and a graph that recorded only the recurrent layers would answer it with the
+attention traffic missing.
+
+The window is delivered under `max_windows_per_kernel = 1`, because that is what the hardware
+does: CUDA binds one access-policy window to a stream, a launch or a graph node at a time. A
+plan marking two regions before one kernel is not describing something the device can do — the
+second replaces the first, the first is silently absent, and the telemetry counts two applied
+windows for one delivered policy.
+
 ## Where RecurLocal went
 
 RecurLocal is now the recurrent-state workload inside TensorTransit, and the migration is

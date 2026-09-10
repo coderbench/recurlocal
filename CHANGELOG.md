@@ -5,6 +5,255 @@ Notable changes to TensorTransit (RecurLocal through 0.1). Format loosely follow
 
 No performance claim appears here without a measurement behind it. See `docs/FRONTIER.md`.
 
+## [0.2.1] - The core in the measured path, and a scoring regime that can be reached
+
+0.2.0 built the generalization and left it disconnected from every measured number. This
+release connects it, and then changes what the numbers are scored against — because once the
+surface was reachable it became obvious that the scoring regime pointing at it was describing
+a prize that does not exist on this hardware.
+
+### Fixed — the blocker: the new core was in no measured path
+
+`adapters/sparkinfer/tensortransit_sparkinfer.cpp` and
+`workloads/recurrent/synthetic/cuda_bench.cu` both drove the 0.1 `CudaLocalityController`
+directly. `TransitRuntime`, `TensorRegistry`, `TransitGraph`, `ITransitPlanner` and
+`CudaTransitExecutor` were reachable only from the CLI and the tests. **A contributor who wrote
+a planner or an admission rule changed nothing about the measured end-to-end number**, so the
+entire competition surface was decorative.
+
+Both now route through Registry -> Graph -> Planner -> Executor. The 0.1 controller is kept as
+a second engine, `TENSORTRANSIT_ENGINE=v0`, in the same binary — not out of caution, but
+because it is the only way to check the migration rather than assert it.
+
+**The check, on hardware, in one session, one box, one model load** — the only variable between
+the two rows is `TENSORTRANSIT_ENGINE` (`results/rtx5090-0.2.1-rewiring-check.json`):
+
+| engine | gain | noise floor | resolved | token-exact | windows attached to node | capture invalidations |
+|---|--:|--:|:--:|:--:|--:|--:|
+| `v0` (the 0.1 controller) | +0.115% | 0.075% | yes | yes | 96 | 0 |
+| `transit` (Registry -> Graph -> Planner -> Executor) | +0.145% | 0.109% | yes | yes | 96 | 0 |
+
+0.2.0 published +0.13% at a 0.06% floor for this arm. The two engines overlap inside their own
+noise floors, and `windows_attached_to_node: 96` pins the delivered policy rather than its
+telemetry: 2 graph captures x 48 recurrent layers, one window each. Persisting both the matrix
+and the convolution state would read 192.
+
+On the synthetic benchmark the planner choice now moves the measured number:
+
+```console
+$ tensortransit_bench persist --engine transit --planner budgeted --admission quota ...
+  recurrent_v0/density     ms/tok=1.0397 actions=96 declines=48 digest=c806496b6cc08583
+  budgeted/quota           ms/tok=1.0497 actions= 8 declines=92 digest=74c88ab783857793
+  budgeted/proportional    ms/tok=1.0703 actions=96 declines=48 digest=a24d47d772c47fa3
+```
+
+### Added — KV is registered, so the second proof track can be measured at all
+
+`declare_kv_cache()` exposes SparkInfer's paged K and V pools, and
+`before_attention_layer`/`after_attention_layer` bracket the full-attention layers. Before
+this no adapter exposed KV to the registry, so the specification's second proof track — does
+one planner arbitrating a shared budget across two tensor classes beat two independent
+policies — **could not be measured**. That is different from not having been measured, and the
+difference is the point.
+
+The live run now reports `recurrent_tensors: 48, kv_tensors: 16, kv_declared: true`.
+
+Live bytes are declared, not the pool stride: the pool is sized for the longest context the
+server will ever hold, and a decode step at 128 tokens reads a thousandth of it. Declaring the
+stride would have put a KV footprint two orders of magnitude too large into every ceiling.
+
+### Changed — a cost model that can express coordination
+
+The 0.2.0 model was `saved = reused_bytes x (granted/bytes) x hit_ratio`, linear in the
+resident share. Total saving was then a fractional knapsack, greedy-on-density was **provably**
+optimal, and therefore no admission rule could beat `density` and the whole axis measured
+nothing. That was an artifact of the model, not a finding about caches.
+
+`CostModel::Residency` carries the three terms `docs/evaluation.md` named as missing:
+
+```text
+resident(t) = whole cache lines of  min(granted, bytes) x hit_ratio
+survival(t) = min(1, (resident(t) / reuse_distance_bytes(t)) ^ beta)
+saved(t)    = reused_bytes(t) x (resident(t)/bytes) x survival(t)
+              -  eta x (resident_total / L2) x step_traffic
+```
+
+`beta = 0.1108`, `eta = 0.00086`, fitted once against every paired hardware measurement of the
+`persist` arm in `results/`, across two model architectures, against the POLICY effect
+(`persist` minus `baseline`, so the hook's own overhead is not charged to the model).
+
+```console
+$ python3 eval/cost_model_fit.py
+  residency model : rms 0.2713pp, 8/8 arms inside their noise floor
+  linear model    : rms 0.4847pp, 6/8 arms inside their noise floor
+```
+
+Both arms that actually *resolved* are predicted to within a fifth of their own noise floor:
+dense batch-1 +0.1418% against +0.1393% measured, MoE batch-1 +1.2015% against +1.2079%.
+
+**Why a power law and not an exponential**, which is the part that had to be settled rather
+than chosen: an exponential cannot fit those two arms at once. Dense batch-1 sits at a
+reuse-distance-to-capacity ratio of 368 and delivers 0.255 of its ceiling; MoE batch-1 sits at
+71 and delivers 0.415. An exponential needs its coefficient to differ by 3.4x between them; a
+power law needs `beta = 0.140` and `0.115`, the same number within the spread. It is also the
+classic shape of a cache miss-ratio curve.
+
+**The consequence is the point.** `saved` goes as `resident^(1+beta)` — superlinear — so for a
+fixed budget spread over `n` tensors the total goes as `n^(-beta)`. The objective is convex,
+its optimum is at a vertex, and concentrating beats spreading. The shipped recurrent policy
+spreads (`HotSetPolicy::Proportional`), and on the golden KV trace that is 23x worse than
+concentrating under this model against 10.5x under the linear one.
+
+`CostModel::Linear` remains, as the control. `--cost-model linear` is how a contributor checks
+whether a result is about the policy or about the model, and a test asserts that
+`AdmissionRule::Survival` reduces to `density` exactly under it.
+
+### Added — `AdmissionRule::Survival`
+
+Greedy on MARGINAL saving under the cost model, stopping when the next admission would make
+the plan worse. Under `Linear` the marginal value never decreases and it is exactly `Density`;
+under `Residency` it is not, because a fractional knapsack can never say "stop".
+
+### Added — `max_windows_per_kernel`, and `WindowPreference`
+
+CUDA binds ONE access-policy window to a stream, a launch or a graph node at a time. A plan
+marking two regions before one kernel was not describing something the hardware can do: the
+second replaced the first, the first was silently absent, and the executor's telemetry counted
+two applied windows for one delivered policy. The plan now says which one it meant, where a
+CPU test can read it, and dropped bindings become `not_supported` declines with the forgone
+saving attributed.
+
+### Fixed — `Stream` was dead code in the only regime that matters
+
+Two independent reasons, both of which had to go:
+
+1. `emit_stream_hints` required `!profile.has_reuse()`. Over a **cyclic** decode window every
+   tensor is read again next iteration, including the weight stream, so nothing was ever
+   streamable. The test is now survival, not reuse: a tensor whose reuse distance exceeds the
+   whole budget cannot be kept whatever anybody does, so telling it to get out of the way is
+   free. Parameter-free, and the same criterion `screen()` declines a candidate on.
+2. The CUDA executor **skipped** a Stream action under graph capture. A streaming window is
+   the same host-side stream attribute a persisting one is, so under capture it was absent
+   from every replay. It now reaches the node, exactly as a Persist does.
+
+Together these mean the arm that tells the weight stream to get out of the way was, until now,
+telling it nothing. On the golden traces the global arm's plan is finally distinct from
+`recurrent_only`'s — they had the same digest.
+
+### Changed — Frontier Gain replaces the impact bands
+
+**The `XS`/`S`/`M`/`L`/`XL` table is gone.** Its lowest paying step was 2% weighted throughput
+gain; the physical ceiling for the whole shipped policy family is **0.52%** on the scored model
+and **1.94%** on the best model this project has ever found. A submission could remove every
+recoverable byte of recurrent traffic and score `none`. A band structure whose lowest step
+sits above what the hardware can deliver is not strict, it is broken, and what it told
+contributors was false.
+
+What replaces it is the **Transit Frontier Ledger** (`eval/frontier/`, `tools/tt-frontier`,
+`frontier/`):
+
+```text
+Frontier Gain: dF = F(candidate) / F(main) - 1
+```
+
+`F` is the normalized Pareto hypervolume of the serving frontier — goodput against p99
+inter-token latency — aggregated over a frozen generation's workload cells by weighted
+geometric mean. Continuous; no bands anywhere, and a golden test asserts that no rendering of a
+receipt assigns one.
+
+- **Frozen generations.** `TTF-1` freezes the model, the runtime commit, the hardware, the
+  cells, the published weights, the objectives, the normalization bounds, the SLOs, the
+  reference point, the repeat policy, the confidence method, the guard and the hidden-seed
+  rules. Its SHA-256 is in every receipt, and `receipt verify` refuses one whose generation has
+  moved.
+- **Per-cell bounds, calibrated on hardware.** Cells differ in absolute throughput by more than
+  ten times, so one global bound would make the geometric mean an implicit weighting by
+  throughput regime that nobody chose. A maximized objective is anchored at `lo = 0`, which
+  makes its contribution to `dF` exactly its own ratio — so a TTF-1 number stays comparable
+  with every throughput figure in `results/`.
+- **Confidence as a gate, not a multiplier.** Paired bootstrap over interleaved repeats, frozen
+  seed and resample count, so a receipt is reproducible bit for bit from its raw results. A 99%
+  lower bound at or below zero is `INCONCLUSIVE`.
+- **A failure is the absence of an operating point.** An OOM, a timeout, or a fall off the
+  batched decode path produces no point at all rather than a small positive score.
+- **Append-only ledger.** A finalized receipt is never rewritten; a correction is a new receipt
+  naming what it supersedes and why, and `ledger audit` proves it.
+- **Generated, never typed.** `tt-frontier report` produces the Markdown report, the PR comment
+  and the terminal box from the receipt, and the receipt from the raw results.
+
+`eval/decide.py` keeps every guard it had and now speaks the same status vocabulary. Its
+`GO_NO_GO` table survives, because "should this research direction continue" is the project's
+decision about itself and not a label attached to somebody's submission.
+
+### Added — TTF-1, and what calibration found
+
+Ten cells, not twelve. The 4x3 matrix was cut down by **measurement**, and
+`frontier/TTF-1/reference.json` carries the evidence: `ctx16384-c16` loses 30 of its requests
+to a device OOM in every repeat (128 decode tokens of an expected 1024) and `ctx16384-c32`
+cannot even load the model — 32 sequences of 16K context plus a 17.9 GB checkpoint does not fit
+32 GB of VRAM.
+
+Per-cell control spreads are published rather than implied. They are the reason the
+protected-workload guard protects `ctx128-c1` and `ctx128-c16` and **not** the c32 arms:
+`ctx4096-c32`'s own control spread is 39% across three interleaved repeats. A 5% guard against
+an arm whose noise is 39% does not protect anything; it rejects good submissions at random.
+
+### Added — a trusted, keyless, ephemeral GPU runner
+
+`scripts/trusted_eval.sh` and `.github/workflows/frontier-eval.yml`. Fresh workspace per run,
+wiped afterwards; the instrument overlaid from the BASELINE into both trees; the ledger written
+outside the workspace; and a refusal to run at all with an ssh-agent or a cloud token in the
+environment, because a credential in scope is a credential the submission has. Deliberately
+`workflow_dispatch` and not `pull_request`: a performance PR is arbitrary CUDA from a stranger.
+
+### Fixed — `eval/run_from_base.sh` was broken against the 0.2 layout
+
+It diffed `eval bench` and archived `eval`. `bench/` has not existed since 0.2.0, so a
+submission's changes to the workload definitions were neither discarded nor reported. The
+instrument is now one list used for both the overlay and the report — `eval`,
+`tools/tt-frontier`, `schemas`, `configs`, `tests/golden`, `workloads` and
+`adapters/sparkinfer/pin.json` — and a **CI job proves it** by submitting a tree that relaxes a
+guard, moves the runtime pin and edits a frozen generation, then asserting all three are named
+and none is used.
+
+### Added — plan replay, closing the offline loop
+
+`tensortransit replay <plan.json> --trace <trace.json>`. `read_plan()` reads a serialized plan
+back and `TransitPlan::rebind()` resolves its regions against a live tensor table by id — a
+serialized plan carries no pointer by design, so the rebind is what makes it executable, and it
+fails loudly on a tensor the registry does not know rather than skipping it. Regions are clamped
+to the descriptor's allocation, so a file cannot widen a window past memory the runtime owns.
+
+### Added — the overhead budget is gated, not described
+
+`tests/test_overhead_budget.cpp` asserts the specification's 0.5%-of-token-latency budget on
+the real 64-layer Qwen3.8-27B decode shape. It checks two different failures: the layer being
+slow, and the plan cache not working so the planner runs every token — which is the single most
+likely way this layer costs more than it saves and is invisible in a throughput number.
+Measured: 0.045–0.078% for planner plus executor, 0.19% for a whole bracketed token.
+
+### Fixed — `TransitGraph::live_bytes_at` was quartic on the compile path
+
+It resolved each edge's endpoints by scanning every use, for every edge, for every profile —
+and `build()` called it once per kernel. `build()` now accumulates the whole live-set curve in
+O(edges) and the query is a binary search into it.
+
+### Added — live trace recording
+
+`TENSORTRANSIT_TRACE_OUT` writes the recorded Transit Graph once, after the first compile. The
+golden traces carry measured recurrent geometry and a *synthetic* KV block size with weight
+traffic divided evenly across layers; a trace recorded here has the runtime's real KV slice
+sizes and real per-layer demand.
+
+### Added — percentile inter-token latency in the runtime bench
+
+The pinned `qwen3_gguf_cb_bench` reported a mean and a max. TTF-1 scores p99, and a tail cannot
+be stood in for by a mean: a policy that halves the median while doubling the 99th makes
+serving worse and the mean better. Gaps are collected into a request-local vector and merged
+once when the request finishes, so the hot path takes no lock — a mutex per decoded token
+across N threads would perturb the very latency being measured. Insertions only; `mean_itl_ms`
+and `max_itl_ms` are untouched, so every command in `results/` still means what it meant.
+
 ## [0.2.0] - RecurLocal becomes TensorTransit
 
 The recurrent-state locality library is now the first workload inside an engine-independent,

@@ -30,29 +30,55 @@ residency, +1.69% traffic ceiling, +0.68% persist ceiling. And a negative result
 beats the naive both-persistent arm by 10x and cannot beat the best single-role arm. See
 [evaluation.md](evaluation.md).
 
+## v0.2.1 — The core in the measured path, and a scoring regime that can be reached
+
+0.2.0 built the generalization and left it disconnected. The adapter and the synthetic
+benchmark both drove the 0.1 `CudaLocalityController` directly, so `TransitRuntime`,
+`TensorRegistry`, `TransitGraph`, `ITransitPlanner` and `CudaTransitExecutor` were reachable
+only from the CLI and the tests. A contributor who wrote a planner changed **nothing** about
+the measured end-to-end number, which made the entire competition surface decorative.
+
+- **The adapter routes through `TransitRuntime` + `CudaTransitExecutor`**, with the 0.1
+  controller kept as a second engine selected by `TENSORTRANSIT_ENGINE` so the two are
+  comparable in one process against one model load. Verified: token-exact, 96 windows attached
+  to captured graph nodes, zero capture invalidations, and the two engines' gains overlap
+  inside their own noise floors (`results/rtx5090-0.2.1-rewiring-check.json`).
+- **The synthetic benchmark routes through the same path.** `--planner`, `--admission`,
+  `--cost-model` and `--window-preference` now move the number it prints.
+- **KV is registered.** `declare_kv_cache` exposes the paged pools, so the second proof track
+  can be measured at all — it previously could not be, and that is different from not having
+  been.
+- **A cost model that can express coordination.** The linear model made greedy-on-density
+  provably optimal; the residency model is fitted to the hardware arms in `results/` and is
+  superlinear in residency, so concentrating beats spreading and the admission axis measures
+  something. `AdmissionRule::Survival` is the rule that exploits it.
+- **Frontier Gain replaces the impact bands.** Continuous `dF`, Pareto hypervolume over
+  goodput and p99 inter-token latency, a paired bootstrap as a qualification gate, a
+  protected-workload guard, and a permanent Frontier Receipt in an append-only ledger. The
+  bands went because their lowest paying step was above this hardware's physical ceiling.
+- **A trusted, keyless, ephemeral GPU runner**, and the anti-gaming overlay it depends on,
+  both proven by CI rather than described.
+- Plan replay, a gated overhead budget, an O(log) live-set query, and live trace recording.
+
 ## v0.3 — A cost model that can express coordination
 
-The concrete blocker on the second proof track, and it needs no GPU.
+**Done in 0.2.1.** All three terms are carried, the model is fitted to every paired hardware
+measurement of the `persist` arm in `results/` across two architectures, and it beats the
+linear model on those points (rms 0.271 against 0.485 points; 8 of 8 arms inside their own
+noise floor against 6 of 8). `eval/cost_model_fit.py` is the fit and it runs in CI.
 
-The linear model — saving proportional to resident share — makes greedy-on-density provably
-optimal, which means the whole admission-rule axis is measuring nothing the model can see.
-What is missing:
-
-- **whole-line residency**: a line is resident or it is not;
-- **survival**: a tensor whose reuse distance exceeds the budget is evicted before it pays,
-  however much of it was admitted;
-- **interference**: a term for what the streaming half of the cache does to the persisting
-  half, which is the only place a `Stream` action can have a value.
-
-A cost model with those terms, validated against the measurements already in `results/`, is
-the highest-value contribution available right now.
+What is still open here is the parameter the current data cannot pin: `stream_relief`, how much
+of a Stream-hinted tensor's traffic actually stops interfering. It is exposed as a dial with an
+optimistic default of 1.0 and it is **unmeasured**. The experiment is now runnable — a `Stream`
+window reaches a captured graph node as of 0.2.1, where before it was skipped under capture and
+therefore unreachable in the only regime that matters.
 
 ## v0.4 — Recurrent + KV QoS, measured
 
 Run the five arms on hardware and settle whether the global planner beats the independent
-policies on a real workload. The mechanism is built and the arms are one command
-(`tensortransit compare`, `eval/real_eval.py`); what is missing is device time and a runtime
-that exposes its KV blocks to the registry.
+policies on a real workload. **The prerequisite is closed:** the adapter registers KV as of
+0.2.1, so the arms are `TENSORTRANSIT_PRESET=<arm>` on the real model through the measured
+path. What is left is device time and the answer.
 
 **Known before starting:** on the pinned dense model this contest is for less than a point.
 The interesting regime is a model whose decode step moves under **6.42 GB**, which is what
@@ -74,9 +100,20 @@ profiler together, so counter-free tracing is what is available here.
 
 ## v0.7 — Offline planning
 
-`trace.json -> planner -> plan.json -> replay`. Two thirds of this exists: the CLI plans from a
-trace and dumps the plan. What is missing is replay — feeding a serialized plan back into an
-executor — which is what would let a contributor optimize without touching the runtime.
+**Done in 0.2.1.** `trace.json -> planner -> plan.json -> replay` closes:
+`tensortransit replay <plan.json> --trace <trace.json>` reads a serialized plan back, rebinds
+its regions against a live tensor table by id, walks the kernels and reports what fired, whether
+every Persist was cleared before the step ended and whether every fork was joined.
+
+A serialized plan carries no pointer, by design — a device address from another process is
+meaningless in this one — so `TransitPlan::rebind()` is what makes it executable, and it fails
+loudly on a tensor the registry does not know rather than skipping it. Regions are clamped to
+the descriptor's allocation, so a plan read from a file cannot widen a window past memory the
+runtime owns whatever the file says.
+
+The adapter can now also record a trace from the LIVE runtime (`TENSORTRANSIT_TRACE_OUT`),
+which is what gives an offline comparison real KV block sizes and real per-layer demand instead
+of a hand-written geometry.
 
 ## v0.8 — CUDA Graph node-level actions
 

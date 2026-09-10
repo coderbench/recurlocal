@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tensortransit/schemas/receipt.schema.json",
+  "title": "TensorTransit Frontier Receipt",
+  "description": "The permanent, machine-readable evidence artifact for one authoritative evaluation. It has to answer, years later and without the box that produced it: which generation, which baseline, which candidate, on what hardware, under what runtime, against what model, with what correctness result, at what confidence, and how much frontier was created.",
+  "type": "object",
+  "required": ["receipt_schema_version", "benchmark_generation", "generation_checksum",
+               "correctness", "frontier", "coverage", "statistics", "status", "content_digest"],
+  "additionalProperties": true,
+  "properties": {
+    "receipt_schema_version": {"const": 1},
+    "benchmark_generation": {"type": "string", "pattern": "^TTF-"},
+    "generation_checksum": {
+      "type": "string", "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "The generation this was scored under, hashed. A generation is frozen; if its meaning changed, the answer is a new TTF-N and not an edit, and this is what makes that enforceable rather than promised."
+    },
+    "timestamp_utc": {"type": "string"},
+    "pr": {"type": ["integer", "null"]},
+    "baseline_commit": {"type": ["string", "null"]},
+    "candidate_commit": {"type": ["string", "null"]},
+    "evaluator_commit": {"type": ["string", "null"]},
+    "hardware": {"type": "object", "additionalProperties": true},
+    "runtime": {"type": "object", "additionalProperties": true},
+    "model": {"type": "object", "additionalProperties": true},
+    "environment_fingerprint": {"type": ["string", "null"]},
+    "correctness": {"enum": ["PASS", "FAIL", "BUILD_FAIL", "UNSCORABLE", "SKIPPED"]},
+    "correctness_method": {"type": "string"},
+    "frontier": {
+      "type": "object",
+      "required": ["before", "after", "gain_percent", "verified_gain_percent"],
+      "properties": {
+        "before": {"type": "number", "minimum": 0},
+        "after": {"type": "number", "minimum": 0},
+        "gain_percent": {
+          "type": "number",
+          "description": "What was MEASURED. Recorded whatever the status, so a CORRECTNESS_FAIL is debuggable."
+        },
+        "verified_gain_percent": {
+          "type": "number",
+          "description": "What the ledger CREDITS. Zero unless the status is FRONTIER_GAIN."
+        }
+      }
+    },
+    "objectives": {"type": "array", "items": {"type": "object"}},
+    "cell_objectives": {
+      "type": "object",
+      "description": "The frozen bounds each cell was actually scored under. Without them a reader cannot reproduce a hypervolume from the raw results, and a receipt that cannot be reproduced is a claim rather than evidence."
+    },
+    "reference_point": {"type": "array", "items": {"type": "number"}},
+    "aggregation": {"type": "object"},
+    "coverage": {
+      "type": "object",
+      "required": ["improved_cells", "neutral_cells", "regressed_cells", "total_cells"],
+      "properties": {
+        "improved_cells": {"type": "integer", "minimum": 0},
+        "neutral_cells": {"type": "integer", "minimum": 0},
+        "regressed_cells": {"type": "integer", "minimum": 0},
+        "total_cells": {"type": "integer", "minimum": 1},
+        "scored_cells": {"type": "integer", "minimum": 0},
+        "missing_cells": {"type": "array", "items": {"type": "string"}},
+        "partial": {"type": "boolean", "description": "True when the generation declares a cell this run did not measure. A hole is named, never renormalised away."}
+      }
+    },
+    "cells": {"type": "object"},
+    "configurations": {"type": "object"},
+    "failures": {"type": "object", "description": "Measurements that produced no operating point, by variant and reason. A run that lost a region says so."},
+    "statistics": {
+      "type": "object",
+      "required": ["confidence_level", "lower_gain_percent", "upper_gain_percent",
+                   "paired_repeats", "method", "resamples", "seed"],
+      "properties": {
+        "confidence_level": {"type": "number", "exclusiveMinimum": 0.5, "exclusiveMaximum": 1},
+        "lower_gain_percent": {"type": "number"},
+        "upper_gain_percent": {"type": "number"},
+        "paired_repeats": {"type": "integer", "minimum": 1},
+        "unpaired_repeats": {"type": "array"},
+        "method": {"type": "string"},
+        "resamples": {"type": "integer", "minimum": 0},
+        "seed": {"type": "integer", "description": "Frozen, so the receipt is reproducible bit for bit from its raw results."},
+        "per_repeat_frontier": {"type": "object"}
+      }
+    },
+    "regression_guard": {"type": "object"},
+    "supersedes": {"type": "array", "items": {"type": "string"}},
+    "supersede_reason": {"type": "string"},
+    "status": {
+      "enum": ["FRONTIER_GAIN", "NO_FRONTIER_GAIN", "INCONCLUSIVE", "CORRECTNESS_FAIL",
+               "BUILD_FAIL", "REGRESSION_GUARD_FAIL", "EVAL_ERROR"],
+      "description": "Evaluation STATE. None of these categorizes impact magnitude: there are no XS/S/M/L/XL bands anywhere in this system, and frontier/README.md says why."
+    },
+    "content_digest": {
+      "type": "string", "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 over every scored field. `tt-frontier receipt verify` recomputes it, which is what turns 'a finalized receipt is never silently rewritten' from a rule into a check."
+    }
+  }
+}

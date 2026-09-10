@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tensortransit/schemas/frontier_result.schema.json",
+  "title": "TensorTransit raw frontier result",
+  "description": "One measured configuration, in one workload cell, on one repeat, for one variant. Deliberately the finest grain the runner produces: a receipt whose inputs were reduced before they were stored cannot be re-scored when the evaluator is fixed, and re-scoring is the only honest way to correct an evaluator bug.",
+  "type": "object",
+  "required": ["result_schema_version", "results"],
+  "additionalProperties": true,
+  "properties": {
+    "result_schema_version": {"const": 1},
+    "provenance": {
+      "type": "object",
+      "description": "Everything a receipt needs to say what was measured. No prompt, no token, no request body: a raw result records rates and latencies, and there is nowhere in this schema to put application data.",
+      "additionalProperties": true
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["workload_id", "variant", "config_id", "repeat", "metrics", "status"],
+        "additionalProperties": true,
+        "properties": {
+          "result_schema_version": {"const": 1},
+          "generation": {"type": "string"},
+          "workload_id": {"type": "string", "description": "A cell the generation declares. A cell it does not declare has no published weight, and inventing one is how a hidden priority gets in."},
+          "variant": {"enum": ["main", "candidate"]},
+          "config_id": {"type": "string", "description": "Which allowed configuration of that variant produced this point. A cell's frontier is formed from all of them."},
+          "repeat": {"type": "integer", "minimum": 1, "description": "Paired: repeat k of main and repeat k of the candidate ran adjacently on one box."},
+          "metrics": {
+            "type": "object",
+            "additionalProperties": {"type": ["number", "null"]},
+            "description": "Raw units. Only the objectives the generation declares are scored; anything else here is diagnostic, and a diagnostic can never move a score."
+          },
+          "status": {
+            "enum": ["OK", "OOM", "TIMEOUT", "CRASH", "SLO_FAIL", "UNBATCHED", "NULL_POLICY",
+                     "UNHOOKED", "CORRECTNESS_FAIL", "NOT_RUN", "EVAL_ERROR"],
+            "description": "Anything other than OK produces NO operating point. A failure is the absence of a point, not a slow one: normalizing an OOM into a small positive score would let a lost operating region still contribute hypervolume."
+          },
+          "correctness": {"enum": ["PASS", "FAIL", "UNSCORABLE", "SKIPPED"]},
+          "timestamp_utc": {"type": "string"},
+          "detail": {"type": "object", "additionalProperties": true}
+        }
+      }
+    }
+  }
+}
