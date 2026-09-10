@@ -10,6 +10,7 @@
 #include <string>
 
 #include "tensortransit/executor.h"
+#include "tensortransit/planner.h"
 #include "tensortransit/runtime.h"
 #include "tensortransit/trace.h"
 
@@ -346,6 +347,59 @@ static void test_a_malformed_trace_is_reported_rather_than_accepted() {
     CHECK(!error.empty());
 }
 
+// A plan has to survive being written, shipped and read back, because that is the whole of the
+// offline planning loop: trace -> planner -> plan.json -> replay. Two thirds of it existed and
+// the third did not, so a plan could be dumped and read by a human but never fed back to an
+// executor.
+static void test_a_plan_round_trips_through_json() {
+    Fixture f;
+    TransitPlannerConfig config{};
+    config.persist_roles = RoleMask::of(TensorRole::RecurrentState, TensorRole::KVCache);
+    config.stream_roles = RoleMask::of(TensorRole::ModelWeight);
+    PlanInput input{};
+    input.graph = &f.graph;
+    input.registry = &f.registry;
+    device_profile_by_name("rtx5090", &input.device);
+    const TransitPlan original = make_budgeted_planner(config)->build_plan(input);
+    CHECK(!original.actions().empty());
+
+    TransitPlan restored;
+    std::string error;
+    CHECK(read_plan(original.to_json(), &restored, &error));
+    // The DIGEST is over the actions, so equality of digests is equality of what the plan
+    // does. It is the only comparison worth making here: the cost model is carried too, but a
+    // plan that came back with different actions is a different plan whatever it predicts.
+    CHECK(restored.digest() == original.digest());
+    CHECK(restored.actions().size() == original.actions().size());
+    CHECK(restored.declines().size() == original.declines().size());
+    CHECK(restored.planner_name() == original.planner_name());
+    CHECK(restored.cost().predicted_saved_bytes == original.cost().predicted_saved_bytes);
+    CHECK(restored.cost().cost_model == original.cost().cost_model);
+
+    // It comes back with NULL regions -- a serialized plan carries no pointer, by design --
+    // and rebinding against a live registry is what makes it executable.
+    bool any_region = false;
+    for (const TransitAction& action : restored.actions())
+        if (action.ptr != nullptr) any_region = true;
+    CHECK(!any_region);
+    CHECK(restored.rebind(f.registry, &error));
+    for (const TransitAction& action : restored.actions())
+        if (action.kind == TransitActionKind::Persist) CHECK(action.ptr != nullptr);
+
+    // A plan naming a tensor this registry does not know is a plan compiled against a
+    // different model, and executing the rest of it would apply an arbitration made against
+    // tensors that are not here.
+    TensorRegistry empty;
+    TransitPlan orphan;
+    CHECK(read_plan(original.to_json(), &orphan, &error));
+    CHECK(!orphan.rebind(empty, &error));
+    CHECK(error.find("does not know") != std::string::npos);
+
+    // And a plan from another schema is refused rather than guessed at.
+    TransitPlan wrong;
+    CHECK(!read_plan("{\"plan_schema_version\":99,\"actions\":[]}", &wrong, &error));
+}
+
 // --- runtime ----------------------------------------------------------------------------
 
 static void test_a_steady_decode_loop_compiles_once() {
@@ -456,6 +510,7 @@ int main() {
     test_the_per_kernel_index_returns_actions_in_plan_order();
 
     test_a_trace_round_trips_its_reuse_structure();
+    test_a_plan_round_trips_through_json();
     test_a_malformed_trace_is_reported_rather_than_accepted();
 
     test_a_steady_decode_loop_compiles_once();
