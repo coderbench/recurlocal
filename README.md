@@ -20,16 +20,17 @@ found — a sparse-MoE hybrid whose decode step moves 3.56 GB instead of a dense
 that ceiling is **1.94% against this project's own 2.0% significance floor**, with both
 persistence dials at maximum and a bound that already assumes every resident byte hits.
 
-The best measured real-model gain is **+1.4% at batch 1**, on a checkpoint that **cannot be
-scored** because the runtime is not reproducible on it (four checkpoints screened; see the
-changelog). Concurrency has four to seven times the room and a persisting window reaches less
+The best measured real-model gain is **+1.74% at batch 1** (three contexts, sparse-MoE
+checkpoint), on a checkpoint that **cannot be scored** because the runtime is not reproducible
+on it — four were screened on hardware and none gives two unhooked greedy replays that agree. Concurrency has four to seven times the room and a persisting window reaches less
 of it, not more, because the footprint grows faster than the cache.
 
 Read `docs/MINING.md` before spending a week here. What this repository has actually been good
 at is the *instrument* — the traffic-budget calculator that says "do not start", and a set of
 evaluator guards each of which encodes a measurement that fooled somebody. Those found a 2.7x
 defect in the host runtime (`docs/UPSTREAM-SPARKINFER-MMVQ.md`) and a checkpoint whose runtime
-claims bit-reproducibility it does not have. The locality policy found 1.4%.
+claims bit-reproducibility it does not have. The locality policy found 1.74%, on one arm, of
+one model, that cannot be scored.
 
 ## Why this exists
 

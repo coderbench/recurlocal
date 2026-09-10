@@ -51,9 +51,9 @@ And the largest effects measured this session are **not this library's**. SparkI
 `launch_mmvq_rows` cliff is worth 2.7x of aggregate throughput on the checkpoint that matters
 (`docs/UPSTREAM-SPARKINFER-MMVQ.md`), and a dense 32-sequence run intermittently loses a third
 of its wall time to something that is *not* its decode path — per-token latency is identical
-through the collapse. Against those, the best replicated thing RecurLocal does is **+1.4% at
+through the collapse. Against those, the best thing RecurLocal does is **+1.74% at
 batch 1 on one unscorable checkpoint**, and the best thing this session added to it is
-**+0.1 points over a constant**.
+**+0.1 to +0.2 points over a constant**.
 
 **What the repository should become.** Not a locality library that is waiting for a bigger
 persisting cache. Its most valuable output has consistently been the *instrument*, not the
