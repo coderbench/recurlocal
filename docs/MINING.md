@@ -604,7 +604,14 @@ Three things are open here and none needs a GPU to start:
   little under `beta = 0.2` the first candidate stops paying and it admits **nothing**. There is
   no useful middle. `tests/test_golden.cpp` pins both ends, so a rule that actually differs is a
   contribution that will show up as a changed digest rather than as an argument.
-- **A per-window term, which the model does not have.** In the five measured arms the gain is
+- **A per-window term, which the model does not have.** *And a warning from the attempt to
+  settle it:* an arm's plan can differ in action count while attaching the same number of
+  windows, because a plan emits one action per consumer and the device carries one
+  access-policy window per kernel NODE. `density` and `reuse_order` emit 29 and 15 persist
+  actions on the recorded trace — over the same 15 kernels — and both reported
+  `windows_attached_to_node: 48` on hardware. Read that counter from a one-token run before
+  designing a comparison around it; the run that did not costs a box-hour
+  (`results/rtx5090-0.2.1-null-control.json`). In the five measured arms the gain is
   monotone in `windows_attached_to_node` — 48, 77, 144, 144, 144 — in both the per-cell and the
   aggregated view, and the model prices bytes and residency with no term for how many windows
   hold them. `density` and `reuse_order` are the pair that separates the two explanations: on
