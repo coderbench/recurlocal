@@ -133,10 +133,34 @@ def parse_adapter_stats(text):
     return json.loads(m.group(1)) if m else None
 
 
+def declared_mode(env_extra):
+    """The mode this arm ASKED for, under either spelling.
+
+    One reader for both names, because the two guards below used to spell it differently:
+    `is_control` read TENSORTRANSIT then RECURLOCAL, and the null-candidate guard read only
+    RECURLOCAL. An arm configured `TENSORTRANSIT=baseline` -- the hook installed with no
+    window, which is how the hook's own cost is measured and is one of the five arms the
+    specification names -- therefore looked like a policy arm to that guard, and was refused as
+    a NULL CANDIDATE for doing exactly what it was asked to do. Two spellings of one variable
+    is a compatibility shim (docs/STABILITY.md section 6a); two READINGS of it is a bug.
+    """
+    return (env_extra or {}).get("TENSORTRANSIT",
+                                 (env_extra or {}).get("RECURLOCAL", "off"))
+
+
 def is_control(env_extra):
     """A control arm is one that names no mode under EITHER spelling."""
-    mode = env_extra.get("TENSORTRANSIT", env_extra.get("RECURLOCAL", "off"))
-    return mode in ("off", "0")
+    return declared_mode(env_extra) in ("off", "0")
+
+
+def is_baseline_arm(env_extra):
+    """The hook with no window. It is SUPPOSED to apply no policy, so the null-candidate guard
+    must not fire on it -- and a preset or planner named `baseline` says the same thing."""
+    return (declared_mode(env_extra) == "baseline"
+            or (env_extra or {}).get("TENSORTRANSIT_PRESET") == "baseline"
+            or (env_extra or {}).get("RECURLOCAL_PRESET") == "baseline"
+            or (env_extra or {}).get("TENSORTRANSIT_PLANNER") == "baseline"
+            or (env_extra or {}).get("RECURLOCAL_PLANNER") == "baseline")
 
 
 def policy_applied(stats):
@@ -183,7 +207,7 @@ def require_hook_engaged(text, env_extra, label):
         return None
     stats = parse_adapter_stats(text)
     if stats is None:
-        raise SystemExit(f"{label}: candidate asked for RECURLOCAL={env_extra['RECURLOCAL']} but the "
+        raise SystemExit(f"{label}: candidate asked for {declared_mode(env_extra)!r} but the "
                          "run emitted no RECURLOCAL_STATS line. The binary is unhooked, or the "
                          "adapter refused the configuration. Refusing to report it as a candidate.\n"
                          + text[-2000:])
@@ -195,7 +219,7 @@ def require_hook_engaged(text, env_extra, label):
     if stats.get("stats", {}).get("layers", 0) == 0:
         raise SystemExit(f"{label}: the hook initialised but bracketed no recurrent layer. "
                          "Either the model is not hybrid or the hook site was not reached.")
-    if env_extra.get("RECURLOCAL") != "baseline" and not policy_applied(stats):
+    if not is_baseline_arm(env_extra) and not policy_applied(stats):
         st = stats.get("stats", {})
         raise SystemExit(
             f"{label}: NULL CANDIDATE. The hook loaded and bracketed "

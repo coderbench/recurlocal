@@ -289,6 +289,41 @@ class HarnessIntegrity(unittest.TestCase):
         self.assertFalse(real_eval.is_control({"RECURLOCAL": "persist"}))
         self.assertFalse(real_eval.is_control({"RECURLOCAL": "baseline"}))
 
+    def test_the_baseline_arm_is_recognised_under_both_spellings(self):
+        # The incident: `TENSORTRANSIT=baseline` -- the hook with no window, one of the five
+        # arms the specification names -- was refused as a NULL CANDIDATE. `is_control` read
+        # both spellings of the mode; the null-candidate guard read only RECURLOCAL, so an arm
+        # that spelled it the 0.2 way looked like a policy arm that had applied no policy.
+        for env in ({"TENSORTRANSIT": "baseline"}, {"RECURLOCAL": "baseline"},
+                    {"TENSORTRANSIT": "persist", "TENSORTRANSIT_PRESET": "baseline"},
+                    {"TENSORTRANSIT": "persist", "RECURLOCAL_PLANNER": "baseline"}):
+            self.assertTrue(real_eval.is_baseline_arm(env), env)
+            self.assertFalse(real_eval.is_control(env), env)
+        for env in ({}, {"TENSORTRANSIT": "off"}, {"TENSORTRANSIT": "persist"},
+                    {"RECURLOCAL": "combined"}):
+            self.assertFalse(real_eval.is_baseline_arm(env), env)
+
+    def test_the_null_candidate_guard_lets_the_baseline_arm_through(self):
+        # End to end through the guard itself, not only through the predicate: a baseline arm
+        # that loaded, bracketed layers and applied nothing is doing its job.
+        stats = ('RECURLOCAL_STATS {"ever_initialised":true,"initialised":true,"broken":false,'
+                 '"stats":{"layers":48,"windows_applied":0,"windows_attached_to_node":0,'
+                 '"pre_touch_launches":0,"windows_deferred_to_caller":0}}')
+        for env in ({"TENSORTRANSIT": "baseline"}, {"RECURLOCAL": "baseline"}):
+            self.assertIsNotNone(real_eval.require_hook_engaged(stats, env, "baseline arm"))
+        with self.assertRaises(SystemExit) as caught:
+            real_eval.require_hook_engaged(stats, {"TENSORTRANSIT": "persist"}, "policy arm")
+        self.assertIn("NULL CANDIDATE", str(caught.exception))
+
+    def test_an_unhooked_run_names_the_mode_it_asked_for(self):
+        # The message used to index env_extra['RECURLOCAL'] directly, so an arm that spelled
+        # the mode TENSORTRANSIT= raised KeyError from inside the error path -- the guard
+        # crashing instead of reporting.
+        with self.assertRaises(SystemExit) as caught:
+            real_eval.require_hook_engaged("no telemetry here",
+                                           {"TENSORTRANSIT": "persist"}, "arm")
+        self.assertIn("persist", str(caught.exception))
+
     def test_control_arm_scrubs_an_ambient_adapter_env(self):
         # An operator with RECURLOCAL exported in their shell would otherwise run a hooked
         # "control" and the harness would report ~0% for the candidate against itself.
