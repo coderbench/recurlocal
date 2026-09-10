@@ -341,7 +341,7 @@
   "cell_resolution": {
    "type": "object",
    "additionalProperties": true,
-   "description": "Per cell, per objective: the published control spread, the observed change, and whether the second exceeds the first. Diagnostic; it never moves a score. It says which cells the score is entitled to rest on."
+   "description": "Per cell, per objective: the published control spread, the observed change, and whether the second exceeds the first. Diagnostic; it never moves a score. It says which cells the score is entitled to rest on. With more than one candidate configuration the question is asked of each and answered by the one that moved the cell most: `configuration` names it and `per_configuration_change_pct` carries them all, because a median across arms is a number no arm produced."
   },
   "resolution_summary": {
    "type": "object",

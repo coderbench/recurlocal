@@ -225,35 +225,56 @@ def compute_frontier(generation, results, *, allow_partial=False):
     # TTF-1 receipt read -99.5%, and the cell that decided it was decided on the second axis.
     #
     # Nothing here changes a score. It says which cells the score is entitled to rest on.
+    # Kept per CONFIGURATION, not pooled. A run with five candidate arms pools five different
+    # policies into one variant, and a median across them is a number no arm produced -- so the
+    # question asked below is "did ANY single configuration move this cell by more than its
+    # published spread", and the answer names which one.
     raw_values = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for record in results:
         if str(record.get("status", "OK")) != "OK":
             continue
+        cell_key = str(record["workload_id"])
+        config = str(record.get("config_id", record["variant"]))
         for key, value in (record.get("metrics") or {}).items():
             if value is not None:
-                raw_values[str(record["workload_id"])][record["variant"]][key].append(
-                    float(value))
+                raw_values[cell_key][(record["variant"], config)][key].append(float(value))
+
+    def _pooled(cell_key, variant, objective_key):
+        out = []
+        for (var, _config), metrics in raw_values[cell_key].items():
+            if var == variant:
+                out.extend(metrics.get(objective_key) or [])
+        return out
 
     cell_resolution = {}
     for cell in scored_cells:
         per_objective = {}
         for objective in generation.objectives_for(cell):
             key = objective.key
-            main_values = raw_values[cell]["main"].get(key) or []
-            cand_values = raw_values[cell]["candidate"].get(key) or []
+            main_values = _pooled(cell, "main", key)
             published = generation.published_spread(cell, key)
-            if not main_values or not cand_values:
+            candidates = {config: (metrics.get(key) or [])
+                          for (var, config), metrics in raw_values[cell].items()
+                          if var == "candidate" and metrics.get(key)}
+            if not main_values or not candidates:
                 per_objective[key] = {"published_control_spread_pct": published,
                                       "observed_change_pct": None, "resolves": None}
                 continue
-            main_median, cand_median = _median(main_values), _median(cand_values)
-            change = (abs(cand_median - main_median) / main_median * 100.0
-                      if main_median else float("inf"))
+            main_median = _median(main_values)
+            moved = {}
+            for config, values in candidates.items():
+                cand_median = _median(values)
+                moved[config] = (abs(cand_median - main_median) / main_median * 100.0
+                                 if main_median else float("inf"), cand_median)
+            winner = max(moved, key=lambda c: moved[c][0])
+            change, cand_median = moved[winner]
             per_objective[key] = {
                 "published_control_spread_pct": published,
                 "observed_change_pct": change,
                 "main_median": main_median,
                 "candidate_median": cand_median,
+                "configuration": winner,
+                "per_configuration_change_pct": {c: v[0] for c, v in sorted(moved.items())},
                 # None where the generation published no spread: unknown, not resolved.
                 "resolves": None if published is None else bool(change > published),
             }

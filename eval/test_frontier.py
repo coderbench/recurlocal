@@ -461,6 +461,27 @@ def test_a_floor_decision_inside_the_published_noise_is_named():
     check(result.cell_resolution["ctx128-c4"]["p99_itl_ms"]["resolves"] is False,
           "because a 400% change against a 481% published spread does not resolve")
 
+    # Five arms in one comparison pool five policies into one variant. The resolution question
+    # is asked of each CONFIGURATION and answered by the one that moved most, because a median
+    # across arms is a number no arm produced.
+    multi = matrix(flat, flat)
+    for record in list(multi):
+        if record["variant"] == "candidate":
+            twin = dict(record)
+            twin["config_id"] = "loud"
+            twin["metrics"] = {"goodput_tps": 700.0, "p99_itl_ms": 50.0}
+            multi.append(twin)
+    pooled = compute_frontier(generation, multi)
+    detail = pooled.cell_resolution["ctx128-c1"]["goodput_tps"]
+    check(detail["configuration"] == "loud",
+          "the configuration that moved the cell most is the one reported")
+    check(set(detail["per_configuration_change_pct"]) == {"base", "loud"},
+          "and every configuration's own change travels with it")
+    check(detail["per_configuration_change_pct"]["base"] < 1e-9,
+          "the quiet arm is reported as quiet rather than averaged into the loud one")
+    check(abs(detail["observed_change_pct"] - 40.0) < 1e-6,
+          "700 against 500 is +40%, which is what one arm did and not what two did on average")
+
     summary = result.resolution_summary["p99_itl_ms"]
     check("ctx128-c4" not in summary["resolved_cells"],
           "and the cell is not counted as resolved in the summary")
