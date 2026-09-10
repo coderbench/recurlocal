@@ -263,6 +263,15 @@ def cmd_generation(args):
                 print("  recurrent traffic returns less than its arithmetic share. The `persist`")
                 print("  column does not depend on it -- it is 2 x persisting-L2 over the step,")
                 print("  and the step time is measured.")
+            latency = [o.key for o in generation.objectives if o.key != "goodput_tps"]
+            if latency:
+                print()
+                print(f"  No ceiling is computed for {', '.join(latency)}, and that is a fact "
+                      f"about the arithmetic")
+                print("  rather than about the objective: a traffic budget bounds throughput and")
+                print("  says nothing about a tail. The only published constraint there is the")
+                print("  spread column of the table above. That axis is NOT closed the way")
+                print("  goodput is -- and the shipped policy currently measures worse on it.")
             if unwinnable:
                 print()
                 print(f"  {len(unwinnable)} of {len(generation.cells)} cells cannot be MEASURED "

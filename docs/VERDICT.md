@@ -304,6 +304,16 @@ actually used, and **every TTF-1 cell is below the 80% at which a traffic ceilin
 `any mech.` is a loose upper bound — part of those steps is latency and occupancy rather than
 bytes. The `persist` column does not depend on it.
 
+**And one thing this whole section does not bound.** Every number above is about throughput. A
+traffic budget says nothing about a *tail*, so there is no computed ceiling for `p99_itl_ms` at
+all, and the only published constraint on it is the spread column — 0.94% at `ctx128-c1`, 6.7%
+at `ctx128-c16`, 481% at `ctx128-c32`. TTF-1 scores that objective equally with goodput. It is
+the half of the frontier that is **not** closed by arithmetic, and a policy that moved a tail by
+more than a cell's spread would score whatever the traffic budget says.
+
+That is an opening rather than a result. Measured, the shipped policy moves it the wrong way:
++1.246% at `ctx128-c1` against a 0.94% spread — resolved, and worse. Section 8 has the rest.
+
 ## 8. The first full TTF-1 matrix, and what it says about the matrix
 
 Every earlier measurement here used three cells. This is the whole generation: ten cells,
