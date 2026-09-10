@@ -277,6 +277,18 @@ void CudaTransitExecutor::after_kernel(KernelId kernel) noexcept {
     int count = 0;
     const TransitAction* const* actions = plan_->after(kernel, &count);
     if (actions) apply(actions, count);
+
+    // A window deferred for this kernel and never attached is not going to be. Dropping it
+    // here is what stops it reaching the NEXT kernel: the runtime calls
+    // attach_window_to_captured_node() from a launch site, and a launch site that did not fire
+    // -- a sparse attention branch, a fused path, a layer the hook does not bracket -- would
+    // otherwise leave the window pending until some later launch marked a node for memory it
+    // does not read. That is the mis-attachment `WindowAttach::CaptureNodeStrict` exists to
+    // count on the 0.1 side, and it is counted here rather than left silent.
+    if (window_pending_node_attach_) {
+        window_pending_node_attach_ = false;
+        ++stats_.windows_never_attached;
+    }
 }
 
 cudaError_t CudaTransitExecutor::attach_window_to_captured_node() noexcept {

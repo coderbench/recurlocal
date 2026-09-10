@@ -66,6 +66,12 @@ struct ExecutorStats {
     // attribute is host-side state a graph never records, so under capture a Stream action
     // that was applied to the stream would be absent from every replay.
     std::uint64_t stream_deferred = 0;
+    // Windows deferred for a kernel whose launch site never called
+    // attach_window_to_captured_node(). Dropped at the end of that kernel rather than left
+    // pending, because a pending window reaching the NEXT kernel marks a node for memory it
+    // does not read -- spending set-aside on nothing while reporting a delivered policy.
+    // Non-zero means the integration has a launch path the hook does not cover.
+    std::uint64_t windows_never_attached = 0;
 
     bool applied_anything() const noexcept {
         return actions_applied != 0 || persist_attached_to_node != 0;

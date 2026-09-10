@@ -813,7 +813,11 @@ void write_stats_json(std::FILE* out) noexcept {
         // The transit executor has no CaptureNodeStrict mode, so it never declines an attach
         // for ambiguity. Reporting the wrong-kernel skips here instead would put a different
         // question's answer under this name; they are in the transit block.
-        s.window_attach_ambiguous = 0;
+        // The transit executor has no CaptureNodeStrict mode, so it never declines an attach
+        // for ambiguity. What it DOES count is a deferred window whose launch site never
+        // called for it -- a different failure with the same consequence, so it goes under
+        // this name rather than being lost.
+        s.window_attach_ambiguous = x.windows_never_attached;
         s.window_attach_failures = x.actions_failed;
         s.capture_invalidations = x.capture_invalidations;
         s.released_during_capture = x.released_during_capture;

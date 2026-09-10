@@ -91,6 +91,7 @@ namespace {
 // Sum every counter. Written out rather than memcpy'd so that a field appended to
 // ExecutorStats fails to compile here instead of silently going uncounted.
 void accumulate(ExecutorStats* into, const ExecutorStats& add) noexcept {
+    into->windows_never_attached += add.windows_never_attached;
     into->steps += add.steps;
     into->kernels += add.kernels;
     into->actions_applied += add.actions_applied;
