@@ -235,6 +235,7 @@ private:
     bool initialised_ = false;
     bool have_signature_ = false;
     bool trace_written_ = false;
+    bool warned_no_step_traffic_ = false;
     const char* error_ = nullptr;
     int device_ = 0;
     int pending_layer_ = -1;

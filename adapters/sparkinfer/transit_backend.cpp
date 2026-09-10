@@ -277,6 +277,31 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
     // planner would correctly decline all of it, and the wrong answer would look right.
     runtime_.end_recording(/*cyclic=*/true);
 
+    // The reuse distance a survival term reads is "bytes of OTHER traffic between two uses",
+    // and on this model most of that is weights: 18.5 GB a step against ~350 MB of state and
+    // KV. The adapter cannot know the figure -- it is the runtime's weight and activation
+    // traffic -- so it is declared by whoever runs the benchmark and left at zero rather than
+    // invented. Left at zero, though, every reuse distance in this graph is roughly fifty
+    // times too short, and a cost model that reads it will think everything survives.
+    //
+    // That does not touch a MEASUREMENT, and it does not touch the default planner:
+    // `recurrent_v0` uses TokenFootprint accounting, which counts the resident footprint and
+    // ignores streamed bytes entirely. It does touch any planner whose admission depends on
+    // survival. So: say so, once, rather than let a plan be optimistic in silence.
+    if (!geometry.streamed_bytes_per_token && settings_.planner != "recurrent_v0" &&
+        settings_.planner_config.cost_model != CostModel::Linear && !warned_no_step_traffic_) {
+        warned_no_step_traffic_ = true;
+        std::fprintf(stderr,
+            "[recurlocal] NOTE: planner=%s with cost_model=residency and no declared step "
+            "traffic. TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN is 0, so this graph's reuse "
+            "distances count only the state and KV this adapter registers (~%zu B) and not "
+            "the model's weight traffic. Survival is therefore overestimated and every "
+            "candidate looks more admissible than it is. Set it to the measured step traffic "
+            "(18500000000 for Qwen3.8-27B at batch 1) for a plan whose predictions mean "
+            "anything. Measurements are unaffected.\n",
+            settings_.planner.c_str(), runtime_.graph().step_traffic_bytes());
+    }
+
     RuntimeState state{};
     state.phase = RuntimePhase::Decode;
     state.active_requests = geometry.sequences > 0 ? geometry.sequences : 1;

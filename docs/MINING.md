@@ -193,6 +193,20 @@ TENSORTRANSIT_TRACE_OUT=/tmp/live.json      # record the real graph, for offline
 `TENSORTRANSIT_ENGINE=v0` runs the 0.1 controller instead, in the same binary. That is the
 control: if a result only appears on one engine, it is about the engine.
 
+**One setting is not optional if your planner reads survival.** The adapter registers the
+state and the KV it can see — about 350 MB a step — and it cannot know the model's weight
+traffic, which on this model is 18.5 GB. Left undeclared, every reuse distance in the recorded
+graph is roughly fifty times too short and a residency cost model will think everything
+survives:
+
+```bash
+TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN=18500000000   # the measured step, batch 1
+```
+
+The adapter says so on stderr, once, when a survival-sensitive configuration runs without it.
+It does not affect a measurement and it does not affect `recurrent_v0`, whose accounting counts
+the resident footprint and ignores streamed bytes.
+
 The first step is the one people skip. `tensortransit inspect` prints the device-bounded
 ceiling for the roles a policy is allowed to touch, and if that number is under 2% no planner
 in this repository can help you. It costs one command and no hardware.
