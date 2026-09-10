@@ -486,14 +486,28 @@ void cap_windows_per_kernel(TransitPlan* plan, const TransitPlannerConfig& confi
     kept.reserve(actions.size());
     std::vector<TensorId> declined_now;
     for (const TransitAction& a : actions) {
-        const bool is_persist = windowed(a.kind);
+        const bool is_window = windowed(a.kind);
         const bool is_clear = a.kind == TransitActionKind::ClearPolicy;
-        const KernelId kernel = is_persist ? a.before_kernel : a.after_kernel;
-        if ((is_persist || is_clear) &&
+        const bool survives = std::find(survivors.begin(), survivors.end(), a.tensor) !=
+                              survivors.end();
+        const KernelId kernel = is_window ? a.before_kernel : a.after_kernel;
+        const bool lost_here = (is_window || is_clear) &&
             std::find(dropped.begin(), dropped.end(), std::make_pair(a.tensor, kernel)) !=
-                dropped.end()) {
-            if (is_persist &&
-                std::find(survivors.begin(), survivors.end(), a.tensor) == survivors.end() &&
+                dropped.end();
+        // A ClearPolicy for a tensor that kept NO window anywhere is orphaned. Under
+        // per-consumer binding the clear sits on the same kernel as its window and the pair
+        // test above catches it; under Sticky and for a Stream hint it does not -- those bind
+        // before the FIRST consumer and clear after the LAST, so the clear's kernel is not the
+        // window's. Left behind, the plan describes dropping a policy that was never
+        // installed. The executor survives it (`window_active_` is false, so it counts a skip)
+        // but a plan that says something untrue is a plan a reader cannot use.
+        const bool orphaned_clear = is_clear && !survives &&
+            std::find(dropped.begin(), dropped.end(),
+                      std::make_pair(a.tensor, kernel)) == dropped.end() &&
+            std::any_of(dropped.begin(), dropped.end(),
+                        [&](const std::pair<TensorId, KernelId>& d) { return d.first == a.tensor; });
+        if (lost_here || orphaned_clear) {
+            if (is_window && !survives &&
                 std::find(declined_now.begin(), declined_now.end(), a.tensor) ==
                     declined_now.end()) {
                 declined_now.push_back(a.tensor);

@@ -234,6 +234,25 @@ const char* TransitPlan::validate() const noexcept {
         if (!cleared) return "a persist action is never cleared (see spec section 32)";
     }
 
+    // And the other direction: a ClearPolicy for a tensor no window action names is a plan
+    // saying it will drop a policy that was never installed. The executor survives it -- it
+    // counts a skip -- but a plan is a VALUE, and a value that describes something that does
+    // not happen is one a reader cannot use and a diff cannot be trusted against.
+    for (const TransitAction& action : actions_) {
+        if (action.kind != TransitActionKind::ClearPolicy) continue;
+        bool installed = false;
+        for (const TransitAction& other : actions_) {
+            if (other.tensor != action.tensor) continue;
+            if (other.kind == TransitActionKind::Persist ||
+                other.kind == TransitActionKind::Stream ||
+                other.kind == TransitActionKind::RotateWindow) {
+                installed = true;
+                break;
+            }
+        }
+        if (!installed) return "a clear_policy action drops a policy nothing installed";
+    }
+
     // Every fork must be joined. Under CUDA Graph capture an unjoined fork does not merely
     // leak a stream -- it ends the capture INVALID and takes the runtime's whole decode path
     // with it, which is a failure mode this library must never be the cause of.

@@ -682,6 +682,42 @@ static void test_a_stream_hint_is_worth_something_under_residency_and_nothing_un
     CHECK(saved(CostModel::Residency, true) > saved(CostModel::Residency, false));
 }
 
+static void test_a_capped_window_does_not_leave_an_orphaned_clear() {
+    // The window cap drops a binding the hardware cannot deliver. Under per-consumer binding
+    // the ClearPolicy sits on the same kernel and goes with it; under Sticky and for a Stream
+    // hint it does NOT -- those bind before the first consumer and clear after the last -- so
+    // the clear can be left behind describing the release of a policy that was never
+    // installed. Caught here rather than in a plan dump somebody reads by eye.
+    StreamedWeights workload(8, 4 * MiB, 256 * MiB);
+    PlanInput input = workload.input();
+
+    TransitPlannerConfig config{};
+    config.cost_model = CostModel::Residency;
+    config.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+    config.stream_roles = RoleMask::of(TensorRole::ModelWeight);
+    config.window_binding = WindowBinding::Sticky;
+    config.max_windows_per_kernel = 1;
+    config.window_preference = WindowPreference::Widest;
+
+    const auto plan = make_budgeted_planner(config)->build_plan(input);
+    const char* problem = plan.validate();
+    CHECK(problem == nullptr);
+    if (problem) std::printf("     plan says: %s\n", problem);
+
+    // Directly: every clear names a tensor that some window action also names.
+    for (const TransitAction& clear : plan.actions()) {
+        if (clear.kind != TransitActionKind::ClearPolicy) continue;
+        bool installed = false;
+        for (const TransitAction& other : plan.actions())
+            if (other.tensor == clear.tensor &&
+                (other.kind == TransitActionKind::Persist ||
+                 other.kind == TransitActionKind::Stream ||
+                 other.kind == TransitActionKind::RotateWindow))
+                installed = true;
+        CHECK(installed);
+    }
+}
+
 static void test_the_reservation_has_a_cost_and_the_plan_says_so() {
     // The term that gets the SIGN right on the concurrency arms. A model with only a benefit
     // term cannot describe a policy that measures negative, and the persist family does.
@@ -731,6 +767,7 @@ int main() {
     test_survival_is_exactly_density_under_the_linear_model();
     test_a_stream_hint_is_worth_something_under_residency_and_nothing_under_linear();
     test_the_reservation_has_a_cost_and_the_plan_says_so();
+    test_a_capped_window_does_not_leave_an_orphaned_clear();
 
     if (g_failures) { std::cout << g_failures << " transit-planner check(s) failed\n"; return 1; }
     std::cout << "transit planner tests passed\n";
