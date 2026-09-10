@@ -806,6 +806,362 @@ static void test_hot_set_accounting_is_reported_in_every_mode() {
     }
 }
 
+
+// ---------------------------------------------------------------------------------------
+// SetAsidePolicy: how large a set-aside to ask for once the workload is known.
+// ---------------------------------------------------------------------------------------
+
+// The two checkpoints this repository has measured, as geometry. Both formulas are the
+// adapter's own (recurlocal_sparkinfer.cpp) and both reproduce the published footprints.
+static RecurrentGeometry moe_geometry(int sequences) {
+    RecurrentGeometry g;
+    g.recurrent_layers = 30;
+    g.bytes_per_layer = 2146304;   // 32*128*128*4 + 3*8192*2, per configs/qwen3.6-...json
+    g.sequences = sequences;
+    return g;
+}
+static RecurrentGeometry dense_geometry(int sequences) {
+    RecurrentGeometry g;
+    g.recurrent_layers = 48;
+    g.bytes_per_layer = 3 * MiB + 60 * 1024;
+    g.sequences = sequences;
+    return g;
+}
+static DeviceCaps rtx5090() { return DeviceCaps{96 * MiB, 60 * MiB, 128 * MiB}; }
+
+static void test_fixed_set_aside_is_the_shipped_behaviour_whatever_the_workload() {
+    // The control has to be exactly what every number in this repository was measured under,
+    // or an A/B against it measures the change AND a shifted baseline.
+    PlannerConfig cfg = base_config();
+    cfg.persisting_budget_fraction = 0.75;
+    LocalityPlanner p(rtx5090(), cfg);
+    CHECK(cfg.set_aside_policy == SetAsidePolicy::Fixed);   // and it is the default
+    for (int seq : {1, 4, 16, 32}) {
+        CHECK(p.recommended_l2_set_aside(moe_geometry(seq)) == p.recommended_l2_set_aside());
+        CHECK(p.recommended_l2_set_aside(dense_geometry(seq)) == p.recommended_l2_set_aside());
+    }
+    CHECK(p.recommended_l2_set_aside() == 45 * MiB);
+}
+
+static void test_a_workload_aware_policy_with_no_workload_is_the_shipped_behaviour() {
+    // A rule that cannot see the workload must not invent one. Every degenerate geometry
+    // falls back to the constant fraction rather than to zero, which would silently turn
+    // `persist` into `baseline` for any caller that never declared its geometry.
+    for (auto pol : {SetAsidePolicy::FitFootprint, SetAsidePolicy::Residency}) {
+        PlannerConfig cfg = base_config();
+        cfg.set_aside_policy = pol;
+        LocalityPlanner p(rtx5090(), cfg);
+        const auto fixed = p.recommended_l2_set_aside();
+        CHECK(p.recommended_l2_set_aside(RecurrentGeometry{}) == fixed);
+        RecurrentGeometry g = moe_geometry(1);
+        g.recurrent_layers = 0;   CHECK(p.recommended_l2_set_aside(g) == fixed);
+        g = moe_geometry(1); g.bytes_per_layer = 0; CHECK(p.recommended_l2_set_aside(g) == fixed);
+    }
+}
+
+static void test_fit_footprint_never_reserves_more_than_the_footprint_can_use() {
+    // The unarguable half: reserving cache to hold bytes that do not exist takes capacity
+    // from the stream and buys nothing. This is the regime a device with more persisting L2
+    // than the model needs would be in, and nothing in the library had an opinion about it.
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::FitFootprint;
+    RecurrentGeometry tiny = moe_geometry(1);
+    tiny.recurrent_layers = 2;                       // 4.09 MiB of footprint
+    const auto footprint = LocalityPlanner::token_footprint_bytes(tiny);
+    LocalityPlanner p(rtx5090(), cfg);
+    CHECK(p.recommended_l2_set_aside(tiny) == footprint);
+    CHECK(p.recommended_l2_set_aside(tiny) < p.recommended_l2_set_aside());
+
+    // ...and never more than the device will grant, whatever the footprint asks for.
+    LocalityPlanner q(rtx5090(), cfg);
+    CHECK(q.recommended_l2_set_aside(moe_geometry(32)) == 60 * MiB);
+}
+
+static void test_fit_footprint_reaches_the_setting_the_measurement_calls_best() {
+    // The defect this policy exists for: at batch 1 on the sparse-MoE checkpoint the measured
+    // optimum is the FULL 60 MiB (+1.63%), and the shipped constant asks for 45 MiB (+1.28%).
+    // A policy that still multiplied by persisting_budget_fraction could not get there without
+    // the caller ALSO changing the constant it was introduced to replace.
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::FitFootprint;
+    cfg.persisting_budget_fraction = 0.75;           // left at the shipped default on purpose
+    LocalityPlanner p(rtx5090(), cfg);
+    CHECK(p.recommended_l2_set_aside(moe_geometry(1)) == 60 * MiB);
+    CHECK(p.recommended_l2_set_aside() == 45 * MiB); // the constant is untouched beside it
+}
+
+static void test_residency_declines_where_the_footprint_cannot_be_held() {
+    // The measured facts this encodes: the persist family PAYS at a resident fraction of
+    // 0.977 (MoE, batch 1) and does NOT at 0.478 (the same model, four sequences). The
+    // default threshold sits between them, so the policy admits the first and declines the
+    // second -- which is the whole content of the rule.
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::Residency;
+    LocalityPlanner p(rtx5090(), cfg);
+    CHECK(cfg.min_residency == 0.50);
+
+    CHECK(p.achievable_residency(moe_geometry(1)) > 0.97);
+    CHECK(p.recommended_l2_set_aside(moe_geometry(1)) == 60 * MiB);
+
+    CHECK(p.achievable_residency(moe_geometry(4)) < 0.50);
+    CHECK(p.recommended_l2_set_aside(moe_geometry(4)) == 0);
+    CHECK(p.recommended_l2_set_aside(moe_geometry(16)) == 0);
+    CHECK(p.recommended_l2_set_aside(moe_geometry(32)) == 0);
+}
+
+static void test_residency_gives_up_the_dense_models_small_real_gain_and_says_so() {
+    // A falsifiable prediction, kept as a test so it cannot quietly stop being one: the dense
+    // checkpoint at batch 1 sits at a resident fraction of 0.409 and measures a RESOLVED
+    // +0.10%. The default threshold declines it. If a sweep of --axis min-residency shows the
+    // crossover is below 0.409, this test is what has to change, deliberately.
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::Residency;
+    LocalityPlanner p(rtx5090(), cfg);
+    const double rho = p.achievable_residency(dense_geometry(1));
+    CHECK(rho > 0.40 && rho < 0.42);
+    CHECK(p.recommended_l2_set_aside(dense_geometry(1)) == 0);
+
+    PlannerConfig lower = cfg;
+    lower.min_residency = 0.40;                       // below the dense model's 0.409
+    CHECK(LocalityPlanner(rtx5090(), lower).recommended_l2_set_aside(dense_geometry(1)) == 60 * MiB);
+}
+
+static void test_residency_thresholds_of_zero_and_one_are_the_two_corners() {
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::Residency;
+    cfg.min_residency = 0.0;                          // admit anything: FitFootprint exactly
+    LocalityPlanner none(rtx5090(), cfg);
+    PlannerConfig fit = cfg; fit.set_aside_policy = SetAsidePolicy::FitFootprint;
+    LocalityPlanner fitp(rtx5090(), fit);
+    for (int seq : {1, 4, 32})
+        CHECK(none.recommended_l2_set_aside(moe_geometry(seq))
+              == fitp.recommended_l2_set_aside(moe_geometry(seq)));
+
+    cfg.min_residency = 1.0;                          // only a footprint that fits whole
+    LocalityPlanner all(rtx5090(), cfg);
+    CHECK(all.recommended_l2_set_aside(moe_geometry(1)) == 0);   // 0.977 is not 1.0
+    RecurrentGeometry small = moe_geometry(1);
+    small.recurrent_layers = 4;                                  // 8.2 MiB, fits whole
+    CHECK(all.recommended_l2_set_aside(small) == LocalityPlanner::token_footprint_bytes(small));
+}
+
+static void test_the_footprint_saturates_instead_of_wrapping() {
+    // A hot set that wraps to a small number is worse than no accounting at all: it reports
+    // that everything fits and applies a policy sized for a workload that does not exist.
+    RecurrentGeometry g;
+    g.recurrent_layers = 48;
+    g.bytes_per_layer = static_cast<std::size_t>(-1) / 2;
+    g.sequences = 1024;
+    CHECK(LocalityPlanner::token_footprint_bytes(g) == static_cast<std::size_t>(-1));
+
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::Residency;
+    LocalityPlanner p(rtx5090(), cfg);
+    CHECK(p.achievable_residency(g) > 0.0);
+    CHECK(p.achievable_residency(g) < 1e-9);
+    CHECK(p.recommended_l2_set_aside(g) == 0);
+}
+
+static void test_a_negative_sequence_count_counts_as_one() {
+    // The runtime declares this; a runtime that declares nonsense must get defined behaviour
+    // rather than a footprint of zero, which would report that everything fits.
+    RecurrentGeometry g = moe_geometry(-5);
+    CHECK(LocalityPlanner::token_footprint_bytes(g)
+          == LocalityPlanner::token_footprint_bytes(moe_geometry(1)));
+    CHECK(LocalityPlanner::token_footprint_bytes(moe_geometry(0))
+          == LocalityPlanner::token_footprint_bytes(moe_geometry(1)));
+}
+
+static void test_set_aside_policy_names_round_trip() {
+    for (auto p : {SetAsidePolicy::Fixed, SetAsidePolicy::FitFootprint, SetAsidePolicy::Residency})
+        CHECK(parse_set_aside_policy(to_string(p)) == p);
+    CHECK(std::strcmp(to_string(SetAsidePolicy::FitFootprint), "fit_footprint") == 0);
+    bool threw = false;
+    try { parse_set_aside_policy("adaptive"); } catch (const std::invalid_argument&) { threw = true; }
+    CHECK(threw);
+}
+
+static void test_window_attach_names_round_trip_including_strict() {
+    for (auto a : {WindowAttach::Stream, WindowAttach::CaptureNode, WindowAttach::CaptureNodeStrict})
+        CHECK(parse_window_attach(to_string(a)) == a);
+    CHECK(std::strcmp(to_string(WindowAttach::CaptureNodeStrict), "capture_node_strict") == 0);
+    // Appended, never inserted: a consumer that persisted the integer value of CaptureNode
+    // must still get CaptureNode back. This is the whole ABI promise for these enums.
+    CHECK(static_cast<int>(WindowAttach::Stream) == 0);
+    CHECK(static_cast<int>(WindowAttach::CaptureNode) == 1);
+    CHECK(static_cast<int>(WindowAttach::CaptureNodeStrict) == 2);
+}
+
+static void test_set_aside_policy_values_are_appended_not_inserted() {
+    CHECK(static_cast<int>(SetAsidePolicy::Fixed) == 0);
+    CHECK(static_cast<int>(SetAsidePolicy::FitFootprint) == 1);
+    CHECK(static_cast<int>(SetAsidePolicy::Residency) == 2);
+    // Fixed is 0 so a zero-initialised PlannerConfig is the shipped behaviour.
+    CHECK(PlannerConfig{}.set_aside_policy == SetAsidePolicy::Fixed);
+}
+
+static void test_min_residency_is_validated() {
+    PlannerConfig cfg = base_config();
+    cfg.min_residency = 1.5;
+    CHECK(validate(cfg) != nullptr);
+    cfg.min_residency = -0.1;
+    CHECK(validate(cfg) != nullptr);
+    CHECK(throws_invalid_argument([&] { LocalityPlanner(rtx5090(), cfg); }));
+    cfg.min_residency = 0.5;
+    CHECK(validate(cfg) == nullptr);
+}
+
+// ---------------------------------------------------------------------------------------
+// Device-capability matrix. RecurLocal has only ever run on one device; DeviceCaps is
+// queried rather than hardcoded, but nothing checked what the planner does when the numbers
+// come back different. These fabricate the caps and need no GPU.
+// ---------------------------------------------------------------------------------------
+
+static void test_a_device_with_no_persisting_l2_asks_for_no_window() {
+    // Not an error. Some devices report zero, and a driver may refuse the limit outright.
+    // The plan must simply not ask an integrating runtime to install a window it cannot back.
+    for (auto pol : {SetAsidePolicy::Fixed, SetAsidePolicy::FitFootprint, SetAsidePolicy::Residency}) {
+        PlannerConfig cfg = base_config();
+        cfg.mode = LocalityMode::Persist;
+        cfg.hot_set_model = HotSetModel::TokenFootprint;
+        cfg.set_aside_policy = pol;
+        LocalityPlanner p(DeviceCaps{40 * MiB, 0, 32 * MiB}, cfg);
+        CHECK(p.recommended_l2_set_aside() == 0);
+        CHECK(p.recommended_l2_set_aside(moe_geometry(1)) == 0);
+        CHECK(p.achievable_residency(moe_geometry(1)) == 0.0);
+        const auto plan = p.plan_for_layer(2 * MiB, true, moe_geometry(1), 0);
+        CHECK(!plan.use_persisting_window);
+        CHECK(plan.hot_window_bytes == 0);
+    }
+}
+
+static void test_a_persisting_capacity_too_small_to_hold_one_window_is_declined() {
+    // A device whose whole set-aside is smaller than one layer's state can hold nothing
+    // across a token. Installing a window there is pure overhead, and the shipped
+    // proportional policy would install one anyway at the floor hit ratio.
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+    cfg.set_aside_policy = SetAsidePolicy::Residency;
+    LocalityPlanner p(DeviceCaps{4 * MiB, 64 * 1024, 4 * MiB}, cfg);
+    CHECK(p.achievable_residency(moe_geometry(1)) < 0.01);
+    CHECK(p.recommended_l2_set_aside(moe_geometry(1)) == 0);
+}
+
+static void test_a_persisting_capacity_larger_than_the_footprint_reserves_only_what_is_needed() {
+    // The opposite corner, and the one no measurement has ever reached: a device with more
+    // persisting L2 than the model's whole recurrent footprint. Fixed reserves a fraction of
+    // the DEVICE, so it over-reserves; the footprint-aware policies reserve the footprint.
+    DeviceCaps big{512 * MiB, 256 * MiB, 128 * MiB};
+    const auto footprint = LocalityPlanner::token_footprint_bytes(moe_geometry(1));
+
+    PlannerConfig fixed = base_config();
+    fixed.persisting_budget_fraction = 0.75;
+    CHECK(LocalityPlanner(big, fixed).recommended_l2_set_aside(moe_geometry(1)) == 192 * MiB);
+
+    for (auto pol : {SetAsidePolicy::FitFootprint, SetAsidePolicy::Residency}) {
+        PlannerConfig cfg = fixed;
+        cfg.set_aside_policy = pol;
+        LocalityPlanner p(big, cfg);
+        CHECK(p.achievable_residency(moe_geometry(1)) == 1.0);
+        CHECK(p.recommended_l2_set_aside(moe_geometry(1)) == footprint);
+        CHECK(p.recommended_l2_set_aside(moe_geometry(1)) < 192 * MiB);
+    }
+}
+
+static void test_fabricated_datacentre_devices_behave_as_their_arithmetic_says() {
+    // A100 (40 MiB L2, 30 MiB persisting) and H100 (50 MiB L2, 40 MiB persisting), against
+    // the two checkpoints this repository has measured. Nothing here is a measurement; these
+    // pin the POLICY the planner would apply, which is what a consumer switching on these
+    // enums depends on.
+    struct Dev { const char* name; DeviceCaps caps; };
+    const Dev devs[] = {
+        {"A100", DeviceCaps{40 * MiB, 30 * MiB, 128 * MiB}},
+        {"H100", DeviceCaps{50 * MiB, 40 * MiB, 128 * MiB}},
+    };
+    PlannerConfig cfg = base_config();
+    cfg.set_aside_policy = SetAsidePolicy::Residency;
+    for (const auto& d : devs) {
+        LocalityPlanner p(d.caps, cfg);
+        // The batch-1 MoE footprint is 61.4 MiB, so the two devices land either side of the
+        // threshold and the rule does not answer the same on both: the A100's 30 MiB holds
+        // 0.489 of it and is declined, the H100's 40 MiB holds 0.651 and is admitted. That is
+        // the point of a device-capability matrix - the surface this library found on an
+        // RTX 5090 exists on one of these and not the other, and the arithmetic says which.
+        const bool holds_enough = d.caps.persisting_l2_max_bytes * 2 >= 61 * MiB;
+        CHECK((p.achievable_residency(moe_geometry(1)) >= 0.5) == holds_enough);
+        CHECK((p.recommended_l2_set_aside(moe_geometry(1)) > 0) == holds_enough);
+        // Concurrency multiplies the footprint, so both decline from four sequences on.
+        for (int seq : {4, 16, 32}) {
+            CHECK(p.achievable_residency(moe_geometry(seq)) < 0.5);
+            CHECK(p.recommended_l2_set_aside(moe_geometry(seq)) == 0);
+        }
+        // FitFootprint still reserves the whole capacity there, which is the honest
+        // difference between the two rules: one asks whether it can pay, the other does not.
+        PlannerConfig fit = cfg;
+        fit.set_aside_policy = SetAsidePolicy::FitFootprint;
+        CHECK(LocalityPlanner(d.caps, fit).recommended_l2_set_aside(moe_geometry(1))
+              == d.caps.persisting_l2_max_bytes);
+    }
+}
+
+static void test_a_window_cap_smaller_than_the_state_still_clamps() {
+    // accessPolicyMaxWindowSize is 128 MiB on an RTX 5090 and has never bound. On a device
+    // where it does, the window must be the cap and not the state.
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    LocalityPlanner p(DeviceCaps{96 * MiB, 60 * MiB, 512 * 1024}, cfg);
+    const auto plan = p.plan_for_layer(2 * MiB, true, moe_geometry(1), 0);
+    CHECK(plan.hot_window_bytes == 512 * 1024);
+    CHECK(plan.use_persisting_window);
+}
+
+static void test_a_device_that_allows_no_window_at_all_installs_none() {
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    LocalityPlanner p(DeviceCaps{96 * MiB, 60 * MiB, 0}, cfg);
+    const auto plan = p.plan_for_layer(2 * MiB, true, moe_geometry(1), 0);
+    CHECK(!plan.use_persisting_window);
+    CHECK(plan.hot_window_bytes == 0);
+    // ...and it still reports the accounting, so a null result can be read rather than guessed.
+    CHECK(plan.hot_set_budget_bytes == p.effective_l2_budget());
+    CHECK(plan.hot_set_bytes > 0);
+}
+
+static void test_quota_without_a_layer_index_admits_everything() {
+    // Quota decides from the layer ordinal. A caller that supplies none gets layer 0's
+    // answer for every layer, which is Fixed by another name. Pinned so that the degradation
+    // is a documented property rather than a surprise in someone's telemetry.
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+    cfg.hot_set_policy = HotSetPolicy::Quota;
+    LocalityPlanner p(rtx5090(), cfg);
+    const auto plan = p.plan_for_layer(2 * MiB, true, moe_geometry(32), -1);
+    CHECK(plan.use_persisting_window);
+    CHECK(!plan.hit_ratio_reduced);
+    CHECK_NEAR(plan.hit_ratio, cfg.hit_ratio);
+}
+
+static void test_a_backoff_that_changed_nothing_is_not_reported_as_a_reduction() {
+    // `hit_ratio_reduced` means "the requested hit ratio was cut". Where min_hit_ratio sits
+    // at or above hit_ratio the clamp returns the request unchanged, and reporting a cut that
+    // did not happen makes the one telemetry field that explains a null result lie about it.
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+    cfg.hit_ratio = 0.2;
+    cfg.min_hit_ratio = 0.9;          // floor above the request: the clamp cannot move it
+    for (auto pol : {HotSetPolicy::Proportional, HotSetPolicy::Sqrt}) {
+        cfg.hot_set_policy = pol;
+        const auto plan = LocalityPlanner(rtx5090(), cfg)
+                              .plan_for_layer(2 * MiB, true, moe_geometry(32), 0);
+        CHECK(plan.hot_set_oversubscribed);
+        CHECK_NEAR(plan.hit_ratio, 0.2);
+        CHECK(!plan.hit_ratio_reduced);
+    }
+}
+
 int main() {
     test_set_aside_and_modes();
     test_window_limits();
@@ -844,6 +1200,27 @@ int main() {
     test_recurrent_layer_walk();
     test_budget_follows_the_granted_set_aside_not_the_request();
     test_hot_set_accounting_is_reported_in_every_mode();
+    test_fixed_set_aside_is_the_shipped_behaviour_whatever_the_workload();
+    test_a_workload_aware_policy_with_no_workload_is_the_shipped_behaviour();
+    test_fit_footprint_never_reserves_more_than_the_footprint_can_use();
+    test_fit_footprint_reaches_the_setting_the_measurement_calls_best();
+    test_residency_declines_where_the_footprint_cannot_be_held();
+    test_residency_gives_up_the_dense_models_small_real_gain_and_says_so();
+    test_residency_thresholds_of_zero_and_one_are_the_two_corners();
+    test_the_footprint_saturates_instead_of_wrapping();
+    test_a_negative_sequence_count_counts_as_one();
+    test_set_aside_policy_names_round_trip();
+    test_min_residency_is_validated();
+    test_window_attach_names_round_trip_including_strict();
+    test_set_aside_policy_values_are_appended_not_inserted();
+    test_a_device_with_no_persisting_l2_asks_for_no_window();
+    test_a_persisting_capacity_too_small_to_hold_one_window_is_declined();
+    test_a_persisting_capacity_larger_than_the_footprint_reserves_only_what_is_needed();
+    test_fabricated_datacentre_devices_behave_as_their_arithmetic_says();
+    test_a_window_cap_smaller_than_the_state_still_clamps();
+    test_a_device_that_allows_no_window_at_all_installs_none();
+    test_quota_without_a_layer_index_admits_everything();
+    test_a_backoff_that_changed_nothing_is_not_reported_as_a_reduction();
 
     if (g_failures) { std::cout << g_failures << " planner check(s) failed\n"; return 1; }
     std::cout << "planner tests passed\n";

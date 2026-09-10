@@ -87,9 +87,22 @@ enum class PreTouchCoverage { Matrix, Conv, Both };
 //               which the runtime falls back to per-row decode and loses 28% of aggregate
 //               throughput for reasons that have nothing to do with cache policy.
 //
+//   CaptureNodeStrict
+//               CaptureNode, except that it attaches only when the capture has recorded
+//               EXACTLY ONE kernel node since the last attach - i.e. only when the node it
+//               is about to mark is unambiguously the recurrent kernel the hook fired for.
+//
+//               CaptureNode marks EVERY kernel node in the capture's current dependency set,
+//               and that set is not always one node. On the non-fused convolution branch the
+//               launch immediately before the hook is `l2_norm_qk_kernel`, which never touches
+//               convolution state: it inherits a persisting window over memory it does not
+//               read, spending set-aside on nothing. Strict declines instead and counts it,
+//               which turns a silent mis-attachment into a number.
+//
 // Default is Stream. A convenience that can cost a quarter of a runtime's throughput is not
-// a default; the controller counts invalidations and latches CaptureNode off after the first.
-enum class WindowAttach { Stream, CaptureNode };
+// a default; the controller counts invalidations and latches node attachment off after the
+// first one. New enumerators are appended, never inserted: see docs/STABILITY.md.
+enum class WindowAttach { Stream, CaptureNode, CaptureNodeStrict };
 
 // When the pre-touch stream is rejoined to the compute stream.
 //
@@ -102,6 +115,39 @@ enum class PrefetchJoin {
     PerLayer,  // join before the next layer runs; the v0.1 shape, and the safe one
     TokenEnd   // fork per layer, join once after the whole layer walk - half the nodes,
                // at the cost of no ordering between a pre-touch and the layer it warms
+};
+
+// How large an L2 set-aside to ask the driver for.
+//
+// The shipped behaviour reserves a constant fraction of the device's persisting-L2 capacity,
+// chosen before anything is known about the workload. Measurement says the right fraction is
+// not constant. On the sparse-MoE checkpoint `budget_fraction 1.00` is the best setting at
+// batch 1 - +1.63% against +1.26% at the shipped 0.75 - and the WORST at four concurrent
+// sequences, -1.29% against -0.46% (results/rtx5090-moe-scored.json). The set-aside is taken
+// from the same L2 the weight and KV streams use, so it is a trade, and where it lands
+// depends on how much of the recurrent footprint the reservation can actually hold.
+//
+// The planner already computes that footprint for the hot-set models, and the runtime already
+// declares the sequence count, so the input exists; only the policy was missing.
+enum class SetAsidePolicy {
+    // `persisting_budget_fraction` of capacity, whatever the workload. THE CONTROL: this is
+    // what every number in this repository was measured under, and it stays the default.
+    Fixed,
+    // Never reserve more than the footprint can use. Reserving 60 MiB to hold a 10 MiB
+    // footprint takes 50 MiB from the cache the rest of the step streams through and buys
+    // nothing with it. Parameter-free and unarguable in that direction; it is identical to
+    // Fixed at fraction 1.0 on every arm measured so far, because on this device the
+    // footprint has always been the larger of the two. It is the regime a device with more
+    // persisting L2, or a smaller model, would be in.
+    FitFootprint,
+    // FitFootprint, plus: decline the reservation entirely when the fraction of the footprint
+    // that could be held falls below `min_residency`. A window that cannot hold the working
+    // set still costs the shared cache the bytes it reserved, and the return falls with the
+    // share it can keep. The threshold is an EMPIRICAL parameter, not a derived one, and the
+    // two measurements that bracket it disagree about where it sits - the dense model gains
+    // +0.10% at a resident fraction of 0.41 while the MoE loses 0.46% at 0.48 - so it is
+    // exposed as a swept axis rather than asserted. See docs/OPTIMIZATION-SURFACES.md.
+    Residency
 };
 
 // What to do when the recurrent state that wants to be resident exceeds the L2 set-aside.
@@ -163,6 +209,9 @@ struct DeviceCaps {
 
 struct PlannerConfig {
     LocalityMode mode = LocalityMode::Combined;
+    // Read by SetAsidePolicy::Fixed only. The workload-aware policies size the set-aside from
+    // the footprint instead; applying both would leave them unable to reach the setting the
+    // workload wants without also changing the constant they exist to replace.
     double persisting_budget_fraction = 0.75;
     double hit_ratio = 0.70;
     // How many recurrent layers ahead to pre-touch. The runtime supplies the state this
@@ -171,6 +220,25 @@ struct PlannerConfig {
     std::size_t max_hot_window_bytes = 0;
     PreTouchStrategy pre_touch = PreTouchStrategy::Vec4;
     HotSetPolicy hot_set_policy = HotSetPolicy::Proportional;
+    // Default to the shipped constant-fraction reservation so an existing caller's numbers do
+    // not move under it; the workload-aware rules are opted into and measured against it.
+    SetAsidePolicy set_aside_policy = SetAsidePolicy::Fixed;
+    // Resident fraction of the recurrent footprint below which SetAsidePolicy::Residency
+    // declines to reserve anything at all. Only that policy reads it.
+    //
+    // 0.50 is not a guess and not a fit; it is the one value the measurements leave room for.
+    // The persist family is measured to PAY at a resident fraction of 0.977 (sparse MoE,
+    // batch 1, +1.26% at the shipped dials and +1.63% at their maximum) and measured NOT to
+    // pay at 0.478 and below (the same model at four concurrent sequences, -0.46%, inside its
+    // own 0.46% noise floor). Anything in (0.478, 0.977) declines everything known not to pay
+    // and admits everything known to pay; the crossover inside that interval is unmeasured,
+    // and 0.50 sits at its lower edge so the rule gives up as little as the evidence allows.
+    //
+    // The cost of that choice is stated rather than hidden: the DENSE checkpoint at batch 1
+    // sits at 0.409 and measures a resolved +0.10%, so this policy declines a real if tiny
+    // gain there. That is a falsifiable prediction, and `--axis min-residency` is how it gets
+    // falsified.
+    double min_residency = 0.50;
     PrefetchSchedule prefetch_schedule = PrefetchSchedule::Uniform;
     // Default to the v0.1 accounting so an existing caller's numbers do not move under it;
     // the corrected models are opted into and measured against this control.
@@ -258,6 +326,17 @@ public:
     const DeviceCaps& caps() const noexcept { return caps_; }
     const PlannerConfig& config() const noexcept { return config_; }
     std::size_t recommended_l2_set_aside() const noexcept;
+    // The set-aside `set_aside_policy` asks for once the workload is known. Identical to the
+    // geometry-free form under SetAsidePolicy::Fixed, and identical to it under any policy
+    // when the geometry is absent or degenerate - a rule that cannot see the workload must
+    // not silently invent one. Pure arithmetic, so the policy is testable without a GPU.
+    std::size_t recommended_l2_set_aside(const RecurrentGeometry& geometry) const noexcept;
+    // Bytes that must be resident for a recurrent state to survive until its layer runs
+    // again: every recurrent layer, every sequence. Saturates rather than wrapping.
+    static std::size_t token_footprint_bytes(const RecurrentGeometry& geometry) noexcept;
+    // Fraction of that footprint the device's persisting capacity could hold, in [0,1].
+    // Zero when there is no capacity or no footprint to hold.
+    double achievable_residency(const RecurrentGeometry& geometry) const noexcept;
     // What the driver actually granted, once someone has asked it. cudaDeviceSetLimit does
     // not promise to honour the request: on an RTX 5090 a 15 MiB request comes back as
     // 18 MiB, and the device already has a non-zero default before anyone asks. Budgeting
@@ -307,6 +386,8 @@ const char* to_string(PreTouchStrategy strategy) noexcept;
 PreTouchStrategy parse_pre_touch_strategy(const char* text);
 const char* to_string(HotSetPolicy policy) noexcept;
 HotSetPolicy parse_hot_set_policy(const char* text);
+const char* to_string(SetAsidePolicy policy) noexcept;
+SetAsidePolicy parse_set_aside_policy(const char* text);
 const char* to_string(PrefetchSchedule schedule) noexcept;
 PrefetchSchedule parse_prefetch_schedule(const char* text);
 const char* to_string(HotSetModel model) noexcept;

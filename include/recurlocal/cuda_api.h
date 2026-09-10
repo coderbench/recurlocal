@@ -80,12 +80,23 @@ struct ControllerStats {
     std::uint64_t pre_touch_bytes = 0;
     std::uint64_t pre_touch_skipped = 0;           // no scratch, or no next state
     std::uint64_t streaming_windows_applied = 0;
-    // Windows attached to a captured graph kernel node. Under graph decode this is the
-    // only count that can be non-zero for a persisting policy: a stream attribute is not
-    // recorded into a graph, so windows_applied stays at 0 there however the policy is
-    // configured. A run with windows_deferred_to_caller > 0 and this at 0 measured no
-    // persisting policy at all, whatever the mode was called.
+    // Attach CALLS that marked at least one captured graph kernel node -- not the number of
+    // nodes marked, which is `window_nodes_attached`. Under graph decode this is the only
+    // count that can be non-zero for a persisting policy: a stream attribute is not recorded
+    // into a graph, so windows_applied stays at 0 there however the policy is configured. A
+    // run with windows_deferred_to_caller > 0 and this at 0 measured no persisting policy at
+    // all, whatever the mode was called.
     std::uint64_t windows_attached_to_node = 0;
+    // Graph kernel NODES marked. Equal to windows_attached_to_node only when every attach
+    // found exactly one kernel node pending; larger means the capture's dependency set held
+    // more than one, and the window went onto kernels the hook did not fire for. The two
+    // were reported as one number, and "48 of 48 nodes" was read off a counter that was
+    // counting calls.
+    std::uint64_t window_nodes_attached = 0;
+    // Attaches WindowAttach::CaptureNodeStrict declined because more than one kernel node was
+    // pending, so which one the hook fired for was not decidable. Non-zero here and a
+    // measurable difference against CaptureNode is the size of the mis-attachment.
+    std::uint64_t window_attach_ambiguous = 0;
     std::uint64_t window_attach_failures = 0;
     // Captures that cudaStreamIsCapturing reported as INVALIDATED right after a node
     // attach. Non-zero means the locality layer broke the runtime's graph: whatever the
@@ -195,6 +206,19 @@ public:
     // Restarts the per-layer counter the prefetch schedule is indexed by. Call at the top
     // of each token's layer walk.
     void begin_sequence() noexcept;
+
+    // Re-size the L2 set-aside for a workload initialize() could not see.
+    //
+    // The set-aside is requested once, at initialize(), from PlannerConfig alone - and under
+    // SetAsidePolicy::Fixed that is the whole story, because the size depends on nothing else.
+    // The workload-aware policies size it from the recurrent footprint, which is not known
+    // until the runtime declares its geometry, so they need somewhere to act. This is it.
+    //
+    // A no-op under Fixed, a no-op when the recomputed size is the one already installed, and
+    // a no-op while the compute stream is capturing - cudaDeviceSetLimit is a device-wide
+    // operation and a graph capture is not the place for one. Call it whenever the geometry
+    // changes; calling it every token is cheap and correct.
+    cudaError_t declare_geometry(const RecurrentGeometry& geometry) noexcept;
     // Closes the token's layer walk. Under PrefetchJoin::TokenEnd this is where the single
     // join is emitted, and under graph capture it is not optional: a fork that is never
     // rejoined ends the capture invalid. A no-op under PerLayer.

@@ -163,6 +163,11 @@ void begin_common(Adapter& a, int n_layers, int full_attn_interval,
 
     a.recurrent_ordinal = 0;
     a.window_pending = false;
+    // The set-aside was requested at initialize() from the config alone, before anything was
+    // known about the workload. A workload-aware SetAsidePolicy sizes it from the footprint,
+    // so it has to be told the footprint; the controller ignores this under the default
+    // policy and whenever the answer has not changed.
+    a.controller.declare_geometry(a.geometry);
     a.controller.begin_sequence();
     ++a.tokens;
 }
@@ -197,6 +202,8 @@ void configure_once() noexcept {
                              [&](const char* t) { cfg.prefetch_join = parse_prefetch_join(t); }, &why);
     ok = ok && parse_or_fail("RECURLOCAL_WINDOW_ATTACH", "stream",
                              [&](const char* t) { cfg.window_attach = parse_window_attach(t); }, &why);
+    ok = ok && parse_or_fail("RECURLOCAL_SET_ASIDE_POLICY", "fixed",
+                             [&](const char* t) { cfg.set_aside_policy = parse_set_aside_policy(t); }, &why);
     if (!ok) {
         // Loud, immediately, and not only in the stats: a configuration the adapter cannot
         // parse leaves the hook off, and a sweep would then measure the control while
@@ -210,6 +217,7 @@ void configure_once() noexcept {
     cfg.hit_ratio = env_double("RECURLOCAL_HIT_RATIO", 0.70);
     cfg.persisting_budget_fraction = env_double("RECURLOCAL_BUDGET_FRACTION", 0.75);
     cfg.min_hit_ratio = env_double("RECURLOCAL_MIN_HIT_RATIO", 0.05);
+    cfg.min_residency = env_double("RECURLOCAL_MIN_RESIDENCY", 0.50);
     cfg.max_hot_window_bytes = static_cast<std::size_t>(env_int("RECURLOCAL_MAX_WINDOW_BYTES", 0));
     if (const char* problem = validate(cfg)) {
         a.config_error = problem;
@@ -430,6 +438,7 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"prefetch_schedule\":\"%s\",\"prefetch_join\":\"%s\",\"window_attach\":\"%s\","
         "\"hot_set_model\":\"%s\","
         "\"hot_set_policy\":\"%s\",\"window_scope\":\"%s\",\"window_target\":\"%s\","
+        "\"set_aside_policy\":\"%s\",\"min_residency\":%.4f,"
         "\"hit_ratio\":%.4f,\"budget_fraction\":%.4f},"
         "\"geometry\":{\"recurrent_layers\":%d,\"bytes_per_layer\":%zu,\"sequences\":%d,"
         "\"streamed_bytes_per_token\":%zu},"
@@ -437,6 +446,7 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"stats\":{\"tokens\":%llu,\"tokens_packed\":%llu,\"layers\":%llu,"
         "\"layers_packed\":%llu,\"max_rows_seen\":%d,\"windows_applied\":%llu,"
         "\"windows_deferred_to_caller\":%llu,\"windows_attached_to_node\":%llu,"
+        "\"window_nodes_attached\":%llu,\"window_attach_ambiguous\":%llu,"
         "\"window_attach_failures\":%llu,\"capture_invalidations\":%llu,"
         "\"released_during_capture\":%llu,\"hit_ratio_reduced\":%llu,"
         "\"hot_set_oversubscribed\":%llu,"
@@ -451,6 +461,7 @@ void write_stats_json(std::FILE* out) noexcept {
         to_string(c.prefetch_schedule), to_string(c.prefetch_join), to_string(c.window_attach),
         to_string(c.hot_set_model),
         to_string(c.hot_set_policy), to_string(c.window_scope), to_string(c.window_target),
+        to_string(c.set_aside_policy), c.min_residency,
         c.hit_ratio, c.persisting_budget_fraction,
         a.geometry.recurrent_layers, a.geometry.bytes_per_layer, a.geometry.sequences,
         a.geometry.streamed_bytes_per_token,
@@ -458,7 +469,9 @@ void write_stats_json(std::FILE* out) noexcept {
         (unsigned long long)a.tokens, (unsigned long long)a.tokens_packed,
         (unsigned long long)s.layers, (unsigned long long)a.layers_packed, a.max_rows_seen,
         (unsigned long long)s.windows_applied, (unsigned long long)s.windows_deferred_to_caller,
-        (unsigned long long)s.windows_attached_to_node, (unsigned long long)s.window_attach_failures,
+        (unsigned long long)s.windows_attached_to_node,
+        (unsigned long long)s.window_nodes_attached, (unsigned long long)s.window_attach_ambiguous,
+        (unsigned long long)s.window_attach_failures,
         (unsigned long long)s.capture_invalidations,
         (unsigned long long)s.released_during_capture, (unsigned long long)s.hit_ratio_reduced,
         (unsigned long long)s.hot_set_oversubscribed, (unsigned long long)s.pre_touch_launches,

@@ -18,6 +18,8 @@ const char* validate(const PlannerConfig& config) noexcept {
         return "prefetch_distance must be in [0,8]";
     if (!(config.min_hit_ratio >= 0.0 && config.min_hit_ratio <= 1.0))
         return "min_hit_ratio must be in [0,1]";
+    if (!(config.min_residency >= 0.0 && config.min_residency <= 1.0))
+        return "min_residency must be in [0,1]";
     return nullptr;
 }
 
@@ -62,6 +64,44 @@ std::size_t saturating_add(std::size_t a, std::size_t b) noexcept {
     return (a > kMax - b) ? kMax : a + b;
 }
 } // namespace
+
+std::size_t LocalityPlanner::token_footprint_bytes(const RecurrentGeometry& g) noexcept {
+    if (!g.valid()) return 0;
+    const auto seqs = static_cast<std::size_t>(g.sequences > 0 ? g.sequences : 1);
+    return saturating_mul(
+        saturating_mul(g.bytes_per_layer, static_cast<std::size_t>(g.recurrent_layers)), seqs);
+}
+
+double LocalityPlanner::achievable_residency(const RecurrentGeometry& g) const noexcept {
+    const auto footprint = token_footprint_bytes(g);
+    if (!footprint || !caps_.persisting_l2_max_bytes) return 0.0;
+    if (caps_.persisting_l2_max_bytes >= footprint) return 1.0;
+    return static_cast<double>(caps_.persisting_l2_max_bytes) / static_cast<double>(footprint);
+}
+
+std::size_t LocalityPlanner::recommended_l2_set_aside(const RecurrentGeometry& g) const noexcept {
+    const auto fixed = recommended_l2_set_aside();
+    if (config_.set_aside_policy == SetAsidePolicy::Fixed) return fixed;
+    // A workload-aware rule with no workload is not a rule. Degrading to the shipped constant
+    // is the only honest thing to do here, and it is what keeps a caller that never declares
+    // its geometry on exactly the behaviour it had.
+    const auto footprint = token_footprint_bytes(g);
+    if (!footprint || !caps_.persisting_l2_max_bytes) return fixed;
+    if (config_.persisting_budget_fraction <= 0.0) return 0;
+
+    if (config_.set_aside_policy == SetAsidePolicy::Residency &&
+        achievable_residency(g) < config_.min_residency)
+        return 0;   // it cannot hold enough of the footprint to be worth the cache it takes
+
+    // Take what the footprint can use, and no more than the device will give.
+    //
+    // `persisting_budget_fraction` is deliberately NOT applied here. It is the dial
+    // SetAsidePolicy::Fixed turns, and turning both would leave the workload-aware rules
+    // unable to reach the setting the workload wants without the caller ALSO changing the
+    // constant they were introduced to replace - which is the whole defect. One dial per
+    // policy; the fraction is documented as read by Fixed only.
+    return std::min(footprint, caps_.persisting_l2_max_bytes);
+}
 
 int LocalityPlanner::distance_for_layer(int layer_index) const noexcept {
     if (config_.mode != LocalityMode::Prefetch && config_.mode != LocalityMode::Combined) return 0;
@@ -238,13 +278,19 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
             switch (config_.hot_set_policy) {
                 case HotSetPolicy::Fixed:
                     break;  // ask for everything and let the hardware sort it out
+                // `hit_ratio_reduced` means the requested hit ratio was CUT, and it is the one
+                // telemetry field that explains a null persist result. Setting it whenever the
+                // policy ran made it report a cut that did not happen - with min_hit_ratio at
+                // or above hit_ratio the clamp returns the request unchanged - so a reader
+                // chasing "why did persist do nothing" was sent to a back-off that never
+                // occurred. It now reports the outcome rather than the branch.
                 case HotSetPolicy::Proportional:
                     p.hit_ratio = std::clamp(config_.hit_ratio * share, floor_ratio, config_.hit_ratio);
-                    p.hit_ratio_reduced = true;
+                    p.hit_ratio_reduced = p.hit_ratio < config_.hit_ratio;
                     break;
                 case HotSetPolicy::Sqrt:
                     p.hit_ratio = std::clamp(config_.hit_ratio * std::sqrt(share), floor_ratio, config_.hit_ratio);
-                    p.hit_ratio_reduced = true;
+                    p.hit_ratio_reduced = p.hit_ratio < config_.hit_ratio;
                     break;
                 case HotSetPolicy::Cliff:
                     p.use_persisting_window = false;
@@ -323,6 +369,23 @@ PreTouchStrategy parse_pre_touch_strategy(const char* text) {
     if (s == "warp_tile") return PreTouchStrategy::WarpTile;
     if (s == "partial") return PreTouchStrategy::Partial;
     throw std::invalid_argument("unknown pre-touch strategy: " + s);
+}
+
+const char* to_string(SetAsidePolicy policy) noexcept {
+    switch (policy) {
+        case SetAsidePolicy::Fixed: return "fixed";
+        case SetAsidePolicy::FitFootprint: return "fit_footprint";
+        case SetAsidePolicy::Residency: return "residency";
+    }
+    return "fixed";
+}
+
+SetAsidePolicy parse_set_aside_policy(const char* text) {
+    const std::string t = text ? text : "";
+    if (t == "fixed") return SetAsidePolicy::Fixed;
+    if (t == "fit_footprint") return SetAsidePolicy::FitFootprint;
+    if (t == "residency") return SetAsidePolicy::Residency;
+    throw std::invalid_argument("unknown set-aside policy: " + t);
 }
 
 const char* to_string(HotSetPolicy policy) noexcept {
@@ -427,6 +490,7 @@ const char* to_string(WindowAttach attach) noexcept {
     switch (attach) {
         case WindowAttach::Stream: return "stream";
         case WindowAttach::CaptureNode: return "capture_node";
+        case WindowAttach::CaptureNodeStrict: return "capture_node_strict";
     }
     return "unknown";
 }
@@ -436,6 +500,7 @@ WindowAttach parse_window_attach(const char* text) {
     std::string s(text);
     if (s == "stream") return WindowAttach::Stream;
     if (s == "capture_node") return WindowAttach::CaptureNode;
+    if (s == "capture_node_strict") return WindowAttach::CaptureNodeStrict;
     throw std::invalid_argument("unknown window attach: " + s);
 }
 

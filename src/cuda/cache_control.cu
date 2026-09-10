@@ -263,7 +263,7 @@ LayerPlan CudaLocalityController::plan_and_window(const StateSegment* current, i
         pending_window_ = make_access_policy_window(plan, const_cast<void*>(region.ptr));
         // Only arm the node attach when the caller asked for it. Under WindowAttach::Stream
         // the window is handed back and nothing of the runtime's is touched.
-        window_pending_node_attach_ = planner_.config().window_attach == WindowAttach::CaptureNode
+        window_pending_node_attach_ = planner_.config().window_attach != WindowAttach::Stream
                                    && !node_attach_disabled_;
         if (actions) {
             actions->window_requires_launch_attribute = true;
@@ -404,6 +404,56 @@ cudaError_t CudaLocalityController::before_layer(const StateSegment* current, in
 // launch appended as the current capture dependencies. Setting the access-policy attribute
 // on those nodes is what makes a persisting window survive into every graph replay -- and
 // it needs no change to how the runtime launches its kernel.
+cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& geometry) noexcept {
+    if (status_ != cudaSuccess) return status_;
+    if (planner_.config().set_aside_policy == SetAsidePolicy::Fixed) return cudaSuccess;
+
+    const auto wanted = planner_.recommended_l2_set_aside(geometry);
+    if (wanted == l2_set_aside_bytes_) return cudaSuccess;
+
+    // Never resize the device's L2 partition from inside a capture. It is not a stream
+    // operation, it would not be recorded, and it would take effect at a moment that has
+    // nothing to do with the replay it is supposed to serve.
+    if (compute_stream_) {
+        cudaStreamCaptureStatus capture = cudaStreamCaptureStatusNone;
+        if (cudaStreamIsCapturing(compute_stream_, &capture) != cudaSuccess) {
+            cudaGetLastError();
+        } else if (capture != cudaStreamCaptureStatusNone) {
+            return cudaSuccess;
+        }
+    }
+
+    if (!wanted) {
+        // The policy declined outright: give the reservation back rather than holding L2 the
+        // plan will not use. `persist` then costs the hook and nothing else, which is the
+        // honest thing for a policy that has decided this workload cannot pay.
+        if (l2_set_aside_owned_) {
+            if (configure_persisting_l2(device_, previous_l2_set_aside_, nullptr) != cudaSuccess)
+                cudaGetLastError();
+            l2_set_aside_owned_ = false;
+        }
+        l2_set_aside_bytes_ = 0;
+        planner_.set_granted_l2_set_aside(0);
+        return cudaSuccess;
+    }
+
+    if (!l2_set_aside_owned_ &&
+        cudaDeviceGetLimit(&previous_l2_set_aside_, cudaLimitPersistingL2CacheSize) != cudaSuccess) {
+        previous_l2_set_aside_ = 0; cudaGetLastError();
+    }
+    std::size_t granted = 0;
+    if (configure_persisting_l2(device_, wanted, &granted) != cudaSuccess) {
+        cudaGetLastError();
+        return cudaSuccess;   // best-effort: a cache hint must never fail a decode step
+    }
+    l2_set_aside_owned_ = true;
+    l2_set_aside_bytes_ = granted;
+    // Budget the hot set against what the driver GAVE, not what we asked for. Skipping this
+    // is what made every oversubscription decision wrong by the driver's rounding.
+    planner_.set_granted_l2_set_aside(granted);
+    return cudaSuccess;
+}
+
 cudaError_t CudaLocalityController::attach_window_to_captured_node() noexcept {
     if (status_ != cudaSuccess) return status_;
     if (!window_pending_node_attach_ || !compute_stream_) return cudaSuccess;
@@ -428,6 +478,22 @@ cudaError_t CudaLocalityController::attach_window_to_captured_node() noexcept {
         return cudaSuccess;  // best-effort: never fail a decode step over a cache hint
     }
 
+    // How many of the pending dependencies are kernel nodes. The hook fires immediately
+    // after the runtime's own recurrent launch, so in the common case this is one -- but not
+    // always: on the non-fused convolution branch the preceding launch is l2_norm_qk_kernel,
+    // which reads no recurrent state, and marking it spends set-aside on memory it never
+    // touches. Counting first is what lets Strict decline that case instead of guessing.
+    std::size_t kernel_nodes = 0;
+    for (size_t i = 0; i < dep_count; ++i) {
+        cudaGraphNodeType type{};
+        if (cudaGraphNodeGetType(deps[i], &type) != cudaSuccess) { cudaGetLastError(); continue; }
+        if (type == cudaGraphNodeTypeKernel) ++kernel_nodes;
+    }
+    if (planner_.config().window_attach == WindowAttach::CaptureNodeStrict && kernel_nodes != 1) {
+        ++stats_.window_attach_ambiguous;
+        return cudaSuccess;   // a window on the wrong kernel is worse than no window
+    }
+
     cudaKernelNodeAttrValue attr{};
     attr.accessPolicyWindow = pending_window_;
     bool attached = false;
@@ -438,6 +504,7 @@ cudaError_t CudaLocalityController::attach_window_to_captured_node() noexcept {
         if (cudaGraphKernelNodeSetAttribute(deps[i], cudaKernelNodeAttributeAccessPolicyWindow,
                                             &attr) != cudaSuccess) { cudaGetLastError(); continue; }
         attached = true;
+        ++stats_.window_nodes_attached;
     }
     if (attached) ++stats_.windows_attached_to_node; else ++stats_.window_attach_failures;
 
@@ -489,7 +556,7 @@ cudaError_t CudaLocalityController::before_layer(void* current_state, std::size_
         // documented-safe WindowAttach::Stream default was silently ignored on this
         // overload, and a consumer that asked for the safe path still got a graph mutated
         // mid-capture.
-        window_pending_node_attach_ = planner_.config().window_attach == WindowAttach::CaptureNode
+        window_pending_node_attach_ = planner_.config().window_attach != WindowAttach::Stream
                                    && !node_attach_disabled_;
         if (actions) {
             actions->window_requires_launch_attribute = true;

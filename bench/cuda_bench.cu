@@ -109,6 +109,7 @@ int main(int argc,char** argv){
     std::size_t stream_bytes=0;
     auto pre_touch=recurlocal::PreTouchStrategy::Vec4;
     auto hot_set_policy=recurlocal::HotSetPolicy::Proportional;
+    auto set_aside_policy=recurlocal::SetAsidePolicy::Fixed;
     // Defaults to the v0.1 accounting, so an existing command line still measures what it did.
     auto hot_set_model=recurlocal::HotSetModel::CurrentLayer;
     auto schedule=recurlocal::PrefetchSchedule::Uniform;
@@ -125,6 +126,7 @@ int main(int argc,char** argv){
       else if(k=="--sequences")sequences=std::stoi(v);
       else if(k=="--stream-bytes")stream_bytes=std::stoull(v);
       else if(k=="--hot-set-policy")hot_set_policy=recurlocal::parse_hot_set_policy(v.c_str());
+      else if(k=="--set-aside-policy")set_aside_policy=recurlocal::parse_set_aside_policy(v.c_str());
       else if(k=="--hot-set-model")hot_set_model=recurlocal::parse_hot_set_model(v.c_str());
       else if(k=="--prefetch-schedule")schedule=recurlocal::parse_prefetch_schedule(v.c_str());
       else if(k=="--prefetch-impl"){ if(v=="fused")fused=true; else if(v=="stream")fused=false;
@@ -180,6 +182,7 @@ int main(int argc,char** argv){
                                              : recurlocal::LocalityMode::Baseline) : mode;
     cfg.prefetch_distance=distance; cfg.pre_touch=pre_touch;
     cfg.hot_set_policy=hot_set_policy; cfg.prefetch_schedule=schedule;
+    cfg.set_aside_policy=set_aside_policy;
     cfg.hot_set_model=hot_set_model;
     recurlocal::CudaLocalityController ctl(device,cfg);
     check(ctl.status(),"controller init"); check(ctl.bind_streams(compute,prefetch),"bind");
@@ -242,7 +245,7 @@ int main(int argc,char** argv){
 
     const double layer_updates=(double)layers*(double)tokens;
     std::cout<<std::fixed<<std::setprecision(6)<<"{"
-      <<"\"mode\":\""<<recurlocal::to_string(mode)<<"\","<<"\"gpu\":\""<<prop.name<<"\","<<"\"compute_capability\":\""<<prop.major<<"."<<prop.minor<<"\","<<"\"sm_count\":"<<prop.multiProcessorCount<<","<<"\"driver_version\":"<<driver_version<<","<<"\"runtime_version\":"<<runtime_version<<","<<"\"layers\":"<<layers<<","<<"\"state_bytes_per_layer\":"<<state_bytes<<","<<"\"total_state_bytes\":"<<bytes<<","<<"\"tokens\":"<<tokens<<","<<"\"warmup_tokens\":"<<warmup<<","<<"\"prefetch_distance\":"<<distance<<","<<"\"sequences\":"<<sequences<<","<<"\"stream_bytes\":"<<stream_bytes<<","<<"\"hot_set_policy\":\""<<recurlocal::to_string(hot_set_policy)<<"\","<<"\"hot_set_model\":\""<<recurlocal::to_string(hot_set_model)<<"\","<<"\"prefetch_schedule\":\""<<recurlocal::to_string(schedule)<<"\","<<"\"prefetch_impl\":\""<<(fused?"fused":"stream")<<"\","<<"\"state_layout\":\""<<(layout==kLinear?"linear":layout==kHeadInterleaved?"head_interleaved":"tile_swapped")<<"\","<<"\"qos\":"<<(qos?"true":"false")<<","<<"\"stream_mode\":\""<<(stream_distinct?"distinct":"reuse")<<"\","<<"\"pre_touch_strategy\":\""<<recurlocal::to_string(pre_touch)<<"\","<<"\"elapsed_ms\":"<<ms<<","<<"\"ms_per_token\":"<<(ms/tokens)<<","<<"\"layer_updates_per_s\":"<<(ms>0.0f?layer_updates/((double)ms/1000.0):0.0)<<","<<"\"l2_bytes\":"<<prop.l2CacheSize<<","<<"\"persisting_l2_max_bytes\":"<<prop.persistingL2CacheMaxSize<<","<<"\"access_policy_max_window_bytes\":"<<prop.accessPolicyMaxWindowSize<<","<<"\"actual_l2_set_aside_bytes\":"<<set_aside<<","<<"\"windows_applied\":"<<stats.windows_applied<<","<<"\"windows_deferred_to_caller\":"<<stats.windows_deferred_to_caller<<","<<"\"hot_set_oversubscribed\":"<<stats.hot_set_oversubscribed<<","<<"\"pre_touch_launches\":"<<stats.pre_touch_launches<<","<<"\"pre_touch_bytes\":"<<stats.pre_touch_bytes<<","<<"\"checksum\":"<<sum<<"}\n";
+      <<"\"mode\":\""<<recurlocal::to_string(mode)<<"\","<<"\"gpu\":\""<<prop.name<<"\","<<"\"compute_capability\":\""<<prop.major<<"."<<prop.minor<<"\","<<"\"sm_count\":"<<prop.multiProcessorCount<<","<<"\"driver_version\":"<<driver_version<<","<<"\"runtime_version\":"<<runtime_version<<","<<"\"layers\":"<<layers<<","<<"\"state_bytes_per_layer\":"<<state_bytes<<","<<"\"total_state_bytes\":"<<bytes<<","<<"\"tokens\":"<<tokens<<","<<"\"warmup_tokens\":"<<warmup<<","<<"\"prefetch_distance\":"<<distance<<","<<"\"sequences\":"<<sequences<<","<<"\"stream_bytes\":"<<stream_bytes<<","<<"\"hot_set_policy\":\""<<recurlocal::to_string(hot_set_policy)<<"\","<<"\"set_aside_policy\":\""<<recurlocal::to_string(set_aside_policy)<<"\","<<"\"hot_set_model\":\""<<recurlocal::to_string(hot_set_model)<<"\","<<"\"prefetch_schedule\":\""<<recurlocal::to_string(schedule)<<"\","<<"\"prefetch_impl\":\""<<(fused?"fused":"stream")<<"\","<<"\"state_layout\":\""<<(layout==kLinear?"linear":layout==kHeadInterleaved?"head_interleaved":"tile_swapped")<<"\","<<"\"qos\":"<<(qos?"true":"false")<<","<<"\"stream_mode\":\""<<(stream_distinct?"distinct":"reuse")<<"\","<<"\"pre_touch_strategy\":\""<<recurlocal::to_string(pre_touch)<<"\","<<"\"elapsed_ms\":"<<ms<<","<<"\"ms_per_token\":"<<(ms/tokens)<<","<<"\"layer_updates_per_s\":"<<(ms>0.0f?layer_updates/((double)ms/1000.0):0.0)<<","<<"\"l2_bytes\":"<<prop.l2CacheSize<<","<<"\"persisting_l2_max_bytes\":"<<prop.persistingL2CacheMaxSize<<","<<"\"access_policy_max_window_bytes\":"<<prop.accessPolicyMaxWindowSize<<","<<"\"actual_l2_set_aside_bytes\":"<<set_aside<<","<<"\"windows_applied\":"<<stats.windows_applied<<","<<"\"windows_deferred_to_caller\":"<<stats.windows_deferred_to_caller<<","<<"\"hot_set_oversubscribed\":"<<stats.hot_set_oversubscribed<<","<<"\"pre_touch_launches\":"<<stats.pre_touch_launches<<","<<"\"pre_touch_bytes\":"<<stats.pre_touch_bytes<<","<<"\"checksum\":"<<sum<<"}\n";
     cudaEventDestroy(st); cudaEventDestroy(sp); cudaEventDestroy(pf); cudaStreamDestroy(prefetch); cudaStreamDestroy(compute);
     if(weights) cudaFree(weights); if(sink) cudaFree(sink); cudaFree(state); return 0;
  }catch(const std::exception& e){std::cerr<<"error: "<<e.what()<<"\n";return 2;}

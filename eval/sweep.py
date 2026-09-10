@@ -39,6 +39,10 @@ AXES = {
     "hot-set-model":     {"flag": "--hot-set-model",
                           "values": ["current_layer", "token_footprint", "reuse_window"],
                           "mode": "persist"},
+    # How the set-aside is SIZED. Sweep it with -- --sequences varied: `fixed` cannot
+    # respond to the workload and the other two exist only to.
+    "set-aside-policy":  {"flag": "--set-aside-policy",
+                          "values": ["fixed", "fit_footprint", "residency"], "mode": "persist"},
 }
 
 

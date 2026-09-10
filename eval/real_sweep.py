@@ -36,7 +36,8 @@ AXES = {
     # How the window reaches the kernel under graph capture. Not a tuning knob: capture_node
     # mutates a graph mid-capture and can invalidate it, so this axis measures a risk as much
     # as a gain. Check `capture_invalidations` in the telemetry alongside the number.
-    "window-attach":      ("RECURLOCAL_WINDOW_ATTACH", ["stream", "capture_node"]),
+    "window-attach":      ("RECURLOCAL_WINDOW_ATTACH",
+                           ["stream", "capture_node", "capture_node_strict"]),
     # How much of the device's persisting-L2 capacity to reserve. It decides nothing on a model
     # whose recurrent footprint is several times the cache -- the window is hopeless at any
     # fraction. It decides everything on one whose footprint is close to it, where the
@@ -44,6 +45,18 @@ AXES = {
     # of the state resident and all of it.
     "budget-fraction":    ("RECURLOCAL_BUDGET_FRACTION", ["0.25", "0.50", "0.75", "1.00"]),
     "hit-ratio":          ("RECURLOCAL_HIT_RATIO", ["0.25", "0.50", "0.75", "1.00"]),
+    # How the set-aside is SIZED, as opposed to how large the constant is. `fixed` is the
+    # control and reproduces every number this repository has measured. The other two read
+    # the recurrent footprint the runtime declares: `fit_footprint` never reserves more than
+    # the footprint can use, `residency` additionally declines outright below
+    # RECURLOCAL_MIN_RESIDENCY. Sweep it at batch 1 AND at concurrency - a rule whose whole
+    # claim is that the right answer depends on the workload is not tested on one workload.
+    "set-aside-policy":   ("RECURLOCAL_SET_ASIDE_POLICY", ["fixed", "fit_footprint", "residency"]),
+    # The threshold `residency` declines below. The measurements bracket it loosely: the
+    # persist family pays at a resident fraction of 0.977 and does not at 0.478, so anything
+    # in between orders the evidence correctly and this axis is how the interval narrows.
+    # Only meaningful with RECURLOCAL_SET_ASIDE_POLICY=residency also set.
+    "min-residency":      ("RECURLOCAL_MIN_RESIDENCY", ["0.10", "0.30", "0.50", "0.70", "0.90"]),
 }
 
 
