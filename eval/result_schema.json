@@ -293,7 +293,8 @@
         "prefetch_impl",
         "state_layout",
         "qos",
-        "stream_mode"
+        "stream_mode",
+        "engine"
       ],
       "additionalProperties": false,
       "properties": {
@@ -435,6 +436,100 @@
             "reuse",
             "distinct"
           ]
+        },
+        "engine": {
+          "enum": [
+            "transit",
+            "v0"
+          ],
+          "description": "Which engine ran the token. `transit` is Registry -> Graph -> Planner -> Executor and is the default; `v0` is the 0.1 controller, kept as the control. A result that does not say which one produced it cannot be compared with one that does."
+        },
+        "planner": {
+          "type": "string"
+        },
+        "admission": {
+          "type": "string"
+        },
+        "reuse_metric": {
+          "type": "string"
+        },
+        "window_binding": {
+          "type": "string"
+        },
+        "window_preference": {
+          "type": "string"
+        },
+        "max_windows_per_kernel": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "budget_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "plan_digest": {
+          "type": "string"
+        },
+        "plan_actions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan_declines": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "predicted_saved_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "A COST-MODEL output. Never a measurement; see docs/evaluation.md."
+        },
+        "committed_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step_traffic_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "persist_applied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prefetch_applied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stream_applied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "clear_applied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "executor_host_ns": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Host time inside the executor. With planner_compile_ns this is the pair spec section 80 budgets under 0.5% of token latency."
+        },
+        "planner_compile_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan_reuse_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Share of steps that reused a compiled plan. Under 1.0 in a steady loop means something invalidates the cache every token, which is a defect however good the plan is."
+        },
+        "set_aside_policy": {
+          "type": "string",
+          "description": "How large an L2 set-aside was asked for: fixed | fit_footprint | residency."
+        },
+        "hot_set_model": {
+          "type": "string",
+          "description": "What was counted as competing for the set-aside: current_layer | token_footprint | reuse_window. The v0.1 default counted one layer's slice and ignored that every other layer's was equally live, which is what let `persist` be applied at concurrencies where the working set was already three times the reservation."
         }
       }
     },

@@ -132,6 +132,50 @@ def main():
     else:
         print("note: no tensortransit CLI built; plan-schema checks skipped")
 
+    # The synthetic bench's OWN output shape, against the schema that pins it.
+    #
+    # `run_eval.py` validates its result against `result_schema.json`, and that schema closes
+    # `additionalProperties`. So a field added to the benchmark's JSON -- which is what happens
+    # every time somebody adds an axis -- breaks the evaluator on the first GPU run, with a
+    # validation error rather than a helpful one. Checking a representative document here means
+    # the break is a CPU-only test failure instead.
+    bench_schema = load(os.path.join(ROOT, "eval/result_schema.json"))
+    run_schema = bench_schema.get("$defs", {}).get("benchRun")
+    if run_schema:
+        required = set(run_schema.get("required", []))
+        sample = {
+            "mode": "persist", "gpu": "NVIDIA GeForce RTX 5090", "compute_capability": "12.0",
+            "sm_count": 170, "driver_version": 13030, "runtime_version": 13030,
+            "layers": 48, "state_bytes_per_layer": 3145728, "total_state_bytes": 150994944,
+            "tokens": 32, "warmup_tokens": 4, "elapsed_ms": 7.5, "ms_per_token": 0.23,
+            "layer_updates_per_s": 200000.0, "l2_bytes": 100663296,
+            "persisting_l2_max_bytes": 62914560, "access_policy_max_window_bytes": 134217728,
+            "actual_l2_set_aside_bytes": 50331648, "checksum": 1991620.175986,
+            "windows_applied": 1728, "windows_deferred_to_caller": 0,
+            "hot_set_oversubscribed": 0, "pre_touch_launches": 0, "pre_touch_bytes": 0,
+            "prefetch_distance": 1, "pre_touch_strategy": "vec4", "sequences": 1,
+            "stream_bytes": 0, "hot_set_policy": "proportional", "set_aside_policy": "fixed",
+            "hot_set_model": "current_layer", "prefetch_schedule": "uniform",
+            "prefetch_impl": "stream", "state_layout": "linear", "qos": False,
+            "stream_mode": "reuse",
+            # everything 0.2.1 added
+            "engine": "transit", "planner": "recurrent_v0", "admission": "density",
+            "reuse_metric": "bytes", "window_binding": "per_consumer",
+            "window_preference": "widest", "max_windows_per_kernel": 1,
+            "budget_fraction": 0.75, "plan_digest": "c806496b6cc08583", "plan_actions": 96,
+            "plan_declines": 48, "predicted_saved_bytes": 0, "committed_bytes": 603979776,
+            "step_traffic_bytes": 0, "persist_applied": 1728, "prefetch_applied": 0,
+            "stream_applied": 0, "clear_applied": 1728, "executor_host_ns": 0,
+            "planner_compile_ns": 0, "plan_reuse_rate": 1.0,
+        }
+        missing = sorted(required - set(sample))
+        if missing:
+            failures.append(f"the bench-output sample is missing required field(s) {missing}; "
+                            f"either the schema gained a requirement the sample does not "
+                            f"model, or the bench stopped emitting one")
+        elif check("bench output sample", sample, run_schema, failures):
+            checked += 1
+
     # The evaluation schemas that predate this file, against the results committed under
     # them: they are the reproduction path for every published number.
     #
