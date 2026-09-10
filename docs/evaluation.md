@@ -49,6 +49,13 @@ reachable — per cell, with the measured run-to-run spread beside it.
    *itself* first. A gate comparing one control replay to one candidate replay cannot tell
    "the policy changed the output" from "this runtime is not reproducible", and it has
    reported the second as the first.
+
+   The control replays run the **baseline build's** binary, not the candidate's. Otherwise a
+   candidate whose *inert* path changed the model's output would be compared against its own
+   changed output and pass, and the gate would be about the policy rather than about the
+   submission. `scripts/trusted_eval.sh` has both builds and passes both; a contributor
+   iterating on one build gets the weaker question answered, and the receipt says which
+   (`correctness_compared_against`).
 2. **The whole matrix.** A cell that was not run is not averaged in as a zero and is not
    renormalised away — it is a missing cell, and the receipt says `PARTIAL` on its face.
    Otherwise omitting the arm with the most room is the cheapest way to raise a score.

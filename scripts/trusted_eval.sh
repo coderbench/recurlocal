@@ -155,6 +155,7 @@ done
 BASE_CB="$WORK/baseline/si/sparkinfer/build/runtime/qwen3_gguf_cb_bench"
 CAND_CB="$WORK/candidate/si/sparkinfer/build/runtime/qwen3_gguf_cb_bench"
 CAND_GEN="$WORK/candidate/si/sparkinfer/build/runtime/qwen3_gguf_generate"
+BASE_GEN="$WORK/baseline/si/sparkinfer/build/runtime/qwen3_gguf_generate"
 
 # --- the paired evaluation, driven by the BASELINE's tt-frontier --------------------------
 [ ${#MAIN_CONFIGS[@]} -gt 0 ] || MAIN_CONFIGS=("control=")
@@ -163,6 +164,9 @@ CAND_GEN="$WORK/candidate/si/sparkinfer/build/runtime/qwen3_gguf_generate"
 
 args=(run --generation "$GENERATION" --model "$MODEL"
       --cb-binary "$BASE_CB" --candidate-cb "$CAND_CB" --generate "$CAND_GEN"
+      # The BASELINE build produces the control replays, so the gate asks whether the
+      # SUBMISSION changes the model's output rather than whether enabling its policy does.
+      --baseline-generate "$BASE_GEN"
       --repeats "$REPEATS" --output "$WORK/raw.json"
       --baseline-commit "$BASE_SHA" --candidate-commit "$CAND_SHA"
       --evaluator-commit "$(git -C "$REPO" rev-parse HEAD)"

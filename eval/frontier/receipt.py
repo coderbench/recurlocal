@@ -98,6 +98,13 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
         "correctness": correctness,
         "correctness_method": provenance.get("correctness_method",
                                              "greedy replay, token-exact"),
+        # WHICH question the gate answered. Against the baseline build it is "this submission
+        # does not change the model's output"; against the candidate's own binary it is only
+        # "enabling the policy does not change it", which a submission whose inert path changed
+        # the output would pass. A receipt that did not distinguish them would let the weaker
+        # check be read as the stronger one.
+        "correctness_compared_against":
+            (provenance.get("correctness") or {}).get("compared_against", "unspecified"),
 
         "frontier": {
             "before": computation.frontier_before,

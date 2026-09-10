@@ -159,25 +159,35 @@ def run_matrix(*, generation, cells, model, variants, repeats, max_new, long_pre
 
 
 def correctness_gate(generate_binary, model, *, prompt_ids, gate_tokens, control_env,
-                     candidate_envs, replays=3, verbose=True):
+                     candidate_envs, replays=3, verbose=True, baseline_generate=None):
     """Token-exact greedy replay, and the reproducibility check that has to precede it.
 
     A gate that compared ONE control replay to ONE candidate replay cannot tell "the policy
     changed the output" from "this runtime is not reproducible", and it has reported the
     second as the first. So the control is replayed against itself first, and a runtime that
     does not reproduce is reported as unscorable rather than as a candidate failure.
+
+    `baseline_generate` is the BASELINE build's binary, and passing it is what makes this a gate
+    on the SUBMISSION rather than on the policy. Without it the control replays run the
+    candidate's own binary with a scrubbed environment, so a candidate whose *inert* path
+    changed the model's output would be compared against its own changed output and pass. The
+    trusted evaluator has both builds and passes it; a contributor iterating on one build does
+    not, and gets the weaker question answered -- which the receipt says.
     """
-    base, _ = real_eval.greedy_replay(generate_binary, model, prompt_ids, gate_tokens,
+    control_binary = baseline_generate or generate_binary
+    base, _ = real_eval.greedy_replay(control_binary, model, prompt_ids, gate_tokens,
                                       control_env, "control")
     reproducible = True
     for index in range(1, max(replays, 1)):
-        again, _ = real_eval.greedy_replay(generate_binary, model, prompt_ids, gate_tokens,
+        again, _ = real_eval.greedy_replay(control_binary, model, prompt_ids, gate_tokens,
                                            control_env, f"control replay {index}")
         if again != base:
             reproducible = False
             break
     if not reproducible:
         return {"correctness": "UNSCORABLE", "runtime_reproducible": False,
+                "control_binary": control_binary,
+                "compared_against": "baseline build" if baseline_generate else "candidate build",
                 "method": "greedy replay, token-exact", "tokens_compared": gate_tokens,
                 "note": ("Two unhooked control replays diverged. The gate cannot answer "
                          "whether a policy changed the output on this checkpoint, so no "
@@ -192,12 +202,21 @@ def correctness_gate(generate_binary, model, *, prompt_ids, gate_tokens, control
                          min(len(base), len(out)))
             return {"correctness": "FAIL", "runtime_reproducible": True,
                     "method": "greedy replay, token-exact", "tokens_compared": gate_tokens,
-                    "failing_config": config_id, "first_divergence": first}
+                    "failing_config": config_id, "first_divergence": first,
+                    "control_binary": control_binary,
+                    "compared_against": ("baseline build" if baseline_generate
+                                         else "candidate build")}
         if verbose:
             print(f"    {config_id}: identical over {gate_tokens} tokens", flush=True)
     return {"correctness": "PASS", "runtime_reproducible": True,
             "method": "greedy replay, token-exact", "tokens_compared": gate_tokens,
-            "control_replays": replays}
+            "control_replays": replays,
+            "control_binary": control_binary,
+            # Which question was actually answered. Against the BASELINE build it is "this
+            # submission does not change the model's output"; against the candidate's own it is
+            # only "enabling the policy does not change it", which a submission whose inert path
+            # changed the output would pass.
+            "compared_against": "baseline build" if baseline_generate else "candidate build"}
 
 
 def write_raw(path, records, provenance):

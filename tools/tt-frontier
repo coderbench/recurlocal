@@ -323,7 +323,8 @@ def cmd_run(args):
             args.generate, args.model, prompt_ids=prompt_ids, gate_tokens=args.gate_tokens,
             control_env={}, candidate_envs=[(c["config_id"], c["env"])
                                             for c in candidate_configs],
-            replays=args.gate_control_replays)
+            replays=args.gate_control_replays,
+            baseline_generate=args.baseline_generate)
         print(f">> correctness: {correctness['correctness']}", file=sys.stderr)
 
     records = runner_mod.run_matrix(
@@ -481,7 +482,16 @@ def main(argv=None):
     p.add_argument("--cb-binary", required=True, help="qwen3_gguf_cb_bench for main")
     p.add_argument("--candidate-cb", help="the candidate build's cb bench; defaults to "
                                           "--cb-binary, which is the same-binary A/B")
-    p.add_argument("--generate", help="qwen3_gguf_generate, for the token-exact gate")
+    p.add_argument("--generate", help="the CANDIDATE build's qwen3_gguf_generate, for the "
+                                      "token-exact gate")
+    p.add_argument("--baseline-generate",
+                   help="the BASELINE build's qwen3_gguf_generate. Passing it makes the gate a "
+                        "check on the SUBMISSION -- 'this candidate does not change the "
+                        "model's output' -- instead of only on the policy. Without it the "
+                        "control replays run the candidate's own binary, so a candidate whose "
+                        "INERT path changed the output would be compared against its own "
+                        "changed output and pass. The receipt records which question was "
+                        "answered.")
     p.add_argument("--main-config", action="append", metavar="ID=K=V,K=V")
     p.add_argument("--candidate-config", action="append", metavar="ID=K=V,K=V")
     p.add_argument("--cells", help="comma-separated subset, for local iteration")

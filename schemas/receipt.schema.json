@@ -27,6 +27,9 @@
     "instances": {"type": "string", "description": "Whether the generation's workload instances are public or hidden. TTF-1's are public, and its generation.json says why rather than pretending otherwise."},
     "correctness": {"enum": ["PASS", "FAIL", "BUILD_FAIL", "UNSCORABLE", "SKIPPED"]},
     "correctness_method": {"type": "string"},
+    "correctness_compared_against": {
+      "type": "string",
+      "description": "Which build produced the control replays. `baseline build` means the gate asked whether the SUBMISSION changes the model's output; `candidate build` means it only asked whether enabling the policy does, which a submission whose inert path changed the output would pass."},
     "frontier": {
       "type": "object",
       "required": ["before", "after", "gain_percent", "verified_gain_percent"],
