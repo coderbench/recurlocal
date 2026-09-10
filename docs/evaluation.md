@@ -137,6 +137,48 @@ Two different things follow, and they should not be confused:
 Both models ship. `--cost-model linear` is the control, and it is how a contributor checks
 whether a result is about the policy or about the model.
 
+### The second proof track, answered at model level
+
+Specification section 38 asks whether one planner arbitrating a shared budget across two tensor
+classes beats two independent policies. Through 0.2.0 the answer under this repository's own
+model was **provably no**, and that negative result is preserved as the control.
+
+Predicted throughput gain, all three golden traces
+(`results/rtx5090-second-proof-track-model.json`, regenerable with `tensortransit compare`):
+
+| trace | model | recurrent_only | kv_only | naive_both | global |
+|---|---|--:|--:|--:|--:|
+| `trace_recurrent` | linear | 0.358% | 0.000% | 0.110% | 0.358% |
+| | **residency** | 0.102% | 0.000% | 0.022% | **0.177%** |
+| | residency, `--stream-relief 0` | 0.102% | 0.000% | 0.022% | 0.102% |
+| `trace_recurrent_kv` | linear | 0.358% | 0.179% | 0.034% | 0.336% |
+| | **residency** | 0.102% | 0.048% | 0.005% | **0.155%** |
+| | residency, `--stream-relief 0` | 0.102% | 0.048% | 0.005% | 0.095% |
+| `trace_concurrency` | linear | 0.358% | 0.179% | 0.000% | 0.336% |
+| | **residency** | 0.102% | 0.048% | 0.000% | **0.129%** |
+| | residency, `--stream-relief 0` | 0.102% | 0.048% | 0.000% | 0.095% |
+
+Three things are worth reading off it, and the third is the one that makes it a result rather
+than a number that came out higher:
+
+1. Under `linear` the global arm never beats the best independent one. It cannot: the model is
+   a fractional knapsack and greedy-on-density is optimal for one.
+2. Under `residency` it does, on every trace.
+3. Set `--stream-relief 0` — how much of a Stream-hinted tensor's traffic actually stops
+   interfering — and the advantage disappears on every trace. **The mechanism is the `Stream`
+   action**, which the linear model priced at exactly zero and which was, until 0.2.1,
+   unreachable under a captured decode graph for two independent reasons.
+
+**This is a cost-model output and it is not evidence about a speedup.** It is a falsifiable
+prediction, with a one-flag control that would falsify it, about a mechanism whose value
+(`stream_relief`) has never been measured. Measuring it is now possible and is the highest-value
+GPU experiment this repository has.
+
+The other half of the same finding, because leaving it out would overstate the first: on a
+workload whose weight traffic **is** holdable — one buffer re-read by every layer, a distance a
+cache this size genuinely serves — no `Stream` action is emitted at all, correctly, and the
+global arm's advantage there is `role_floor` arbitration instead. Both cases have a test.
+
 ---
 
 ## Know the bound before writing a planner
