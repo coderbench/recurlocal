@@ -113,6 +113,7 @@
     "results/rtx5090-0.2.1-five-arms.json",
     "results/rtx5090-0.2.1-null-control.json",
     "results/rtx5090-0.2.1-rewiring-check.json",
+    "results/rtx5090-4b-checkpoint-screen.json",
     "results/rtx5090-baseline-matrix.json",
     "results/rtx5090-cost-model-fit.json",
     "results/rtx5090-moe-matrix.json",

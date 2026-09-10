@@ -397,7 +397,12 @@ already known. Reordered by what is still genuinely open:
    recurrent state produces the same observation — and separating the two needs a logits dump
    the tools do not emit. The full survey is in the changelog.
 
-   Do not spend a week looking for a checkpoint. The surface is unscorable on this runtime and
+   Do not spend a week looking for a SPARSE-MoE checkpoint — but the search was scoped wrong,
+   and `Qwen3.5-4B-Q4_K_M` clears both gates on the same device: 2.84 GB per step, a recurrent
+   footprint that fits in the partition, ten of ten unhooked replays identical, and a measured
+   **+0.695%** at batch 1 against a 0.112% floor. `eval/screen_checkpoints.py` does the traffic
+   gate from a `config.json` before any download. What follows applies to the MoE family, where
+   the surface is unscorable on this runtime and
    this device, and weighted the persist family reaches 1.94% here, which was under the 2% floor this project used to score against and is now simply a small number with a published noise floor beside it — so
    even a scorable version of this result would land just under. See below.
 

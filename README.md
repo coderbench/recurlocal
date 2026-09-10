@@ -51,12 +51,21 @@ implementation**:
 ceiling = 2 x min(persisting capacity, footprint) / decode step traffic
 ```
 
-The numerator is pinned at 60 MiB by the hardware. Weighted across the full workload matrix on
-the best model found — a sparse-MoE hybrid whose decode step moves 3.56 GB instead of a dense
-hybrid's 18.5 — that ceiling is **1.94%**, with both persistence dials at maximum and a bound
-that already assumes every resident byte hits. On the scored dense model it is **0.52%**. The
-best measured real gain is **+1.74% at batch 1**, on a checkpoint that **cannot be scored**
-because the runtime is not reproducible on it.
+The numerator is pinned at 60 MiB by the hardware. **The denominator is the model, and that is
+the whole search.** On the pinned dense Qwen3.8-27B the step moves 18.5 GB and the ceiling is
+**0.52%** weighted — below the noise, which is the negative result the rest of this document is
+about.
+
+On the **same RTX 5090 and the same runtime commit**, `Qwen3.5-4B-Q4_K_M` moves **2.84 GB** and
+its 51.5 MB recurrent footprint *fits* inside the 60 MiB partition instead of overflowing it
+2.4x. Its ceiling is **3.76%**, and it measures **+0.695% at batch 1 against a 0.112% noise
+floor** — resolved at 6.2x, token-exact, ten of ten unhooked replays identical. That is the
+first result here that is both **positive and scorable**; a sparse-MoE checkpoint measured
++1.26% and can never be scored, because its own unhooked replays disagree.
+
+Three things that figure is not: it is not a concurrency result (−1.8% at sixteen sequences), it
+is not near its ceiling (the step runs at 55% of bandwidth, so 3.76% is loose), and it is not
+the pinned model. [`docs/VERDICT.md`](docs/VERDICT.md) section 9 has all three.
 
 **The 0.2 generalization does not repeal that bound.** It relocates it: the bound applies to one
 planner (`recurrent_v0`) over one tensor class, rather than to the project. And it bounds
