@@ -1,8 +1,17 @@
 #include "tensortransit/executor.h"
 
 #include <algorithm>
+#include <chrono>
 
 namespace tensortransit {
+
+namespace {
+std::uint64_t now_ns() noexcept {
+    return static_cast<std::uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+}  // namespace
 
 void RecordingExecutor::begin_step() noexcept {
     ++stats_.steps;
@@ -10,6 +19,12 @@ void RecordingExecutor::begin_step() noexcept {
 
 void RecordingExecutor::dispatch(const TransitAction* const* actions, int count, KernelId kernel,
                                  bool before) noexcept {
+    // Timed for the same reason the CUDA executor is: spec section 80 budgets planner PLUS
+    // executor under 0.5% of token latency, and the half that is measured only on hardware is
+    // the half nobody can gate on in CI. What this measures is the dispatch itself -- the
+    // per-kernel index lookup and the action walk -- which is on the decode critical path
+    // whatever backend is underneath it.
+    const auto start = now_ns();
     for (int i = 0; i < count; ++i) {
         const TransitAction& action = *actions[i];
         records_.push_back(Record{action.kind, action.tensor, kernel, before, action.bytes,
@@ -40,6 +55,7 @@ void RecordingExecutor::dispatch(const TransitAction* const* actions, int count,
                 break;
         }
     }
+    stats_.host_ns += now_ns() - start;
 }
 
 void RecordingExecutor::before_kernel(KernelId kernel) noexcept {

@@ -109,6 +109,8 @@ void TransitGraph::build(const TensorRegistry& registry) {
     step_traffic_ = 0;
     removable_ = 0;
     peak_live_ = 0;
+    live_orders_.clear();
+    live_values_.clear();
     unresolved_uses_ = 0;
 
     // Uses arrive in whatever order the runtime recorded them; the analysis needs them in
@@ -147,6 +149,16 @@ void TransitGraph::build(const TensorRegistry& registry) {
     kernel_orders.reserve(kernels_.size());
     for (const KernelEvent& kernel : kernels_) kernel_orders.push_back(kernel.order);
     std::sort(kernel_orders.begin(), kernel_orders.end());
+    // Distinct orders, which is the axis the live set is answered on. Every query lands in
+    // one of these intervals, so the whole curve is a prefix sum over them.
+    std::vector<std::uint64_t> distinct_orders = kernel_orders;
+    distinct_orders.erase(std::unique(distinct_orders.begin(), distinct_orders.end()),
+                          distinct_orders.end());
+    std::vector<long long> live_delta(distinct_orders.size() + 1, 0);
+    const auto order_index = [&](std::uint64_t order) -> std::size_t {
+        const auto it = std::lower_bound(distinct_orders.begin(), distinct_orders.end(), order);
+        return static_cast<std::size_t>(it - distinct_orders.begin());
+    };
     const auto kernels_between = [&](std::uint64_t lo, std::uint64_t hi) -> std::uint64_t {
         if (hi <= lo) return 0;
         const auto first = std::upper_bound(kernel_orders.begin(), kernel_orders.end(), lo);
@@ -235,6 +247,31 @@ void TransitGraph::build(const TensorRegistry& registry) {
             }
 
             edges_.push_back(edge);
+            // The interval this edge keeps the tensor live over, accumulated as a delta.
+            //
+            // The intervals of ONE tensor are disjoint by construction -- an edge joins two
+            // CONSECUTIVE uses, and the wrap edge covers only the tail and the head -- so no
+            // merging is needed and each tensor is counted once at every point, which is what
+            // the live set means. This replaces a query that resolved each edge's endpoints
+            // by scanning every use, for every edge, for every profile, at every kernel:
+            // O(kernels x profiles x edges x uses), on the COMPILE path the plan cache exists
+            // to protect. It is now O(edges) to build and O(log orders) to query.
+            const std::size_t p_index = order_index(producer.order);
+            const std::size_t c_index = order_index(consumer.order);
+            const auto live = static_cast<long long>(profile.bytes);
+            if (!wrap) {
+                if (c_index > p_index) {
+                    live_delta[p_index] += live;
+                    live_delta[c_index] -= live;
+                }
+            } else {
+                live_delta[p_index] += live;
+                live_delta[distinct_orders.size()] -= live;
+                if (c_index > 0) {
+                    live_delta[0] += live;
+                    live_delta[c_index] -= live;
+                }
+            }
             ++profile.reuse_count;
             profile.reused_bytes += edge.bytes;
             profile.min_reuse_kernels = std::min(profile.min_reuse_kernels, edge.reuse_kernels);
@@ -257,35 +294,27 @@ void TransitGraph::build(const TensorRegistry& registry) {
     // Peak live set: the largest total of tensors that must be simultaneously resident for
     // every reuse edge crossing one point to hit. Compared against the device's persisting
     // capacity, this is the residency fraction the whole persist bound turns on.
-    for (const std::uint64_t order : kernel_orders)
-        peak_live_ = std::max(peak_live_, live_bytes_at(order));
+    live_orders_ = std::move(distinct_orders);
+    live_values_.assign(live_orders_.size(), 0);
+    long long running = 0;
+    for (std::size_t i = 0; i < live_orders_.size(); ++i) {
+        running += live_delta[i];
+        const auto value = running > 0 ? static_cast<std::size_t>(running) : 0u;
+        live_values_[i] = value;
+        peak_live_ = std::max(peak_live_, value);
+    }
 
     built_ = true;
 }
 
 std::size_t TransitGraph::live_bytes_at(std::uint64_t order) const noexcept {
-    std::size_t total = 0;
-    // Each tensor counted once, however many of its edges span the point.
-    for (const TensorProfile& profile : profiles_) {
-        bool spans = false;
-        for (const TransitEdge& edge : edges_) {
-            if (edge.tensor != profile.tensor) continue;
-            std::uint64_t producer_order = 0, consumer_order = 0;
-            for (const TensorUse& use : uses_) {
-                if (use.kernel == edge.producer && use.tensor == edge.tensor) producer_order = use.order;
-                if (use.kernel == edge.consumer && use.tensor == edge.tensor) consumer_order = use.order;
-            }
-            if (consumer_order > producer_order) {
-                if (order >= producer_order && order < consumer_order) spans = true;
-            } else {
-                // Wrap edge: it spans the tail of the window and the head of the next.
-                if (order >= producer_order || order < consumer_order) spans = true;
-            }
-            if (spans) break;
-        }
-        if (spans) total += profile.bytes;
-    }
-    return total;
+    // A lookup into the curve build() accumulated, not a re-derivation. Each tensor is
+    // counted once at every point, which is what the live set means; the disjointness of one
+    // tensor's own intervals is what makes that true without a merge step.
+    if (live_orders_.empty()) return 0;
+    const auto it = std::upper_bound(live_orders_.begin(), live_orders_.end(), order);
+    if (it == live_orders_.begin()) return 0;   // before the first kernel: nothing is live yet
+    return live_values_[static_cast<std::size_t>(it - live_orders_.begin()) - 1];
 }
 
 std::size_t TransitGraph::removable_bytes_in_role(TensorRole role) const noexcept {
@@ -337,6 +366,8 @@ void TransitGraph::clear() noexcept {
     step_traffic_ = 0;
     removable_ = 0;
     peak_live_ = 0;
+    live_orders_.clear();
+    live_values_.clear();
     unresolved_uses_ = 0;
     built_ = false;
 }

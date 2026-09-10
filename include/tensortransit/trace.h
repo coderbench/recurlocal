@@ -3,6 +3,7 @@
 
 #include "tensortransit/device.h"
 #include "tensortransit/graph.h"
+#include "tensortransit/plan.h"
 #include "tensortransit/tensor.h"
 
 namespace tensortransit {
@@ -41,6 +42,21 @@ struct TraceMetadata {
 // address space layout.
 std::string write_trace(const TransitGraph& graph, const TensorRegistry& registry,
                         const TraceMetadata& meta);
+
+// Reads a serialized TransitPlan back.
+//
+// The other two thirds of the offline planning loop already existed: the CLI plans from a
+// trace and dumps the plan. This is what lets that plan be fed back to an executor -- which
+// is what makes optimizing without touching a runtime possible at all.
+//
+// Declared HERE rather than in plan.h because it needs the same dependency-free JSON reader
+// `read_trace` uses, and a second copy of that parser would be a second place for a
+// malformed document to be accepted quietly.
+//
+// The plan comes back with NULL regions: a serialized plan carries no pointer, by design.
+// Call TransitPlan::rebind() against a live registry before executing one.
+bool read_plan(const std::string& json, TransitPlan* plan, std::string* error);
+bool read_plan_file(const std::string& path, TransitPlan* plan, std::string* error);
 
 // Rebuilds a registry and a graph from a trace. The registry entries carry synthetic
 // pointers: distinct, non-null, never dereferenced, and never handed to a driver -- a plan

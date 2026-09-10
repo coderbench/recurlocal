@@ -484,6 +484,132 @@ bool read_trace(const std::string& json, TensorRegistry* registry, TransitGraph*
     return true;
 }
 
+bool read_plan(const std::string& json, TransitPlan* plan, std::string* error) {
+    if (!plan) return false;
+    plan->clear();
+    Value root;
+    Parser parser(json);
+    if (!parser.parse(&root)) {
+        if (error) *error = parser.error();
+        return false;
+    }
+    if (root.type != Value::Type::Object) {
+        if (error) *error = "a plan document must be a JSON object";
+        return false;
+    }
+    const Value* version = root.find("plan_schema_version");
+    if (!version || version->as_u64() != static_cast<std::uint64_t>(kPlanSchemaVersion)) {
+        if (error) {
+            char buffer[160];
+            std::snprintf(buffer, sizeof(buffer),
+                          "plan_schema_version %llu, expected %d. A plan from another schema "
+                          "is not a plan this build can execute, and guessing which fields "
+                          "still mean the same thing is how a policy comes to be applied to "
+                          "the wrong region.",
+                          version ? (unsigned long long)version->as_u64() : 0ull,
+                          kPlanSchemaVersion);
+            *error = buffer;
+        }
+        return false;
+    }
+    if (const Value* name = root.find("planner"))
+        plan->set_planner_name(name->as_string());
+
+    const Value* actions = root.find("actions");
+    if (actions && actions->type == Value::Type::Array) {
+        for (const Value& item : actions->array) {
+            TransitAction action{};
+            const Value* kind = item.find("kind");
+            if (!kind || !parse_transit_action_kind(kind->as_string().c_str(), &action.kind)) {
+                if (error) *error = "action with an unknown `kind`";
+                return false;
+            }
+            if (const Value* v = item.find("tensor")) action.tensor = v->as_u64();
+            if (const Value* v = item.find("role")) {
+                TensorRole role{};
+                if (parse_tensor_role(v->as_string().c_str(), &role)) action.role = role;
+            }
+            if (const Value* v = item.find("before_kernel")) action.before_kernel = v->as_u64();
+            if (const Value* v = item.find("after_kernel")) action.after_kernel = v->as_u64();
+            if (const Value* v = item.find("bytes"))
+                action.bytes = static_cast<std::size_t>(v->as_u64());
+            if (const Value* v = item.find("hit_ratio"))
+                action.hit_ratio = v->type == Value::Type::Number ? v->number : 0.0;
+            if (const Value* v = item.find("stream"))
+                action.stream_id = static_cast<int>(v->as_u64());
+            if (const Value* v = item.find("event"))
+                action.event_id = static_cast<std::uint32_t>(v->as_u64());
+            if (const Value* v = item.find("expected_saved_bytes"))
+                action.expected_saved_bytes = static_cast<std::size_t>(v->as_u64());
+            // No `ptr`, ever. A serialized plan carries no address, so this one comes back
+            // with null regions and TransitPlan::rebind() against a live registry is what
+            // makes it executable. That is not an inconvenience, it is the property that
+            // stops a file deciding what memory a driver touches.
+            plan->add(action);
+        }
+    }
+
+    const Value* declines = root.find("declines");
+    if (declines && declines->type == Value::Type::Array) {
+        for (const Value& item : declines->array) {
+            TransitDecline decline{};
+            if (const Value* v = item.find("tensor")) decline.tensor = v->as_u64();
+            if (const Value* v = item.find("role")) {
+                TensorRole role{};
+                if (parse_tensor_role(v->as_string().c_str(), &role)) decline.role = role;
+            }
+            if (const Value* v = item.find("reason")) {
+                DeclineReason reason{};
+                if (parse_decline_reason(v->as_string().c_str(), &reason)) decline.reason = reason;
+            }
+            if (const Value* v = item.find("bytes"))
+                decline.bytes = static_cast<std::size_t>(v->as_u64());
+            if (const Value* v = item.find("forgone_saved_bytes"))
+                decline.forgone_saved_bytes = static_cast<std::size_t>(v->as_u64());
+            plan->decline(decline);
+        }
+    }
+
+    if (const Value* cost = root.find("cost_model")) {
+        PlanCostModel& out = plan->cost();
+        const auto u64 = [&](const char* key, std::size_t* field) {
+            if (const Value* v = cost->find(key)) *field = static_cast<std::size_t>(v->as_u64());
+        };
+        u64("step_traffic_bytes", &out.step_traffic_bytes);
+        u64("removable_bytes", &out.removable_bytes);
+        u64("bounded_removable_bytes", &out.bounded_removable_bytes);
+        u64("predicted_saved_bytes", &out.predicted_saved_bytes);
+        u64("predicted_gross_saved_bytes", &out.predicted_gross_saved_bytes);
+        u64("reservation_cost_bytes", &out.reservation_cost_bytes);
+        u64("budget_bytes", &out.budget_bytes);
+        u64("committed_bytes", &out.committed_bytes);
+        u64("peak_live_bytes", &out.peak_live_bytes);
+        u64("resident_bytes", &out.resident_bytes);
+        u64("stream_relieved_bytes", &out.stream_relieved_bytes);
+        if (const Value* v = cost->find("cost_model")) {
+            CostModel model{};
+            if (parse_cost_model(v->as_string().c_str(), &model)) out.cost_model = model;
+        }
+    }
+
+    plan->finalize();
+    if (const char* problem = plan->validate()) {
+        if (error) *error = std::string("the plan in this file is not well formed: ") + problem;
+        return false;
+    }
+    return true;
+}
+
+bool read_plan_file(const std::string& path, TransitPlan* plan, std::string* error) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        if (error) *error = "cannot open " + path;
+        return false;
+    }
+    std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    return read_plan(text, plan, error);
+}
+
 bool write_trace_file(const std::string& path, const TransitGraph& graph,
                       const TensorRegistry& registry, const TraceMetadata& meta,
                       std::string* error) {

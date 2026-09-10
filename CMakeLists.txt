@@ -192,6 +192,11 @@ if(TENSORTRANSIT_BUILD_TESTS)
 
     # Golden traces: CPU CI validates planner behaviour against committed plan digests, so a
     # policy change that nobody intended fails a build rather than a benchmark.
+    # Spec section 80's planner+executor CPU budget, gated rather than described.
+    add_executable(test_overhead_budget tests/test_overhead_budget.cpp)
+    target_link_libraries(test_overhead_budget PRIVATE tensortransit)
+    add_test(NAME overhead_budget COMMAND test_overhead_budget)
+
     add_executable(test_golden tests/test_golden.cpp)
     target_link_libraries(test_golden PRIVATE tensortransit)
     target_compile_definitions(test_golden PRIVATE

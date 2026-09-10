@@ -12,6 +12,7 @@
 // Nothing this tool prints is a measurement. Every figure derived from the cost model is
 // labelled, because the one thing this repository has been repeatedly bitten by is a
 // confident number whose provenance was not on the page.
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -35,13 +36,14 @@ int usage(const char* program) {
         "  inspect <trace.json>          summarise a trace: roles, reuse, the ceiling\n"
         "  plan <trace.json>             build a plan and print it\n"
         "  compare <trace.json>          run the five policy arms over one trace\n"
+        "  replay <plan.json>            feed a serialized plan back to an executor\n"
         "  devices                       list the device profiles this build knows\n"
         "  planners                      list the registered planners\n"
         "\n"
         "options:\n"
         "  --planner NAME                baseline|recurrent_v0|greedy|budgeted|concurrency\n"
         "  --device NAME                 device profile to plan against (default rtx5090)\n"
-        "  --admission RULE              density|quota|proportional|reuse_order|role_floor\n"
+        "  --admission RULE              density|quota|proportional|reuse_order|role_floor|survival\n"
         "  --reuse-metric METRIC         ordinal|bytes|time\n"
         "  --window-binding BINDING      per_consumer|sticky\n"
         "  --budget-fraction F           share of persisting capacity to ask for\n"
@@ -401,6 +403,125 @@ int cmd_devices() {
     return 0;
 }
 
+// Replay a serialized plan against a trace: the last third of the offline planning loop.
+//
+// trace -> planner -> plan.json -> REPLAY. Before this the first two thirds existed and the
+// third did not, which meant a plan could be dumped and read by a human but never fed back
+// to an executor -- so "optimize without touching the runtime" was two thirds true.
+//
+// The replay runs on RecordingExecutor, not on CUDA: a plan read from a file carries no
+// pointers, and rebinding it against a trace's registry gives it SYNTHETIC ones, which the
+// CUDA executor refuses by design. What this checks is everything that does not need a
+// device -- which kernel each action fires on, that every Persist is cleared before the step
+// ends, and that every fork is joined.
+int cmd_replay(int argc, char** argv) {
+    if (argc < 3) {
+        std::fprintf(stderr,
+            "usage: tensortransit replay <plan.json> [--trace <trace.json>] [--json]\n"
+            "  --trace T   rebind the plan's regions against T's tensor table, and walk T's\n"
+            "              kernels in order. Without it the plan is replayed on the kernels\n"
+            "              it names, which checks placement but not coverage.\n");
+        return 2;
+    }
+    const char* plan_path = argv[2];
+    const char* trace_path = nullptr;
+    bool json = false;
+    for (int i = 3; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--trace") == 0 && i + 1 < argc) trace_path = argv[++i];
+        else if (std::strcmp(argv[i], "--json") == 0) json = true;
+        else { std::fprintf(stderr, "unknown option: %s\n", argv[i]); return 2; }
+    }
+
+    TransitPlan plan;
+    std::string error;
+    if (!read_plan_file(plan_path, &plan, &error)) {
+        std::fprintf(stderr, "cannot read %s: %s\n", plan_path, error.c_str());
+        return 2;
+    }
+
+    TensorRegistry registry;
+    TransitGraph graph;
+    TraceMetadata meta;
+    std::vector<KernelId> kernels;
+    if (trace_path) {
+        if (!read_trace_file(trace_path, &registry, &graph, &meta, &error)) {
+            std::fprintf(stderr, "cannot read %s: %s\n", trace_path, error.c_str());
+            return 2;
+        }
+        if (!plan.rebind(registry, &error)) {
+            std::fprintf(stderr, "cannot rebind the plan onto %s: %s\n", trace_path,
+                         error.c_str());
+            return 2;
+        }
+        for (const KernelEvent& kernel : graph.kernels()) kernels.push_back(kernel.id);
+    } else {
+        for (const TransitAction& action : plan.actions()) {
+            for (const KernelId id : {action.before_kernel, action.after_kernel}) {
+                if (id == kInvalidKernelId) continue;
+                if (std::find(kernels.begin(), kernels.end(), id) == kernels.end())
+                    kernels.push_back(id);
+            }
+        }
+        std::sort(kernels.begin(), kernels.end());
+    }
+
+    RecordingExecutor executor;
+    executor.set_plan(&plan);
+    executor.begin_step();
+    for (const KernelId kernel : kernels) {
+        executor.before_kernel(kernel);
+        executor.after_kernel(kernel);
+    }
+    executor.end_step();
+
+    const ExecutorStats& stats = executor.stats();
+    const bool balanced = executor.policies_balanced();
+    const bool covered = executor.records().size() == plan.actions().size();
+
+    if (json) {
+        std::printf("{\"plan\":\"%s\",\"planner\":\"%s\",\"digest\":\"%016llx\","
+                    "\"trace\":%s%s%s,\"rebound\":%s,"
+                    "\"kernels_walked\":%zu,\"actions\":%zu,\"actions_fired\":%zu,"
+                    "\"persist\":%llu,\"clear\":%llu,\"stream\":%llu,\"prefetch\":%llu,"
+                    "\"events_recorded\":%llu,\"events_waited\":%llu,"
+                    "\"policies_balanced\":%s,\"every_action_fired\":%s}\n",
+                    plan_path, plan.planner_name().c_str(),
+                    static_cast<unsigned long long>(plan.digest()),
+                    trace_path ? "\"" : "null", trace_path ? trace_path : "",
+                    trace_path ? "\"" : "", trace_path ? "true" : "false",
+                    kernels.size(), plan.actions().size(), executor.records().size(),
+                    (unsigned long long)stats.persist_applied,
+                    (unsigned long long)stats.clear_applied,
+                    (unsigned long long)stats.stream_applied,
+                    (unsigned long long)stats.prefetch_applied,
+                    (unsigned long long)stats.events_recorded,
+                    (unsigned long long)stats.events_waited,
+                    balanced ? "true" : "false", covered ? "true" : "false");
+    } else {
+        std::printf("replay %s  planner=%s  digest=%016llx\n", plan_path,
+                    plan.planner_name().c_str(),
+                    static_cast<unsigned long long>(plan.digest()));
+        if (trace_path)
+            std::printf("  rebound onto %s: %zu tensors, %zu kernels\n", trace_path,
+                        registry.size(), kernels.size());
+        std::printf("  walked %zu kernels, fired %zu of %zu actions\n",
+                    kernels.size(), executor.records().size(), plan.actions().size());
+        std::printf("  persist %llu  clear %llu  stream %llu  prefetch %llu  fork %llu  join %llu\n",
+                    (unsigned long long)stats.persist_applied,
+                    (unsigned long long)stats.clear_applied,
+                    (unsigned long long)stats.stream_applied,
+                    (unsigned long long)stats.prefetch_applied,
+                    (unsigned long long)stats.events_recorded,
+                    (unsigned long long)stats.events_waited);
+        std::printf("  policies balanced: %s\n", balanced ? "yes" : "NO");
+        if (!covered)
+            std::printf("  !! %zu action(s) never fired: they name kernels this walk did not "
+                        "visit, so the plan does not cover the trace it was replayed on\n",
+                        plan.actions().size() - executor.records().size());
+    }
+    return (balanced && covered) ? 0 : 1;
+}
+
 int cmd_planners() {
     for (const char* const* name = planner_names(); *name; ++name) std::printf("%s\n", *name);
     return 0;
@@ -414,6 +535,7 @@ int main(int argc, char** argv) {
     if (std::strcmp(command, "inspect") == 0) return cmd_inspect(argc, argv);
     if (std::strcmp(command, "plan") == 0) return cmd_plan(argc, argv);
     if (std::strcmp(command, "compare") == 0) return cmd_compare(argc, argv);
+    if (std::strcmp(command, "replay") == 0) return cmd_replay(argc, argv);
     if (std::strcmp(command, "devices") == 0) return cmd_devices();
     if (std::strcmp(command, "planners") == 0) return cmd_planners();
     if (std::strcmp(command, "--version") == 0 || std::strcmp(command, "version") == 0) {

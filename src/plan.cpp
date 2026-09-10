@@ -1,4 +1,5 @@
 #include "tensortransit/plan.h"
+#include "tensortransit/tensor.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -87,6 +88,13 @@ bool parse_transit_action_kind(const char* text, TransitActionKind* out) noexcep
             return true;
         }
     }
+    return false;
+}
+
+bool parse_decline_reason(const char* text, DeclineReason* out) noexcept {
+    if (!text || !out) return false;
+    for (const auto& entry : kReasons)
+        if (std::strcmp(text, entry.name) == 0) { *out = entry.reason; return true; }
     return false;
 }
 
@@ -272,6 +280,16 @@ std::string TransitPlan::to_json() const {
     append_u64(&out, cost_.committed_bytes);
     out += ",\"peak_live_bytes\":";
     append_u64(&out, cost_.peak_live_bytes);
+    out += ",\"resident_bytes\":";
+    append_u64(&out, cost_.resident_bytes);
+    out += ",\"stream_relieved_bytes\":";
+    append_u64(&out, cost_.stream_relieved_bytes);
+    out += ",\"predicted_gross_saved_bytes\":";
+    append_u64(&out, cost_.predicted_gross_saved_bytes);
+    out += ",\"reservation_cost_bytes\":";
+    append_u64(&out, cost_.reservation_cost_bytes);
+    out += ",\"cost_model\":";
+    append_escaped(&out, to_string(cost_.cost_model));
     out += ",\"predicted_traffic_share\":";
     append_double(&out, cost_.predicted_traffic_share());
     out += ",\"predicted_throughput_ratio\":";
@@ -421,6 +439,41 @@ std::uint64_t TransitPlan::digest() const noexcept {
         hash_value(&h, action.stream_id);
     }
     return h;
+}
+
+bool TransitPlan::rebind(const TensorRegistry& registry, std::string* error) {
+    for (TransitAction& action : actions_) {
+        if (action.tensor == kInvalidTensorId) continue;
+        const TensorDesc* desc = registry.find(action.tensor);
+        if (!desc) {
+            if (error) {
+                char buffer[192];
+                std::snprintf(buffer, sizeof(buffer),
+                              "action names tensor %llu, which this registry does not know: "
+                              "the plan was compiled against a different tensor set, and "
+                              "executing the rest of it would apply an arbitration that was "
+                              "made against tensors that are not here",
+                              static_cast<unsigned long long>(action.tensor));
+                *error = buffer;
+            }
+            return false;
+        }
+        // Only actions that name a region need one. A ClearPolicy, a fork and a join do not.
+        if (action.kind == TransitActionKind::Persist ||
+            action.kind == TransitActionKind::RotateWindow ||
+            action.kind == TransitActionKind::Stream ||
+            action.kind == TransitActionKind::Prefetch) {
+            action.ptr = desc->ptr;
+            // Clamped to the allocation the runtime actually owns. A window widened past it
+            // is not a hint, it is a bug with a performance counter -- and a plan read from a
+            // file is exactly where a wrong size would come from.
+            const std::size_t limit = desc->allocation_bytes();
+            if (!action.bytes || action.bytes > limit) action.bytes = limit;
+        }
+    }
+    finalized_ = false;
+    finalize();
+    return true;
 }
 
 void TransitPlan::clear() noexcept {

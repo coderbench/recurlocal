@@ -182,6 +182,8 @@ public:
     // Bytes that must be simultaneously resident for every reuse edge crossing `order` to
     // hit -- i.e. the live set at that point, counting each tensor once. This generalizes
     // RecurLocal's HotSetModel::TokenFootprint to any mix of roles.
+    // O(log orders): build() accumulates the whole curve in O(edges) and this is a lookup
+    // into it.
     std::size_t live_bytes_at(std::uint64_t order) const noexcept;
     // The largest such value anywhere in the window. What a cache would have to be to hold
     // everything; compare against the device's persisting capacity to get residency.
@@ -207,6 +209,13 @@ private:
     std::vector<TransitEdge> edges_;
     std::vector<TensorProfile> profiles_;
     std::vector<char> labels_{'\0'};  // index 0 is the empty label
+    // The live-set curve, accumulated once by build(). `live_orders_` are the distinct kernel
+    // orders and `live_values_[i]` is the live set from live_orders_[i] until the next one.
+    // This is what makes live_bytes_at() a lookup instead of a re-derivation -- it used to
+    // scan every use for every edge for every profile, once per kernel, which put a quartic
+    // on the COMPILE path the plan cache exists to protect.
+    std::vector<std::uint64_t> live_orders_;
+    std::vector<std::size_t> live_values_;
     std::size_t step_traffic_ = 0;
     std::size_t removable_ = 0;
     std::size_t peak_live_ = 0;

@@ -76,6 +76,7 @@ enum class DeclineReason : int {
 };
 
 const char* to_string(DeclineReason reason) noexcept;
+bool parse_decline_reason(const char* text, DeclineReason* out) noexcept;
 
 struct TransitDecline {
     TensorId tensor = kInvalidTensorId;
@@ -190,6 +191,8 @@ struct PlanCostModel {
     bool ceiling_saturated() const noexcept;
 };
 
+class TensorRegistry;
+
 class TransitPlan {
 public:
     TransitPlan() = default;
@@ -232,6 +235,20 @@ public:
     std::string to_json() const;
     // Human form, the shape of spec section 17. Grouped by kernel, declines listed after.
     std::string to_text() const;
+    // Resolve every action's REGION against a live registry, by tensor id.
+    //
+    // A serialized plan carries no pointer, for the same reason a trace does not: a device
+    // address from another process is meaningless in this one, and a plan built offline that
+    // could reach a driver would be a fabricated address with a performance counter. So the
+    // offline loop is trace -> plan -> SHIP -> rebind -> execute, and this is the rebind.
+    //
+    // Fails loudly rather than silently skipping: an action naming a tensor this registry
+    // does not know is a plan compiled against a different model, and executing the rest of
+    // it would apply a policy that was arbitrated against tensors that are not there.
+    // Regions are clamped to the descriptor's allocation, so a plan cannot widen a window
+    // past memory the runtime owns whatever the file says.
+    bool rebind(const TensorRegistry& registry, std::string* error);
+
     // Stable 64-bit digest of the ACTIONS only -- not of the cost model, not of the name.
     // Two planners that emit the same actions have the same digest, which is how the
     // golden-plan tests assert behaviour without pinning a formatting choice, and how
