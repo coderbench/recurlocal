@@ -246,6 +246,14 @@ traffic` — what a policy that held every byte it could and lost nothing would 
 control moved between repeats of itself when the generation was calibrated, published in
 `reference.json` since it was frozen.
 
+These are smaller than section 1's **0.52%**, and the difference is the workload rather than a
+disagreement. Section 1 weights the section 44 matrix, whose rates come from the single-sequence
+and packed benches at their own step times — 10.34 ms at batch 1. TTF-1's cells run the
+continuous-batching bench with a long-prefill request injected alongside, so the same batch-1
+cell takes 14.37 ms and its step therefore *carries more traffic*. A ceiling that is a share of
+the step falls when the step grows. Both numbers are right about their own workload, and the one
+that matters for a submission is the one computed from the cells it will be scored in.
+
 **Where the spread exceeds the persist ceiling, nothing this project ships can be measured to
 win.** Not a better admission rule, not a better window shape, not a better hot-set heuristic:
 the room is smaller than the noise, and that is arithmetic rather than an implementation
