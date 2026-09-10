@@ -292,15 +292,30 @@ def require_registered_families(stats, env_extra, label):
                      if untested else "")}
 
 
-# Below this share of a concurrency arm's tokens going through the runtime's packed decode
-# path, the run did not measure concurrent decode at all -- it measured the single-sequence
-# path executed once per row. A tail chunk of one row always falls through, so the normal
-# figure is high but not 1.0 (the pinned integration measures 133 of 142 at concurrency 8);
-# a collapse is near zero, not a few percent short.
+# Below this share of the DECODE STEPS a concurrency arm was asked for going through the
+# runtime's packed path, the run did not measure concurrent decode at all -- it measured the
+# single-sequence path executed once per row. A tail step of one row always falls through, so
+# the normal figure is high but not 1.0; a collapse is near zero, not a few percent short.
 PACKED_SHARE_MIN = 0.50
 
+# The denominator is `max_new`, not the adapter's `tokens`, and that is a correction rather
+# than a preference.
+#
+# `tokens` counts every step the hook brackets, and at long context most of them are PREFILL
+# chunks: at ctx4096 a c=16 run brackets 133 steps of which 63 are decode, so a run whose every
+# decode step batched sixteen rows reported a 47.4% "packed share" and was refused. The first
+# full TTF-1 matrix lost four cells that way and its receipt read -99.5%. Two of the four were
+# exactly this -- `max_rows_seen` 16 and 32, every decode step packed, wrong denominator. One
+# decode step advances every live row, so the number of decode steps a concurrency arm should
+# produce is `max_new`: known to the harness, and immune to how long the prefill was.
+#
+# The other two were real: `max_rows_seen` 0, not one batched decode step at any decode length,
+# in the candidate AND in a baseline probe that ran no policy. That is the unambiguous test and
+# it is checked first.
+MIN_ROWS_FOR_CONCURRENCY = 2
 
-def packed_path_used(stats, concurrency):
+
+def packed_path_used(stats, concurrency, max_new=None):
     """Did the runtime actually batch, or did it fall back to decoding one row at a time?
 
     This is the 32-sequence cliff, made visible. SparkInfer declines a packed forward for
@@ -310,38 +325,66 @@ def packed_path_used(stats, concurrency):
     number in the run looks normal. A median over repeats then turns one collapsed run into a
     plausible-looking 'result' for whatever configuration happened to be running.
 
-    The adapter already counts what settles it: `tokens_packed` of `tokens`, and
-    `max_rows_seen`. Returns a record for the artifact, and whether the arm is usable.
+    The adapter already counts what settles it: `tokens_packed`, and `max_rows_seen`. Returns a
+    record for the artifact, and whether the arm is usable.
+
+    Two questions, and conflating them cost this repository four cells of a ten-cell matrix:
+
+      did concurrent decode EVER happen        `max_rows_seen >= 2`. Unambiguous. Zero means
+                                               not one batched step, at any decode length.
+      did MOST of it happen                    `tokens_packed` against the decode steps the
+                                               arm was asked for, which is `max_new`. NOT
+                                               against the adapter's `tokens`, which counts
+                                               prefill chunks and at ctx4096 is dominated by
+                                               them.
 
     Limitation, stated rather than hidden: the control arm is unhooked by construction, so it
-    emits no telemetry and a collapse THERE is still invisible. What this catches is a
-    collapse in the candidate, which is where both observed ones were.
+    emits no telemetry and a collapse THERE is still invisible. `frontier/runner.py` answers
+    that from the control's own concurrency scaling, which needs no telemetry at all.
     """
     if not stats or concurrency < 2:
         return None
     st = stats.get("stats", {})
     tokens = st.get("tokens", 0) or 0
     packed = st.get("tokens_packed", 0) or 0
-    share = (packed / tokens) if tokens else 0.0
-    return {"tokens": tokens, "tokens_packed": packed, "packed_share": share,
-            "max_rows_seen": st.get("max_rows_seen", 0),
+    rows = st.get("max_rows_seen", 0) or 0
+    expected = int(max_new) if max_new else 0
+    # Share of the DECODE steps this arm asked for. One decode step advances every live row, so
+    # `max_new` is how many there should be.
+    decode_share = (packed / expected) if expected else None
+    batched_at_all = rows >= MIN_ROWS_FOR_CONCURRENCY
+    usable = batched_at_all and (decode_share is None or decode_share >= PACKED_SHARE_MIN)
+    return {"tokens": tokens, "tokens_packed": packed,
+            # Kept for continuity with every result file written before this correction, and
+            # named for what it is: contaminated by prefill at long context.
+            "packed_share_of_all_steps": (packed / tokens) if tokens else 0.0,
+            "packed_share": decode_share,
+            "decode_steps_expected": expected,
+            "max_rows_seen": rows,
+            "batched_at_all": batched_at_all,
             "layers_packed": st.get("layers_packed", 0),
             "concurrency_asked": concurrency,
-            "used_packed_path": share >= PACKED_SHARE_MIN}
+            "used_packed_path": usable}
 
 
-def require_packed_path(stats, concurrency, label):
+def require_packed_path(stats, concurrency, label, max_new=None):
     """A concurrency measurement that ran the per-row path is not a concurrency measurement."""
-    rec = packed_path_used(stats, concurrency)
+    rec = packed_path_used(stats, concurrency, max_new)
     if rec is None or rec["used_packed_path"]:
         return rec
+    if not rec["batched_at_all"]:
+        why = (f"max_rows_seen={rec['max_rows_seen']}: not one decode step batched more than "
+               f"a single row")
+    else:
+        why = (f"the runtime packed {rec['tokens_packed']} of the "
+               f"{rec['decode_steps_expected']} decode steps this arm asked for "
+               f"({(rec['packed_share'] or 0) * 100:.1f}%), max_rows_seen="
+               f"{rec['max_rows_seen']}")
     raise SystemExit(
         f"{label}: RUNTIME FELL OFF THE BATCHED DECODE PATH. Asked for {concurrency} "
-        f"concurrent sequences; the runtime packed {rec['tokens_packed']} of {rec['tokens']} "
-        f"tokens ({rec['packed_share'] * 100:.1f}%), max_rows_seen={rec['max_rows_seen']}. "
-        "Aggregate throughput from a run that decoded one row at a time is not this "
-        "workload's number, and averaging it with runs that did batch produces a gain for a "
-        "measurement that never happened. Re-run the arm.")
+        f"concurrent sequences; {why}. Aggregate throughput from a run that decoded one row at "
+        "a time is not this workload's number, and averaging it with runs that did batch "
+        "produces a gain for a measurement that never happened. Re-run the arm.")
 
 
 def parse_output_ids(text):
@@ -495,9 +538,10 @@ def measure_concurrent(binary, model, concurrency, prompt_len, max_new, long_pre
     require_requests_completed(out, concurrency, max_new, label)
     stats = require_hook_engaged(out, env_extra, label)
     require_registered_families(stats, env_extra, label)
-    packing = require_packed_path(stats, concurrency, label)
+    packing = require_packed_path(stats, concurrency, label, max_new)
     if verbose:
-        pk = f"  packed={packing['packed_share'] * 100:.0f}% rows={packing['max_rows_seen']}" if packing else ""
+        pk = (f"  packed={(packing['packed_share'] or 0) * 100:.0f}% of decode "
+              f"rows={packing['max_rows_seen']}") if packing else ""
         print(f"    {label}: agg={tps:.1f} tok/s  itl={itl.group(1) if itl else '?'} ms{pk}   ({secs:.0f}s)",
               flush=True)
     return tps, stats, out

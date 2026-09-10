@@ -100,6 +100,32 @@ role-floor arbitration alone, and measures the same as it within noise.
 [`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
 maintainer has to answer before handing this to contributors.
 
+### Fixed — the packed-path guard counted prefill chunks in its denominator
+
+`eval/real_eval.py` refused a concurrency measurement whose `tokens_packed / tokens` fell below
+half. `tokens` counts every step the hook brackets, and at long context most of them are
+**prefill chunks**: on the reference box a `ctx4096-c16` run brackets 133 steps of which 63 are
+decode. A run whose *every* decode step batched sixteen rows therefore reported a 47.4% "packed
+share" and was refused.
+
+Two of the four cells the first full TTF-1 matrix lost were exactly that — `max_rows_seen` 16
+and 32, 63 of 64 decode steps packed, and a denominator that had nothing to do with decode.
+The other two were real: `max_rows_seen` **0**, not one batched decode step at 64 new tokens or
+at 256, in the candidate *and* in a baseline probe running no policy at all.
+
+The guard now asks the two questions separately:
+
+- **`max_rows_seen >= 2`** — did concurrent decode ever happen. Unambiguous, checked first, and
+  it is what catches the two cells this runtime genuinely cannot batch.
+- **`tokens_packed` against `max_new`** — did most of it happen. One decode step advances every
+  live row, so the steps a concurrency arm should produce is the decode length the harness
+  asked for, which is immune to how long the prefill was.
+
+The incident that created the guard still fires: 4 of 142 steps packed at `max_rows_seen` 8 —
+the Q4_K row cap, worth 5.4x — is refused, by the second test, and the message names which of
+the two failures it was. Callers that do not know the decode length get the first test only,
+so nothing that could not be checked is failed.
+
 ### Fixed — a cell that collapses in BOTH arms was charged to the candidate
 
 `eval/real_eval.py` refuses a concurrency measurement whose tokens did not go through the

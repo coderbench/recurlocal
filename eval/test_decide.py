@@ -345,6 +345,58 @@ class HarnessIntegrity(unittest.TestCase):
                                            {"TENSORTRANSIT": "persist"}, "arm")
         self.assertIn("persist", str(caught.exception))
 
+    def test_the_packed_path_guard_counts_decode_steps_not_prefill_chunks(self):
+        """The measured numbers that corrected it, from the reference box.
+
+        `tokens` counts every step the hook brackets and at ctx4096 most of them are prefill
+        chunks: a c=16 run brackets 133 steps of which 63 are decode. A run whose EVERY decode
+        step batched sixteen rows therefore reported a 47.4% "packed share" and was refused,
+        and the first full TTF-1 matrix lost two cells to that. `max_new` is how many decode
+        steps a concurrency arm should produce -- one step advances every live row -- and it is
+        immune to how long the prefill was.
+        """
+        def rec(tokens, packed, rows, concurrency, max_new):
+            return real_eval.packed_path_used(
+                {"stats": {"tokens": tokens, "tokens_packed": packed, "max_rows_seen": rows}},
+                concurrency, max_new)
+
+        # Every decode step batched, at short context and at long, and the OLD denominator
+        # separates them for a reason that has nothing to do with decode.
+        short = rec(78, 63, 16, 16, 64)
+        long_ctx = rec(133, 63, 16, 16, 64)
+        self.assertTrue(short["used_packed_path"])
+        self.assertTrue(long_ctx["used_packed_path"])
+        self.assertAlmostEqual(short["packed_share"], long_ctx["packed_share"], places=6)
+        self.assertLess(long_ctx["packed_share_of_all_steps"], real_eval.PACKED_SHARE_MIN)
+        self.assertGreater(short["packed_share_of_all_steps"], real_eval.PACKED_SHARE_MIN)
+
+        # A longer decode changes neither answer.
+        self.assertTrue(rec(517, 255, 32, 32, 256)["used_packed_path"])
+
+        # Not one batched decode step, at any decode length. This is the unambiguous case and
+        # it is checked before any share.
+        for record in (rec(266, 0, 0, 4, 64), rec(1034, 0, 0, 4, 256)):
+            self.assertFalse(record["batched_at_all"])
+            self.assertFalse(record["used_packed_path"])
+
+        # And the incident the guard was built for: above eight rows the pinned runtime stops
+        # batching and decodes one row at a time, at 5.4x the cost. Still caught.
+        cliff = rec(142, 4, 8, 16, 64)
+        self.assertTrue(cliff["batched_at_all"])
+        self.assertFalse(cliff["used_packed_path"])
+        with self.assertRaises(SystemExit) as caught:
+            real_eval.require_packed_path({"stats": {"tokens": 142, "tokens_packed": 4,
+                                                     "max_rows_seen": 8}}, 16, "arm", 64)
+        self.assertIn("FELL OFF THE BATCHED DECODE PATH", str(caught.exception))
+        self.assertIn("decode steps this arm asked for", str(caught.exception))
+
+        # A run that never batched says so in different words, because the two failures are
+        # different and a message that named a share would be describing the wrong one.
+        with self.assertRaises(SystemExit) as caught:
+            real_eval.require_packed_path({"stats": {"tokens": 266, "tokens_packed": 0,
+                                                     "max_rows_seen": 0}}, 4, "arm", 64)
+        self.assertIn("not one decode step batched", str(caught.exception))
+
     def test_an_arm_scoped_to_a_family_the_registry_never_saw_is_unmeasurable(self):
         # Through 0.2.0 no adapter exposed KV to the registry, so a KV-scoped arm would have
         # reported the recurrent policy's number under a KV label. "Weak" and "absent" are
@@ -903,10 +955,23 @@ class PackedPathGuard(unittest.TestCase):
                           "layers_packed": packed * 30}}
 
     def test_a_healthy_batched_run_passes_and_is_recorded(self):
-        rec = real_eval.require_packed_path(self._stats(142, 133, 9), 8, "candidate c=8")
+        rec = real_eval.require_packed_path(self._stats(142, 133, 9), 8, "candidate c=8",
+                                            max_new=134)
         self.assertTrue(rec["used_packed_path"])
-        self.assertAlmostEqual(rec["packed_share"], 133 / 142)
+        self.assertAlmostEqual(rec["packed_share"], 133 / 134)
+        # The 0.1 figure, kept under a name that says what it is: contaminated by prefill.
+        self.assertAlmostEqual(rec["packed_share_of_all_steps"], 133 / 142)
         self.assertEqual(rec["max_rows_seen"], 9)
+
+    def test_without_max_new_the_guard_falls_back_to_did_it_batch_at_all(self):
+        # `packed_path_used` is called from places that do not know the decode length, and a
+        # guard that guessed one would refuse honest runs. Without it the only question asked
+        # is the unambiguous one.
+        rec = real_eval.require_packed_path(self._stats(133, 63, 16), 16, "c=16")
+        self.assertTrue(rec["used_packed_path"])
+        self.assertIsNone(rec["packed_share"])
+        with self.assertRaises(SystemExit):
+            real_eval.require_packed_path(self._stats(266, 0, 0), 4, "c=4")
 
     def test_a_run_that_fell_to_the_per_row_path_is_refused_by_name(self):
         with self.assertRaises(SystemExit) as e:
@@ -917,7 +982,8 @@ class PackedPathGuard(unittest.TestCase):
     def test_the_tail_chunk_that_always_falls_through_is_not_a_collapse(self):
         # One row of an odd batch is never packed, by design. Refusing that would refuse
         # every honest run.
-        rec = real_eval.require_packed_path(self._stats(1000, 969, 32), 32, "c=32")
+        rec = real_eval.require_packed_path(self._stats(1000, 969, 32), 32, "c=32",
+                                            max_new=1000)
         self.assertTrue(rec["used_packed_path"])
 
     def test_batch_one_is_not_subject_to_it(self):
