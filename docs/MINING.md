@@ -576,14 +576,39 @@ or about the model. If an improvement only appears under `residency`, it is a cl
 A test asserts that `AdmissionRule::Survival` reduces to `density` *exactly* under it, so a
 comparison against `density` is not a comparison against a moving target.
 
-### 2. A new admission rule
+### 2. A new admission rule — MEASURED, and this is the surface
 
 One enumerator plus an implementation in `planners/budgeted/`. Comparable against every other
-rule on the same trace, in one process, with no hardware — and, as of 0.2.1, comparable **on
-the real model** too, because `TENSORTRANSIT_ADMISSION` is on the measured path.
+rule on the same trace with no hardware, and — as of 0.2.1 — on the real model too, because
+`TENSORTRANSIT_ADMISSION` is on the measured path.
 
-This used to come with a warning that under the shipped model a rule that was not
-density-greedy could not win. That warning is retired: the model is convex now, so it can.
+**It moves the number.** At sixteen concurrent sequences, control 564.9 tok/s, noise floor
+0.283% (`results/rtx5090-0.2.1-arms.json`):
+
+| arm | throughput gain | resolved |
+|---|--:|:--:|
+| `budgeted` / `density` | **+0.389%** | **yes** |
+| `global` preset | **+0.372%** | **yes** |
+| `budgeted` / `proportional` | +0.142% | no |
+| `budgeted` / `quota` | +0.089% | no |
+| `recurrent_v0` (shipped) | +0.071% | no |
+
+Aggregated over c1, c4 and c16 by `tt-frontier`, `density` (+0.056%, 99% CI −0.26…+0.33) and
+`quota` (−0.642%, −0.94…−0.39) have **non-overlapping** intervals. One admission rule is
+confidently worse than another, end to end, on a real model. That is the whole of what a
+competition surface is, and this repository did not have one before.
+
+**Two things to know before you start.** First, everything below sixteen sequences is negative
+for every arm, so a rule that only helps at batch 1 is helping in a regime where the family
+costs 0.3–0.4%. Second, and more useful: **the cost model's ranking is contradicted by this
+measurement.** It predicts `quota` ≈ `density`; measured, `quota` is the worst of the three.
+Reconciling the model with that is worth more than another rule, and it needs no GPU:
+
+```bash
+tensortransit compare tests/golden/trace_recurrent_kv.json                  # what it predicts
+tensortransit compare tests/golden/trace_recurrent_kv.json --cost-model linear   # the control
+python3 eval/cost_model_fit.py                                              # against results/
+```
 
 ### 3. A new reuse metric or a better graph
 
