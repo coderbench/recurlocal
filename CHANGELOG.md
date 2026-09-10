@@ -844,12 +844,12 @@ correction below — it changes what the dense model's collapse is.
 
 ~~That also settles that the dense model's collapse is a different bug~~ — **the conclusion was
 right and the reasoning was not.** The dense collapse IS a different thing from this refusal,
-but not because the NVFP4 path has a chunking loop: `launch_gemv_nvfp4_rows` does not have one.
-It is different because it is not a decode-path fallback at all. It is per-request device
-memory exhaustion, and per-token latency is unchanged through it — see "Solved — the dense
-concurrency-32 collapse" above. The `prefetch` ratios `[0.932, 0.676, 0.925]` that motivated
-this paragraph are an arm that lost requests, not an arm that ran slowly, and the guard that
-now catches it counts tokens rather than reading a rate.
+but not because the NVFP4 path has a chunking loop: `launch_gemv_nvfp4_rows` does not have one
+(`gemv.cu:3518`). It is different because it is not a decode-path fallback at all — per-token
+latency is unchanged through it, which no fallback can manage. Two later sections take it
+apart: a per-request device-OOM failure found while looking for it, and the 32% drop itself,
+which completes every request and is still open. The `prefetch` ratios
+`[0.932, 0.676, 0.925]` belong to the second.
 
 ### Closed — reuse the cache can actually serve, bounded rather than built
 
