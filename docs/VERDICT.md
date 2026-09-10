@@ -221,7 +221,43 @@ What the same nine repeats *do* resolve is goodput: **−1.20% median, nine of n
 negative**, a paired sign test at p = 0.004. (Peak-to-peak against that cell's published 1.738%
 spread does not clear; the two rules disagree and both are reported.)
 
-## 4. What the second proof track says, and what it does not
+## 4. The five arms, measured — and what measuring them found
+
+The specification's five arms have now run on hardware (`results/rtx5090-0.2.1-five-arms.json`):
+three cells, three paired interleaved repeats, token-exact, with the weight stream declared so
+the global arm could take the action its advantage is supposed to come from. They could not run
+before this release — `stats.layers` published the *windowed* layer count for the transit
+engine, so `TENSORTRANSIT=baseline`, the `hook_only` arm, failed the harness's "bracketed no
+recurrent layer" guard by construction.
+
+| cell | control | `hook_only` | `recurrent_only` | `kv_only` | `naive_both` | `global` |
+|---|--:|--:|--:|--:|--:|--:|
+| `ctx128-c1` | 69.2 tok/s | −0.289% | −0.289% | −0.289% | −0.289% | −0.433% |
+| `ctx128-c4` | 221.0 | −0.272% | −0.498% | −0.407% | −0.226% | −0.317% |
+| `ctx128-c16` | 564.6 | −0.372% | −0.089% | −0.266% | −0.230% | −0.142% |
+
+**`hook_only` installs no window and issues no pre-touch, and it is negative on all three
+cells.** Every policy arm sits within that arm's own distance of the control. This is not a
+comparison of policies; it is four measurements of the hook's overhead — and the null control
+says two *identical* plans differ by 0.23% at `ctx128-c16` anyway.
+
+**The global arm applied nothing at all.** `windows_attached_to_node: 0` on every cell, while
+`naive_both` attached 192, `recurrent_only` 48 and `kv_only` 38. Its plan was not empty —
+`layers_windowed: 192` — so windows were computed for 192 layer-slots and none reached a kernel.
+
+The cause is in the adapter. A kernel node carries one access-policy window and
+`window_kind_[layer]` records which launch is meant to set it. ModelWeight tensors carry a
+fabricated address, a fabricated pointer is neither the state nor the conv allocation, so a
+Stream hint on one classified as `Attention` and **overwrote whatever the layer's Persist action
+had set**. Every recurrent layer lost its window to a Stream the executor then refused.
+
+The trap in that is worth stating on its own: declaring `TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN`
+— which `docs/MINING.md` tells contributors to do *"if your planner reads survival"* — is what
+turns the arm inert. Without it no ModelWeight is registered, no Stream is emitted, and the same
+arm attached 77 windows in the 0.2.1 sweep. Fixed: an action whose tensor the executor will
+refuse no longer claims the layer's window slot.
+
+## 4a. What the second proof track says, and what it does not
 
 At model level the global arm now beats the best independent arm on all three golden traces,
 where under the linear model it provably could not — and setting `--stream-relief 0` makes the

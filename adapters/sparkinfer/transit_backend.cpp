@@ -334,6 +334,23 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
         if (action.before_kernel == kInvalidKernelId) continue;
         const auto layer = static_cast<std::size_t>(action.before_kernel - 1);
         if (layer >= window_kind_.size()) continue;
+        // An action the executor will REFUSE must not claim the layer's one window slot.
+        //
+        // A kernel node carries one access-policy window and this table records which launch
+        // is supposed to set it. The ModelWeight tensors are registered with a FABRICATED
+        // address (`device = -1`) because the real weights are thousands of allocations and
+        // there is no single one to name; they exist so the graph has an honest denominator.
+        // `CudaTransitExecutor::resolve` refuses them, correctly.
+        //
+        // Without this check a Stream hint on one of them still claimed the slot -- a
+        // fabricated pointer is neither the state nor the conv allocation, so it classified as
+        // Attention and overwrote whatever the layer's Persist action had set. The measured
+        // consequence: with TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN declared, the `global` arm
+        // reported `windows_attached_to_node: 0` on every cell of the five-arm run -- the one
+        // arm the coordination claim rests on, applying nothing, because its own Stream hints
+        // displaced its Persists. Undeclared, the same arm attached 77.
+        const TensorDesc* desc = runtime_.registry().find(action.tensor);
+        if (!desc || desc->device < 0) continue;
         const auto* p = static_cast<const unsigned char*>(action.ptr);
         const bool is_state = state_base && p >= state_base && p < state_base + state_alloc;
         const bool is_conv = conv_base && p >= conv_base && p < conv_base + conv_alloc;

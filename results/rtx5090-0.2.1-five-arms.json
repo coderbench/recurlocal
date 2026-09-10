@@ -1,0 +1,278 @@
+{
+ "schema_version": 1,
+ "what_this_is": "THE FIVE ARMS the specification names, measured on hardware for the first time: `hook_only` (the hook installed with no window), `recurrent_only`, `kv_only`, `naive_both` and `global`. Three cells, three paired interleaved repeats, token-exact, one binary, one model load per run, with TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN declared so the weight stream is registered and the global arm can take the action its advantage is supposed to come from. It could not run before this release: `stats.layers` published the windowed layer count for the transit engine, so `TENSORTRANSIT=baseline` -- the hook_only arm -- failed the harness's 'bracketed no recurrent layer' guard by construction.",
+ "provenance": {
+  "attribution": {
+   "probe_independent_of_candidate": false,
+   "probed": [],
+   "skipped": false,
+   "verdicts": {}
+  },
+  "baseline_commit": null,
+  "candidate_commit": null,
+  "cells_requested": [
+   "ctx128-c1",
+   "ctx128-c4",
+   "ctx128-c16"
+  ],
+  "correctness": {
+   "compared_against": "candidate build",
+   "control_binary": "/root/work/si-work/sparkinfer/build/runtime/qwen3_gguf_generate",
+   "control_replays": 3,
+   "correctness": "PASS",
+   "method": "greedy replay, token-exact",
+   "runtime_reproducible": true,
+   "tokens_compared": 64
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "hardware": {
+   "count": 1,
+   "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "instances": "public_only",
+  "long_prefill": 4096,
+  "main_concurrency_scaling": {
+   "ctx128-c16": {
+    "baseline_cell": "ctx128-c1",
+    "concurrency": 16,
+    "scale": 8.159,
+    "share_of_ideal": 0.51
+   },
+   "ctx128-c4": {
+    "baseline_cell": "ctx128-c1",
+    "concurrency": 4,
+    "scale": 3.194,
+    "share_of_ideal": 0.798
+   }
+  },
+  "max_new": 64,
+  "mode": "authoritative",
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "repeats": 3,
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  },
+  "scheduling_outliers": []
+ },
+ "cells": {
+  "ctx128-c1": {
+   "control_goodput_tps": 69.2,
+   "control_p99_itl_ms": 16.304,
+   "arms": {
+    "global": {
+     "goodput_tps": 68.9,
+     "goodput_delta_pct": -0.4335,
+     "p99_itl_ms": 16.481
+    },
+    "hook_only": {
+     "goodput_tps": 69.0,
+     "goodput_delta_pct": -0.289,
+     "p99_itl_ms": 16.223
+    },
+    "kv_only": {
+     "goodput_tps": 69.0,
+     "goodput_delta_pct": -0.289,
+     "p99_itl_ms": 16.274
+    },
+    "naive_both": {
+     "goodput_tps": 69.0,
+     "goodput_delta_pct": -0.289,
+     "p99_itl_ms": 16.331
+    },
+    "recurrent_only": {
+     "goodput_tps": 69.0,
+     "goodput_delta_pct": -0.289,
+     "p99_itl_ms": 16.334
+    }
+   }
+  },
+  "ctx128-c16": {
+   "control_goodput_tps": 564.6,
+   "control_p99_itl_ms": 43.646,
+   "arms": {
+    "global": {
+     "goodput_tps": 563.8,
+     "goodput_delta_pct": -0.1417,
+     "p99_itl_ms": 44.845
+    },
+    "hook_only": {
+     "goodput_tps": 562.5,
+     "goodput_delta_pct": -0.3719,
+     "p99_itl_ms": 44.205
+    },
+    "kv_only": {
+     "goodput_tps": 563.1,
+     "goodput_delta_pct": -0.2657,
+     "p99_itl_ms": 44.166
+    },
+    "naive_both": {
+     "goodput_tps": 563.3,
+     "goodput_delta_pct": -0.2303,
+     "p99_itl_ms": 46.672
+    },
+    "recurrent_only": {
+     "goodput_tps": 564.1,
+     "goodput_delta_pct": -0.0886,
+     "p99_itl_ms": 43.948
+    }
+   }
+  },
+  "ctx128-c4": {
+   "control_goodput_tps": 221.0,
+   "control_p99_itl_ms": 37.923,
+   "arms": {
+    "global": {
+     "goodput_tps": 220.3,
+     "goodput_delta_pct": -0.3167,
+     "p99_itl_ms": 37.966
+    },
+    "hook_only": {
+     "goodput_tps": 220.4,
+     "goodput_delta_pct": -0.2715,
+     "p99_itl_ms": 37.853
+    },
+    "kv_only": {
+     "goodput_tps": 220.1,
+     "goodput_delta_pct": -0.4072,
+     "p99_itl_ms": 38.077
+    },
+    "naive_both": {
+     "goodput_tps": 220.5,
+     "goodput_delta_pct": -0.2262,
+     "p99_itl_ms": 38.2
+    },
+    "recurrent_only": {
+     "goodput_tps": 219.9,
+     "goodput_delta_pct": -0.4977,
+     "p99_itl_ms": 38.073
+    }
+   }
+  }
+ },
+ "adapter_telemetry": {
+  "hook_only": {
+   "windows_attached_to_node": 0,
+   "layers_windowed": 0,
+   "stream_applied": 0,
+   "stale_tensor_refs": 0,
+   "actions_skipped": 0,
+   "plan_digest": "14650fb0739d0383",
+   "registry": {
+    "kv_bytes": 134742016,
+    "kv_tensors": 32,
+    "recurrent_bytes": 153944064,
+    "recurrent_tensors": 96,
+    "weight_bytes": 0,
+    "weight_tensors": 0
+   },
+   "declines": {
+    "role_excluded": 128
+   }
+  },
+  "recurrent_only": {
+   "windows_attached_to_node": 48,
+   "layers_windowed": 48,
+   "stream_applied": 0,
+   "stale_tensor_refs": 0,
+   "actions_skipped": 48,
+   "plan_digest": "f98bd751db117092",
+   "registry": {
+    "kv_bytes": 134742016,
+    "kv_tensors": 32,
+    "recurrent_bytes": 153944064,
+    "recurrent_tensors": 96,
+    "weight_bytes": 18500000000,
+    "weight_tensors": 64
+   },
+   "declines": {
+    "budget_exhausted": 65,
+    "not_supported": 15,
+    "role_excluded": 96
+   }
+  },
+  "kv_only": {
+   "windows_attached_to_node": 38,
+   "layers_windowed": 38,
+   "stream_applied": 0,
+   "stale_tensor_refs": 0,
+   "actions_skipped": 38,
+   "plan_digest": "0b3da952a217be6f",
+   "registry": {
+    "kv_bytes": 134742016,
+    "kv_tensors": 32,
+    "recurrent_bytes": 153944064,
+    "recurrent_tensors": 96,
+    "weight_bytes": 18500000000,
+    "weight_tensors": 64
+   },
+   "declines": {
+    "budget_exhausted": 20,
+    "not_supported": 6,
+    "role_excluded": 160
+   }
+  },
+  "naive_both": {
+   "windows_attached_to_node": 192,
+   "layers_windowed": 192,
+   "stream_applied": 0,
+   "stale_tensor_refs": 0,
+   "actions_skipped": 192,
+   "plan_digest": "ba8040b634d049eb",
+   "registry": {
+    "kv_bytes": 134742016,
+    "kv_tensors": 32,
+    "recurrent_bytes": 153944064,
+    "recurrent_tensors": 96,
+    "weight_bytes": 18500000000,
+    "weight_tensors": 64
+   },
+   "declines": {
+    "not_supported": 64,
+    "role_excluded": 64
+   }
+  },
+  "global": {
+   "windows_attached_to_node": 0,
+   "layers_windowed": 192,
+   "stream_applied": 0,
+   "stale_tensor_refs": 192,
+   "actions_skipped": 384,
+   "plan_digest": "b75561050dfb543b",
+   "registry": {
+    "kv_bytes": 134742016,
+    "kv_tensors": 32,
+    "recurrent_bytes": 153944064,
+    "recurrent_tensors": 96,
+    "weight_bytes": 18500000000,
+    "weight_tensors": 64
+   },
+   "declines": {
+    "budget_exhausted": 99,
+    "not_supported": 29,
+    "role_excluded": 64
+   }
+  }
+ },
+ "findings": [
+  {
+   "finding": "Every arm is negative at every cell, and the hook alone accounts for it.",
+   "detail": "`hook_only` installs no window and issues no pre-touch, and it measures -0.289% at ctx128-c1, -0.271% at ctx128-c4 and -0.372% at ctx128-c16. Every policy arm is within that arm's own distance of the control. The five-arm comparison is therefore not a comparison of policies on this model and device: it is four measurements of the hook's overhead, and the null control in results/rtx5090-0.2.1-null-control.json says two identical plans differ by 0.23% at ctx128-c16 anyway."
+  },
+  {
+   "finding": "The global arm applied NOTHING, on every cell, and its own Stream hints are why.",
+   "detail": "`windows_attached_to_node: 0` for `global` while `naive_both` attached 192, `recurrent_only` 48 and `kv_only` 38. Its plan was not empty -- `layers_windowed: 192`, and its decline census names 99 budget_exhausted and 29 not_supported out of 192 -- so windows were computed for 192 layer-slots and none reached a kernel.\n\nThe cause is in the adapter, not the planner. A kernel node carries ONE access-policy window and `window_kind_[layer]` records which launch is meant to set it. ModelWeight tensors carry a FABRICATED address (`device = -1`), and a fabricated pointer is neither the state nor the conv allocation, so a Stream hint on one classified as `Attention` and OVERWROTE whatever the layer's Persist action had set. Every recurrent layer lost its window to a Stream that the executor then refused.\n\nThe trap is that declaring the step traffic -- which docs/MINING.md tells contributors to do 'if your planner reads survival' -- is what turns the arm inert. Without it no ModelWeight is registered, no Stream is emitted, and the same arm attached 77 windows in the 0.2.1 arms sweep. Fixed in adapters/sparkinfer/transit_backend.cpp: an action whose tensor the executor will refuse no longer claims the layer's window slot."
+  },
+  {
+   "finding": "`stream_applied` is 0 on every arm, including the one that emitted 64 Stream hints.",
+   "detail": "The weight stream IS registered here -- `weight_tensors: 64, weight_bytes: 18500000000` in every arm's registry summary -- and still nothing streamed. That is structural rather than a missing experiment: the executor refuses a tensor with `device < 0` and counts it in `stale_tensor_refs`. See results/rtx5090-second-proof-track-model.json. The second proof track cannot be measured until the hook declares weight buffers with real addresses."
+  }
+ ],
+ "how_to_reproduce": {
+  "command": "tools/tt-frontier run --generation TTF-1 --cells ctx128-c1,ctx128-c4,ctx128-c16 --repeats 3 --main-config 'control=' --candidate-config 'hook_only=TENSORTRANSIT=baseline,TENSORTRANSIT_WINDOW_ATTACH=capture_node' --candidate-config 'global=TENSORTRANSIT=persist,TENSORTRANSIT_WINDOW_ATTACH=capture_node,TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN=18500000000,TENSORTRANSIT_PRESET=global' ..."
+ }
+}
