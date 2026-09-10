@@ -188,7 +188,7 @@ earned.
 
 ### Why TTF-1 is not being replaced, having found five of its cells unwinnable
 
-`--reachable` says a persisting-L2 policy cannot be measured to win five of TTF-1's ten cells,
+`--reachable` says a persisting-L2 policy cannot be measured to win seven of TTF-1's ten cells,
 two more cannot be batched by the pinned runtime as concurrency cells, and one objective on one
 cell has a 481% control spread. That is a strong case for a smaller matrix, and it was
 considered and rejected. Three reasons, in order of weight:

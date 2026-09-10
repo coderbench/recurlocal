@@ -207,17 +207,20 @@ Every figure is computed from the pinned geometry and that cell's own measured c
 The answer for TTF-1 is worth stating plainly:
 
 ```text
-    cell               persist  any mech.    bw    spread   verdict
-    ctx128-c1           0.491%     1.210%   71%    0.144%   measurable by the persist family
-    ctx128-c4           0.391%     1.983%   57%    0.090%   measurable by the persist family
-    ctx128-c16          0.249%     5.217%   40%    0.424%   PERSIST FAMILY UNWINNABLE
-    ctx128-c32          0.200%     8.649%   36%    1.738%   PERSIST FAMILY UNWINNABLE
-    ctx4096-c32         0.040%     1.615%    7%   39.008%   PERSIST FAMILY UNWINNABLE; and so is any
+    cell               persist  any mech.    bw    spread    floor   verdict
+    ctx128-c1           0.491%     1.210%   71%    0.144%   0.144%   measurable by the persist family
+    ctx128-c4           0.391%     1.983%   57%    0.090%   0.090%   measurable by the persist family
+    ctx16384-c1         0.159%     0.390%   23%    0.000%   0.221%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx128-c16          0.249%     5.217%   40%    0.424%   0.424%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx128-c32          0.200%     8.649%   36%    1.738%   1.738%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx4096-c32         0.040%     1.615%    7%   39.008%  39.008%   PERSIST FAMILY UNWINNABLE; and so is any
 ```
 
-**Five of ten cells cannot be won by a persisting-L2 policy at all**: the control's own spread
-there is larger than the ceiling a perfect policy could reach, so no admission rule, window
-shape or hot-set heuristic can produce a measurable result in them. `ctx128-c16` is one of
+**Seven of ten cells cannot be MEASURED to be won by a persisting-L2 policy**: the floor there
+is larger than the ceiling a perfect policy could reach, so no admission rule, window shape or
+hot-set heuristic can produce a result in them that is distinguishable from noise. The floor is
+the larger of the published spread and what the bench can resolve — aggregate throughput is
+printed to one decimal, which is 0.22% of a 22.6 tok/s cell. `ctx128-c16` is one of
 them — the cell at which every headline figure in this repository was measured, whose ceiling
 is 0.249% and at which the arms sweep reported +0.389%.
 
@@ -225,8 +228,9 @@ is 0.249% and at which the arms sweep reported +0.389%.
 traffic is worth 5.2% at sixteen sequences and 8.6% at thirty-two, against spreads of 0.42% and
 1.74%. The persisting-L2 ceiling is `2 x persisting-L2 / step traffic` and the numerator is 60
 MiB of hardware. A mechanism that is not bounded by that numerator has one to two orders of
-magnitude more to play for, and the tool now says so on one screen instead of leaving it to be
-derived.
+magnitude more to play for — and docs/VERDICT.md section 7 names the four levers rather than
+leaving it at that: two are hardware or workload, one fails the exactness gate, and the fourth
+is a kernel change in SparkInfer. None of them is a better admission rule.
 
 The `bw` column is why the second number carries a caveat rather than a target: every TTF-1
 cell sits below the 80% utilisation at which a traffic ceiling is tight, so `any mech.` is a

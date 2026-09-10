@@ -212,24 +212,44 @@ def cmd_generation(args):
                   f"({args.bandwidth_gbs:g} GB/s, geometry from adapters/sparkinfer/pin.json,")
             print(f"  matrix state scaled by {args.state_bytes_scale:g} above one sequence "
                   f"because the packed decode path compacts it to bf16):")
-            print(f"    {'cell':16s} {'persist':>9s} {'any mech.':>10s} {'bw':>5s} {'spread':>9s}"
-                  f"   verdict")
-            unwinnable = []
+            print(f"    {'cell':16s} {'persist':>9s} {'any mech.':>10s} {'bw':>5s} "
+                  f"{'spread':>9s} {'floor':>8s}   verdict")
+            unwinnable, quantised = [], []
             for cell in generation.cells:
                 ceiling = ceilings.get(cell)
                 spread = generation.published_spread(cell, "goodput_tps")
                 if ceiling is None or spread is None:
                     continue
+                # A published spread of 0.000% from three repeats is not evidence of a silent
+                # cell; it is three repeats that printed the same number. The bench prints
+                # aggregate throughput to one decimal, so nothing below half of that last digit
+                # can be seen at all -- 0.05 tok/s is 0.22% of a 22.6 tok/s cell and 0.006% of a
+                # 909 tok/s one. The measurable floor is whichever is larger.
+                control = ((generation.cell_bounds.get(cell) or {}).get("goodput_tps") or {}
+                           ).get("measured_control") or 0.0
+                resolution = (0.05 / control * 100.0) if control else 0.0
+                effective = max(spread, resolution)
+                if resolution > spread:
+                    quantised.append(cell)
                 verdict = "measurable by the persist family"
-                if spread >= ceiling["persist_pct"]:
+                if effective >= ceiling["persist_pct"]:
                     unwinnable.append(cell)
                     verdict = ("PERSIST FAMILY UNWINNABLE"
                                + ("; the traffic is there, the cache is not"
-                                  if spread < ceiling["traffic_pct"] else "; and so is any"))
+                                  if effective < ceiling["traffic_pct"] else "; and so is any"))
                 util = ceiling.get("utilisation")
                 bw = "?" if util is None else f"{util * 100:.0f}%"
                 print(f"    {cell:16s} {ceiling['persist_pct']:8.3f}% "
-                      f"{ceiling['traffic_pct']:9.3f}% {bw:>5s} {spread:8.3f}%   {verdict}")
+                      f"{ceiling['traffic_pct']:9.3f}% {bw:>5s} {spread:8.3f}% "
+                      f"{effective:7.3f}%   {verdict}")
+            if quantised:
+                print()
+                print(f"  `floor` is the larger of the published spread and what the bench can")
+                print(f"  RESOLVE: aggregate throughput is printed to one decimal, so half of that")
+                print(f"  last digit is the smallest difference visible at all. For "
+                      f"{', '.join(quantised)}")
+                print("  that is larger than the spread three repeats happened to produce, and it")
+                print("  is the floor a submission actually has to clear.")
             loose = [c for c in generation.cells
                      if (ceilings.get(c) or {}).get("bound") == "loose"]
             if loose:
@@ -245,11 +265,11 @@ def cmd_generation(args):
                 print("  and the step time is measured.")
             if unwinnable:
                 print()
-                print(f"  {len(unwinnable)} of {len(generation.cells)} cells cannot be won by a "
-                      f"persisting-L2 policy at all: {', '.join(unwinnable)}.")
-                print("  The control's own run-to-run spread there is larger than the ceiling a")
-                print("  PERFECT policy could reach, so no admission rule, window shape or hot-set")
-                print("  heuristic can produce a measurable result in them. The `any mech.` column")
+                print(f"  {len(unwinnable)} of {len(generation.cells)} cells cannot be MEASURED "
+                      f"to be won by a persisting-L2 policy: {', '.join(unwinnable)}.")
+                print("  The floor there is larger than the ceiling a PERFECT policy could reach,")
+                print("  so no admission rule, window shape or hot-set heuristic can produce a")
+                print("  result in them that is distinguishable from noise. The `any mech.` column")
                 print("  is what removing ALL recurrent traffic would be worth, and where it is")
                 print("  far above the spread the traffic is real -- what is missing is somewhere")
                 print("  to put it. docs/VERDICT.md section 7 lists what could address it and")

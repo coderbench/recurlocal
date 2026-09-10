@@ -194,11 +194,12 @@ Before any of that, one command tells you which cells are worth trying to win:
 tools/tt-frontier generation show TTF-1 --reachable
 ```
 
-Read the `persist` and `spread` columns together. **Five of TTF-1's ten cells have a control
-spread larger than the ceiling a perfect persisting-L2 policy could reach**, so no admission
-rule, window shape or hot-set heuristic can be measured to win them — including `ctx128-c16`,
-the cell the table further down this page quotes from. Two more cells cannot be batched by the
-pinned runtime at all, and two objectives have control spreads above 40%.
+Read the `persist` and `floor` columns together. **Seven of TTF-1's ten cells have a floor
+larger than the ceiling a perfect persisting-L2 policy could reach**, so no admission rule,
+window shape or hot-set heuristic can be measured to win them — including `ctx128-c16`, the cell
+the table further down this page quotes from. On the three that remain, the shipped policy
+measures −0.289%, −0.179% and −0.361%. Two cells also cannot be batched by the pinned runtime at
+all, and two objectives have control spreads above 40%.
 
 Then read the `any mech.` column: removing *all* recurrent traffic is worth 5.2% at sixteen
 sequences and 8.6% at thirty-two, five to twelve times the noise. What cannot reach it is a 60

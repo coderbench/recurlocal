@@ -10,11 +10,11 @@ Short version:
 > on half the matrix it provably never could.**
 >
 > Per cell, a persisting-L2 policy is bounded by `2 x persisting-L2 / step traffic`, and the
-> numerator is 60 MiB of hardware. Against each cell's own calibrated control spread, **five of
-> TTF-1's ten cells cannot be won by that family at all** — the control moves further between
-> repeats of itself than a *perfect* policy could ever move it. `ctx128-c16` is one of them:
-> ceiling **0.249%**, published spread **0.424%**, and it is the cell at which every headline
-> figure in this repository was measured.
+> numerator is 60 MiB of hardware. Against each cell's own measurable floor, **seven of TTF-1's
+> ten cells cannot be measured to be won by that family** — the floor there is larger than a
+> *perfect* policy's ceiling. `ctx128-c16` is one of them: ceiling **0.249%**, published spread
+> **0.424%**, and it is the cell at which every headline figure in this repository was measured.
+> On the three cells that remain, the shipped policy measures **−0.289%, −0.179% and −0.361%**.
 >
 > Removing *all* recurrent traffic is worth **5.2%** at sixteen sequences and **8.6%** at
 > thirty-two against those same spreads. The room at concurrency is one to two orders of
@@ -227,17 +227,17 @@ the matrix. Asked of each cell separately — from the pinned state geometry and
 calibrated control rate — it says something section 1's single number cannot:
 
 ```text
-    cell               persist  any mech.    bw    spread   verdict
-    ctx128-c1           0.491%     1.210%   71%    0.144%   measurable by the persist family
-    ctx4096-c1          0.395%     0.971%   57%    0.179%   measurable by the persist family
-    ctx16384-c1         0.159%     0.390%   23%    0.000%   measurable by the persist family
-    ctx128-c4           0.391%     1.983%   57%    0.090%   measurable by the persist family
-    ctx4096-c4          0.113%     0.564%   17%    0.156%   PERSIST FAMILY UNWINNABLE
-    ctx16384-c4         0.052%     0.262%    8%    0.000%   measurable by the persist family
-    ctx128-c16          0.249%     5.217%   40%    0.424%   PERSIST FAMILY UNWINNABLE
-    ctx4096-c16         0.065%     1.304%   10%    0.204%   PERSIST FAMILY UNWINNABLE
-    ctx128-c32          0.200%     8.649%   36%    1.738%   PERSIST FAMILY UNWINNABLE
-    ctx4096-c32         0.040%     1.615%    7%   39.008%   PERSIST FAMILY UNWINNABLE; and so is any
+    cell               persist  any mech.    bw    spread    floor   verdict
+    ctx128-c1           0.491%     1.210%   71%    0.144%   0.144%   measurable by the persist family
+    ctx4096-c1          0.395%     0.971%   57%    0.179%   0.179%   measurable by the persist family
+    ctx16384-c1         0.159%     0.390%   23%    0.000%   0.221%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx128-c4           0.391%     1.983%   57%    0.090%   0.090%   measurable by the persist family
+    ctx4096-c4          0.113%     0.564%   17%    0.156%   0.156%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx16384-c4         0.052%     0.262%    8%    0.000%   0.168%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx128-c16          0.249%     5.217%   40%    0.424%   0.424%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx4096-c16         0.065%     1.304%   10%    0.204%   0.204%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx128-c32          0.200%     8.649%   36%    1.738%   1.738%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx4096-c32         0.040%     1.615%    7%   39.008%  39.008%   PERSIST FAMILY UNWINNABLE; and so is any
 ```
 
 `tools/tt-frontier generation show TTF-1 --reachable`. `persist` is `2 x persisting-L2 / step
@@ -254,10 +254,21 @@ cell takes 14.37 ms and its step therefore *carries more traffic*. A ceiling tha
 the step falls when the step grows. Both numbers are right about their own workload, and the one
 that matters for a submission is the one computed from the cells it will be scored in.
 
-**Where the spread exceeds the persist ceiling, nothing this project ships can be measured to
+`floor` is the larger of the published spread and what the bench can *resolve*: aggregate
+throughput is printed to one decimal, so half of that last digit is the smallest difference
+visible at all — 0.22% of a 22.6 tok/s cell, 0.006% of a 909 tok/s one. Two cells report a
+0.000% spread because three repeats printed the same number, and their real floor is the
+resolution.
+
+**Where the floor exceeds the persist ceiling, nothing this project ships can be measured to
 win.** Not a better admission rule, not a better window shape, not a better hot-set heuristic:
 the room is smaller than the noise, and that is arithmetic rather than an implementation
-problem. It is true of five of the ten cells, including every cell above four sequences.
+problem. It is true of **seven of the ten cells**, including every cell above four sequences.
+
+The three that remain are `ctx128-c1`, `ctx4096-c1` and `ctx128-c4` — and on all three, the full
+matrix in section 8 measures the shipped policy at **−0.289%, −0.179% and −0.361%**, each
+resolved against that cell's own published spread. So on the only cells where this family can be
+measured at all, it measurably loses.
 
 **`ctx128-c16` is on that list, and it is the cell this repository has quoted from all
 along** — section 3's table, `docs/MINING.md`'s table, the 0.2.1 release note. Its persist
@@ -367,7 +378,7 @@ been.
 
 **Is there a scorable surface?** There is a *surface* — 5.2% of the step at sixteen sequences,
 8.6% at thirty-two, against control spreads of 0.42% and 1.74%. **The persisting-L2 family
-cannot reach it**, and on five of the ten cells it provably cannot be measured trying: its
+cannot reach it**, and on seven of the ten cells it provably cannot be measured trying: its
 ceiling there is smaller than the control's own run-to-run spread. Section 7 has the table.
 
 So the honest answer is in two halves, and reporting only the first would be the mistake this

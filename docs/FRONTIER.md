@@ -11,8 +11,9 @@
 now measured rather than argued: weighted across the section 44 matrix, on the best model this
 project has found, a persisting L2 window tops out at **1.94% of throughput** — and **0.52%**
 on the model that is actually scored. Asked per cell rather than weighted, the same arithmetic
-says something sharper: on five of TTF-1's ten cells that ceiling is *below the control's own
-run-to-run spread*, so the family cannot be measured to win them at all
+says something sharper: on seven of TTF-1's ten cells that ceiling is *below the floor the
+bench and the calibration between them impose*, so the family cannot be measured to win them at
+all
 (`tools/tt-frontier generation show TTF-1 --reachable`). That is with both dials at maximum, on a device whose
 60 MiB of persisting L2 is the numerator and cannot be raised. No contributor effort moves it.
 The surfaces below are worth working because they are *measurable*, not because they are worth
