@@ -39,6 +39,26 @@ instrument that tells every contributor the wrong thing about where the room is.
 in raw units, with the measured run-to-run spread beside it — so a contributor can see the
 size of the prize, and the noise they have to beat, before spending a week.
 
+## Integrity, and the one thing that is deliberately not done
+
+Every receipt carries a `content_digest` — SHA-256 over each of its scored fields — and a
+`generation_checksum` over the frozen definition it was scored under. `tt-frontier receipt
+verify` recomputes both and also re-derives the status from the numbers beside it, so three
+different ways of tampering are caught: a rewritten field, a re-scored run under a changed
+generation, and a status that does not follow from its own statistics. `ledger audit` runs it
+over every receipt in a generation.
+
+**Receipts are not cryptographically signed, and that is a choice rather than an omission.**
+Signing needs a private key, and the evaluation runs on a worker this repository insists must
+carry no key at all — `scripts/trusted_eval.sh` refuses to start if it can see a credential,
+because a credential in scope is a credential the submission has. Signing on the worker would
+put a key exactly where the security posture says none may be. Signing *off* the worker is
+possible and is where this should go if the ledger ever needs to be trusted by someone who does
+not trust the operator: the evaluator emits the receipt, a separate signer holding the key
+verifies its digest and countersigns. Until there is a second party who needs that, the digest
+plus an append-only history in version control is what the threat model actually calls for, and
+claiming more would be theatre.
+
 ## Statuses
 
 ```text
