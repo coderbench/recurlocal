@@ -190,6 +190,12 @@ def main():
               "and names the axis whose control moved 481% between repeats of itself")
         check("ctx16384-c16" in out and "OOM" in out,
               "and the cells calibration found this device could not run at all")
+        check("persist-family ceiling per cell" in out,
+              "and what a perfect persisting-L2 policy could ever be worth in each")
+        check("UNWINNABLE" in out,
+              "and names the cells whose control moves further than that ceiling")
+        check("loose upper bound" in out,
+              "and says when the traffic ceiling rests on a step that was not bandwidth-bound")
         plain = run(["generation", "show", GENERATION]).stdout
         check("what is reachable" not in plain,
               "and it stays behind a flag, so `show` keeps its one-screen shape")

@@ -196,17 +196,41 @@ per-cell figure out of `docs/VERDICT.md` section 8 and compares it with
 drift of more than a thousandth of a point. A figure that drifts in prose is worse than one in
 a report, because prose is what a contributor reads before deciding whether to spend a week.
 
-### Added — `tt-frontier generation show --reachable`
+### Added — `tt-frontier generation show --reachable`, and the answer it gives is no
 
 One command for the question a contributor should ask first: which cells are worth trying to
-win. Per cell it prints where the control sat and how far it moved between repeats of *itself*
-at calibration, names the cells this device could not run at all, and lists every axis whose
-control spread exceeds 10%.
+win. Per cell it prints the ceiling a **perfect** persisting-L2 policy could reach, the ceiling
+any mechanism that removed *all* recurrent traffic could reach, how much of peak bandwidth that
+step actually used, and how far the control moved between repeats of itself at calibration.
+Every figure is computed from the pinned geometry and that cell's own measured control rate.
 
-On TTF-1 that is three of twenty cell/objective pairs — `ctx128-c32`'s p99 at **481%** and both
-of `ctx4096-c32`'s at about 40% — plus two cells the pinned runtime cannot batch and two more
-that could not be run at calibration. Nine of twenty pairs a submission cannot move, published
-rather than discovered.
+The answer for TTF-1 is worth stating plainly:
+
+```text
+    cell               persist  any mech.    bw    spread   verdict
+    ctx128-c1           0.491%     1.210%   71%    0.144%   measurable by the persist family
+    ctx128-c4           0.391%     1.983%   57%    0.090%   measurable by the persist family
+    ctx128-c16          0.249%     5.217%   40%    0.424%   PERSIST FAMILY UNWINNABLE
+    ctx128-c32          0.200%     8.649%   36%    1.738%   PERSIST FAMILY UNWINNABLE
+    ctx4096-c32         0.040%     1.615%    7%   39.008%   PERSIST FAMILY UNWINNABLE; and so is any
+```
+
+**Five of ten cells cannot be won by a persisting-L2 policy at all**: the control's own spread
+there is larger than the ceiling a perfect policy could reach, so no admission rule, window
+shape or hot-set heuristic can produce a measurable result in them. `ctx128-c16` is one of
+them — the cell at which every headline figure in this repository was measured, whose ceiling
+is 0.249% and at which the arms sweep reported +0.389%.
+
+**And the room at concurrency is real; it is just not this family's.** Removing all recurrent
+traffic is worth 5.2% at sixteen sequences and 8.6% at thirty-two, against spreads of 0.42% and
+1.74%. The persisting-L2 ceiling is `2 x persisting-L2 / step traffic` and the numerator is 60
+MiB of hardware. A mechanism that is not bounded by that numerator has one to two orders of
+magnitude more to play for, and the tool now says so on one screen instead of leaving it to be
+derived.
+
+The `bw` column is why the second number carries a caveat rather than a target: every TTF-1
+cell sits below the 80% utilisation at which a traffic ceiling is tight, so `any mech.` is a
+loose upper bound. The `persist` column does not depend on it.
 
 ### Added — a frozen generation is stored twice, and a test says they are the same bytes
 

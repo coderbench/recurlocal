@@ -18,7 +18,9 @@
     "linear_key_head_dim": 128,
     "linear_conv_kernel_dim": 4,
     "lin_state_bytes_per_layer": 3145728,
-    "lin_conv_state_bytes_per_layer": 61440
+    "lin_conv_state_bytes_per_layer": 61440,
+    "weight_bytes_per_step": 17900000000,
+    "_weight_bytes_per_step_note": "Bytes of WEIGHTS a decode step reads, once per step however many sequences are in flight. The checkpoint's own size, in the same GB=1e9 units the bandwidth figure uses. It is here so a ceiling can say whether the step it was computed from was actually bandwidth-bound: at batch 1, 17.9 GB of weights plus 0.31 GB of state against the 18.5 GB peak bandwidth would allow in the measured 10.34 ms is 98% utilisation, so the batch-1 ceiling is tight. At sixteen sequences the same weights against a 50.6 GB implied step is 40%, and the ceiling there is a loose upper bound -- part of the step is latency and occupancy rather than bytes, and freeing recurrent traffic returns less than its arithmetic share."
   },
   "hook_sites": [
     "runtime/examples/qwen3_gguf_cb_bench.cpp: per-request ITL collection and p50/p95/p99 print",

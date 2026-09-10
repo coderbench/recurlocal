@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -70,6 +71,74 @@ def load_results(path):
 
 
 # --------------------------------------------------------------------------- generation ---
+def _persist_ceilings(generation, bandwidth_gbs, state_bytes_scale=0.5):
+    """Per cell: the most a persisting-L2 policy could ever be worth, in throughput.
+
+    `eval/traffic_budget.py` computes this for one arm; here it is asked of every cell, using
+    that cell's OWN measured control rate rather than a matrix-wide one. The step time is
+    `sequences / aggregate_tps`, which is the tool's own definition: one decode step advances
+    every live sequence.
+
+    Returns {} rather than guessing if the pin or the calibration is missing anything -- a
+    confident wrong ceiling is worse than none, and this one is generous already (it assumes a
+    perfect replacement policy and a bandwidth-bound step).
+    """
+    sys.path.insert(0, str(REPO / "eval"))
+    try:
+        import traffic_budget
+    except Exception:                                     # noqa: BLE001
+        return {}
+    pin_path = REPO / "adapters" / "sparkinfer" / "pin.json"
+    if not pin_path.exists():
+        return {}
+    pin = json.loads(pin_path.read_text())
+    model = pin.get("model_geometry") or pin.get("model") or {}
+    needed = ("recurrent_layers", "lin_state_bytes_per_layer", "lin_conv_state_bytes_per_layer")
+    if not all(k in model for k in needed):
+        return {}
+    out = {}
+    for cell in generation.cells:
+        match = re.fullmatch(r"ctx(\d+)-c(\d+)", cell)
+        bounds = (generation.cell_bounds.get(cell) or {}).get("goodput_tps") or {}
+        control = bounds.get("measured_control")
+        if not match or not control:
+            continue
+        sequences = int(match.group(2))
+        ms_per_step = 1000.0 * sequences / float(control)
+        # The runtime compacts the matrix state to bf16 on its PACKED decode path, so the
+        # footprint at concurrency is half what it is at batch 1 -- `bytes_per_layer` 3207168
+        # against `bytes_per_layer_at_max` 1634304 in the adapter's own telemetry, and
+        # `state_bytes_scale` 0.5 in configs/rtx5090-section44-ceiling.json. Halving it halves
+        # the ceiling, so getting this wrong would overstate the room by a factor of two.
+        #
+        # It is an ASSUMPTION about a cell the generation cannot check: a cell the runtime does
+        # not batch keeps the fp32 state and has twice this ceiling. The scale used is printed.
+        scale = state_bytes_scale if sequences > 1 else 1.0
+        try:
+            arm = traffic_budget.arm_ceiling(
+                model, sequences, ms_per_step, scale, bandwidth_gbs,
+                persisting_l2_bytes=generation.raw.get("_persisting_l2_bytes") or 62914560,
+                active_weight_bytes_per_token=model.get("weight_bytes_per_step"))
+        except Exception:                                 # noqa: BLE001
+            continue
+        family = (arm or {}).get("persist_family") or {}
+        if family.get("ceiling_pct") is not None:
+            out[cell] = {"persist_pct": float(family["ceiling_pct"]),
+                         # What ANY mechanism that removed all recurrent traffic could reach.
+                         # The gap between the two is the room that is not the persist
+                         # family's, and at concurrency it is two orders of magnitude.
+                         "traffic_pct": float(arm.get("ceiling_pct", 0.0)),
+                         "ms_per_step": ms_per_step,
+                         "state_bytes_scale": scale,
+                         # Whether the step the ceiling was computed from was actually moving
+                         # bytes. Where it was not, the `any mech.` figure is a loose upper
+                         # bound and the tool says so rather than letting it look like a target.
+                         "bound": ((arm.get("bandwidth_bound_check") or {}).get("bound")),
+                         "utilisation": ((arm.get("bandwidth_bound_check") or {})
+                                         .get("bandwidth_utilisation"))}
+    return out
+
+
 def cmd_generation(args):
     if args.action == "list":
         found = sorted(GENERATIONS_DIR.glob("*/generation.json"))
@@ -131,6 +200,59 @@ def cmd_generation(args):
                     if spread >= 10.0:
                         unmeasurable.append((cell, objective.key, spread))
             print(row)
+        # And the other half of "what is reachable": what a persisting-L2 policy could ever be
+        # worth in each cell, from the pinned state geometry and that cell's OWN measured
+        # control rate. A cell whose control moves further between repeats of itself than the
+        # ceiling a perfect policy could ever reach is a cell nobody can measure a win in, and
+        # that is worth knowing from the ruler rather than from three days of device time.
+        ceilings = _persist_ceilings(generation, args.bandwidth_gbs, args.state_bytes_scale)
+        if ceilings:
+            print()
+            print(f"  persist-family ceiling per cell, against that cell's own goodput spread "
+                  f"({args.bandwidth_gbs:g} GB/s, geometry from adapters/sparkinfer/pin.json,")
+            print(f"  matrix state scaled by {args.state_bytes_scale:g} above one sequence "
+                  f"because the packed decode path compacts it to bf16):")
+            print(f"    {'cell':16s} {'persist':>9s} {'any mech.':>10s} {'bw':>5s} {'spread':>9s}"
+                  f"   verdict")
+            unwinnable = []
+            for cell in generation.cells:
+                ceiling = ceilings.get(cell)
+                spread = generation.published_spread(cell, "goodput_tps")
+                if ceiling is None or spread is None:
+                    continue
+                verdict = "measurable by the persist family"
+                if spread >= ceiling["persist_pct"]:
+                    unwinnable.append(cell)
+                    verdict = ("PERSIST FAMILY UNWINNABLE"
+                               + ("; another mechanism has room"
+                                  if spread < ceiling["traffic_pct"] else "; and so is any"))
+                util = ceiling.get("utilisation")
+                bw = "?" if util is None else f"{util * 100:.0f}%"
+                print(f"    {cell:16s} {ceiling['persist_pct']:8.3f}% "
+                      f"{ceiling['traffic_pct']:9.3f}% {bw:>5s} {spread:8.3f}%   {verdict}")
+            loose = [c for c in generation.cells
+                     if (ceilings.get(c) or {}).get("bound") == "loose"]
+            if loose:
+                print()
+                print(f"  `bw` is how much of the peak bandwidth the step actually used, from "
+                      f"the checkpoint's")
+                print(f"  weight bytes plus the state traffic. {len(loose)} of "
+                      f"{len(ceilings)} cells are BELOW the threshold at which")
+                print("  a traffic ceiling is tight, so `any mech.` there is a loose upper bound:")
+                print("  part of the step is latency and occupancy rather than bytes, and freeing")
+                print("  recurrent traffic returns less than its arithmetic share. The `persist`")
+                print("  column does not depend on it -- it is 2 x persisting-L2 over the step,")
+                print("  and the step time is measured.")
+            if unwinnable:
+                print()
+                print(f"  {len(unwinnable)} of {len(generation.cells)} cells cannot be won by a "
+                      f"persisting-L2 policy at all: {', '.join(unwinnable)}.")
+                print("  The control's own run-to-run spread there is larger than the ceiling a")
+                print("  PERFECT policy could reach, so no admission rule, window shape or hot-set")
+                print("  heuristic can produce a measurable result in them. The `any mech.` column")
+                print("  is what removing ALL recurrent traffic would be worth, and where it is")
+                print("  far above the spread the room is real -- it is just not this family's.")
+
         note = (generation.raw.get("_reference") or {}).get("unmeasurable_cells") or {}
         if note:
             print()
@@ -533,6 +655,14 @@ def main(argv=None):
     p = sub.add_parser("generation", help="inspect a frozen TTF-N definition")
     p.add_argument("action", choices=["show", "list"])
     p.add_argument("name", nargs="?", default="TTF-1")
+    p.add_argument("--bandwidth-gbs", type=float, default=1792.0,
+                   help="device memory bandwidth for the per-cell ceiling (default 1792, the "
+                        "RTX 5090's). Named rather than assumed: the ceiling is a share of what "
+                        "the step moves, and that denominator is bandwidth times step time.")
+    p.add_argument("--state-bytes-scale", type=float, default=0.5,
+                   help="matrix-state size at concurrency relative to batch 1 (default 0.5: the "
+                        "packed decode path compacts fp32 to bf16). A cell the runtime does NOT "
+                        "batch keeps the fp32 state and has twice the ceiling printed.")
     p.add_argument("--reachable", action="store_true",
                    help="per cell: where the control sat and how far it moved between repeats "
                         "of itself at calibration. Read it before spending a week: an axis "
