@@ -248,10 +248,26 @@ long-context concurrency cells:
 | `ctx16384-c4` | 29.7 | **1.32x for 4** | fell off the batched path |
 
 The guard that refused those four reads the *adapter's* packing counters, and the control is
-unhooked and emits none — so only the candidate could be seen to fail. The control's own
-arithmetic settles it: a cell that returns 1.15x for four concurrent sequences was not serving
-four concurrent sequences either. **On this runtime and this device, TTF-1 declares four
-concurrency cells that cannot be measured as concurrency cells at all.**
+unhooked and emits none — so only the candidate could be seen to fail. Each was re-run with the
+hook installed and **no window**, which emits the same counters and applies no policy, and the
+four are not one thing:
+
+| cell | baseline, no policy | `persist` | whose |
+|---|---|---|---|
+| `ctx4096-c4` | `max_rows_seen 0`, 0 decode steps packed | identical | **the runtime's** |
+| `ctx16384-c4` | `max_rows_seen 0`, 0 packed, also at 4x the decode length | identical | **the runtime's** |
+| `ctx4096-c16` | `max_rows_seen 16`, **63 of 64** decode steps packed | identical | **the evaluator's** |
+| `ctx4096-c32` | `max_rows_seen 32`, **63 of 64** decode steps packed | identical | **the evaluator's** |
+
+The last two batched every decode step at full width. They were refused because the guard
+divided by the adapter's `tokens`, which counts the ~70 prefill chunks a 4096-token prompt
+produces — 63 of 133 is 47.4% against a 50% threshold. The guard now counts decode steps
+against `max_new` and checks `max_rows_seen` first.
+
+So **two** of TTF-1's ten cells cannot be measured as concurrency cells on this runtime, and the
+control's own arithmetic says the same: a cell that returns 1.15x for four concurrent sequences
+was not serving four concurrent sequences in either arm. The other two are measurable and were
+lost to a defect in the ruler.
 
 **On the six cells that did batch, the shipped default policy is a regression**, and five of
 the six are negative:
@@ -268,10 +284,12 @@ the six are negative:
 **And the receipt read −99.5%**, which is the instrument rather than the submission. Two
 defects produced it, both now fixed and both now named on the receipt's own face:
 
-1. Four cells the runtime cannot batch were charged to the candidate at the generation's cell
-   floor. A serving loss is now a question before it is a verdict — `tt-frontier run` re-runs
-   such a cell on the **baseline** binary with the hook installed and no window, and a failure
-   that reproduces there is the runtime's.
+1. Four cells were charged to the candidate at the generation's cell floor: two the runtime
+   cannot batch, and two the guard mis-refused by dividing decode steps by a count that
+   includes prefill chunks. Both halves are fixed — the denominator is the decode length the
+   harness asked for, and a serving loss is now a question before it is a verdict:
+   `tt-frontier run` re-runs such a cell on the **baseline** binary with the hook installed and
+   no window, and a failure that reproduces there is the runtime's.
 2. `ctx128-c32` was driven to the floor by a p99 change of 183% against a control spread that
    `reference.json` **froze at 481%** when the generation was calibrated. Every receipt now
    reports, per cell and per objective, what moved against what the generation published, and

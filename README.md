@@ -77,9 +77,9 @@ that cell's p99 spread at **481%**. Raising it needs repeats, not a better polic
 
 **The first run of the whole ten-cell generation is what put numbers on all of that**, and the
 numbers are not flattering to either the policy or the instrument: the receipt read −99.5%,
-four of the ten cells turned out not to be servable as concurrency cells by this runtime at
-all, and one more was decided at the cell floor on the 481% axis. Both defects were the
-evaluator's and both are fixed;
+two of the ten cells turned out not to be servable as concurrency cells by this runtime at all,
+two more were refused by a guard dividing by the wrong thing, and one was decided at the cell
+floor on the 481% axis. The last three were the evaluator's and all three are fixed;
 [`results/rtx5090-ttf1-first-matrix.json`](results/rtx5090-ttf1-first-matrix.json) and
 [`docs/VERDICT.md`](docs/VERDICT.md) section 8 have it. Read those,
 [`frontier/README.md`](frontier/README.md) and [`docs/MINING.md`](docs/MINING.md) before
