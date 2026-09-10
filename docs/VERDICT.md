@@ -257,11 +257,22 @@ defaults to the cap so the planning tool and the measured path ask the same ques
 This is what item 12 of the brief predicted — "a trace recorded from the real runtime would
 sharpen every comparison" — arriving as a retraction rather than a confirmation.
 
-**That was not tested by the measurement above.** `stream_applied` and `stream_deferred` are
-zero on every measured arm, because the adapter registers a `ModelWeight` tensor only when the
-operator declares `TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN`, and this run did not. The measured
-`global` differs from `density` by role-floor arbitration alone — and measures the same as it
-within noise.
+**And the action it rests on has never reached a kernel — not "has not been measured", cannot
+be.** `stream_applied` is zero on every arm this project has measured, and the reason is
+structural. The adapter registers the weight stream as one **synthetic** tensor per layer whose
+address is fabricated (`d.ptr = layer + 1; d.device = -1`), because the real weights are
+thousands of separate allocations and there is no single address to name; it exists so the graph
+has an honest denominator for reuse distance.
+`CudaTransitExecutor::resolve` refuses any tensor with `device < 0` and counts it in
+`stale_tensor_refs` — correctly, because a fabricated address must never reach the driver. So
+every Stream action the global arm emits is dropped at that boundary, by design, on both sides.
+
+**What would change it is one hook change, not a design change.** Declare the per-layer weight
+buffers the runtime already owns — `w.wqkv`, `w.ssm_out` and the rest have real device pointers
+— instead of one fabricated tensor per layer. A Stream window on a real weight buffer is what
+`cudaAccessPropertyStreaming` is for; the executor would stop refusing it; and `stream_applied`
+would become a number instead of a zero. Until then no measurement of coordination is possible
+and none should be reported as one.
 
 So the coordination claim has a model-level answer with an identified mechanism and a control
 that would falsify it, and the experiment that settles it is one environment variable away.
