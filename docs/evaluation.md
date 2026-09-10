@@ -296,3 +296,36 @@ from three interleaved repeats. Read them before choosing what to work on. Two c
 4x3 matrix would have contained are not in the generation at all, because calibration found
 this device cannot run them: `ctx16384-c16` loses 30 of its requests to a device OOM in every
 repeat, and `ctx16384-c32` cannot even load the model.
+
+**Every receipt now reads those spreads back.** `cell_resolution` reports, per cell and per
+objective, what the candidate moved against what the generation published for that cell, and
+whether the first exceeds the second; `resolution_summary` says what share of the scored weight
+resolved. Neither moves a score — they say which cells a score is entitled to rest on. A floor
+decision taken inside a published spread is named on the receipt's face, and the first full
+TTF-1 run is why: it read −99.5%, and the cell that decided it moved its p99 by 183% against a
+spread this project had itself calibrated at **481%**.
+
+The published spreads are also what says three repeats is a floor rather than a
+recommendation. The same arm measured **+0.07%** and **−0.39%** at `ctx128-c16` in two sessions
+two hours apart on the reference box; that cell's published spread is 0.42%. `scripts/
+trusted_eval.sh` defaults to five and the generation allows nine.
+
+### The guards, and the incident each one encodes
+
+Every refusal in `eval/real_eval.py` exists because the failure it prevents happened here, and
+none of them may be relaxed without knowing which:
+
+| guard | what it refuses | the incident |
+|---|---|---|
+| `require_hook_engaged` | no `RECURLOCAL_STATS`, or a hook that bracketed no recurrent layer | the adapter turns itself off on a configuration it cannot parse, and the run completes looking fine |
+| NULL CANDIDATE | a policy arm whose windows were all deferred to a runtime that never attached them | the first scored run in this repository was exactly that, reported as a locality result |
+| — its exception | a planner that declined every candidate for a stated reason | `naive_both` declines all 512 at concurrency 4; refusing it would take the other four arms with it |
+| `require_registered_families` | an arm scoped to a tensor family the registry never saw | through 0.2.0 no adapter exposed KV, so a KV-scoped arm reported the recurrent policy's number |
+| `require_packed_path` | a concurrency run that never batched, or batched a minority of its decode steps | above eight rows the pinned runtime decodes one row at a time, at 5.4x the cost |
+| `require_requests_completed` | an arm that lost requests to OOM | two of six identical runs completed a sixth of their tokens and reported a plausible collapse |
+| the correctness gate's control replay | a runtime that is not reproducible against itself | one screened checkpoint diverges at token 2 between two unhooked replays |
+
+Two of those were themselves wrong in 0.2.1 and are recorded in the CHANGELOG: the packed-path
+guard divided by a step count that includes prefill chunks, and the layer counter meant
+different things in the two engines. A guard that misfires is worse than no guard, because it
+produces a confident number for a submission that did nothing wrong.
