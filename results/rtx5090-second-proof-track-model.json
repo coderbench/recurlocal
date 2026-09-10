@@ -439,5 +439,42 @@
     }
    }
   }
+ },
+ "arm_action_counts": {
+  "what_this_is": "How many actions each arm emits on each golden trace. Recorded because one of the five arms emits ZERO on one of them, and an arm that applies nothing is not the arm the comparison thinks it is measuring.",
+  "counts": {
+   "trace_recurrent.json": {
+    "baseline": 0,
+    "recurrent_only": 60,
+    "kv_only": 0,
+    "naive_both": 192,
+    "global": 188
+   },
+   "trace_recurrent_kv.json": {
+    "baseline": 0,
+    "recurrent_only": 60,
+    "kv_only": 8,
+    "naive_both": 224,
+    "global": 182
+   },
+   "trace_concurrency.json": {
+    "baseline": 0,
+    "recurrent_only": 60,
+    "kv_only": 8,
+    "naive_both": 0,
+    "global": 182
+   },
+   "trace_live_c1.json": {
+    "baseline": 0,
+    "recurrent_only": 58,
+    "kv_only": 24,
+    "naive_both": 256,
+    "global": 182
+   }
+  }
+ },
+ "naive_both_degenerates_at_concurrency": {
+  "finding": "The straw man does not do badly at concurrency; it does nothing.",
+  "detail": "`naive_both` is Proportional admission over both tensor classes -- 'what you get by turning two independent policies on at once' -- and Proportional answers a budget shortfall by shaving the requested hit ratio for every candidate alike. At four concurrent requests the concurrency trace offers 512 candidates against a 47 MB budget, so every shaved ratio falls under `min_hit_ratio` (0.05) and all 512 are declined: an EMPTY plan, 0 actions, indistinguishable on the device from the hook with no policy. On the recorded batch-1 trace the same preset emits 256 actions, so this is a property of concurrency and not of the preset.\n\nTwo consequences. First, the specification's straw man cannot demonstrate what it is for at the concurrencies the frontier actually scores -- it is supposed to show that unarbitrated persistence HURTS, and instead it abstains. Second, `eval/real_eval.py` refused it as a NULL CANDIDATE, which would have taken the other four arms of the five-arm run down with it; the guard now tells a planner that declined every candidate for a stated reason apart from a window that was computed and handed back to a runtime that never attached it."
  }
 }

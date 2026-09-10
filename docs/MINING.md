@@ -578,6 +578,17 @@ Three things are open here and none needs a GPU to start:
   windows against 4, and the model says `density` wins by 1.7x while the window-count reading
   says `reuse_order` does. They disagree in sign. See docs/VERDICT.md section 3.3.
 
+**One of the five arms abstains at concurrency, and you should know before you read a table
+that includes it.** `naive_both` is Proportional admission over both tensor classes, and
+Proportional answers a budget shortfall by shaving every candidate's hit ratio alike. At four
+concurrent requests the concurrency trace offers 512 candidates against a 47 MB budget, every
+shaved ratio falls under `min_hit_ratio`, and all 512 are declined: an **empty plan**,
+indistinguishable on the device from the hook with no policy. On the recorded batch-1 trace the
+same preset emits 256 actions. So the straw man does not demonstrate that unarbitrated
+persistence hurts at the concurrencies the frontier scores — it declines to play. An admission
+rule that spends a shared budget badly *and still spends it* would be a better straw man, and
+building one is a contribution.
+
 ### 1b. The model it replaced, kept because it is still the control
 
 `--cost-model linear` is `saved = reused_bytes x (granted / bytes) x hit_ratio`. It is not

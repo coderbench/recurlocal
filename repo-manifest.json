@@ -142,6 +142,7 @@
     "tests/golden/make_traces.py",
     "tests/golden/plans.golden",
     "tests/golden/trace_concurrency.json",
+    "tests/golden/trace_live_c1.json",
     "tests/golden/trace_recurrent.json",
     "tests/golden/trace_recurrent_kv.json",
     "tests/test_compat.cpp",
