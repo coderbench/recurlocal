@@ -16,3 +16,9 @@ trace_concurrency.json/kv_only fdf4b420e6434bb7
 trace_concurrency.json/naive_both 14650fb0739d0383
 trace_concurrency.json/global 5511629510639591
 trace_concurrency.json/step_traffic_bytes 18500000000
+trace_live_c1.json/baseline 14650fb0739d0383
+trace_live_c1.json/recurrent_only cf888fbf8fbdaa60
+trace_live_c1.json/kv_only 09abc140f7510396
+trace_live_c1.json/naive_both 136df0f0ca0390e3
+trace_live_c1.json/global 37f404f13bfe86e5
+trace_live_c1.json/step_traffic_bytes 18942630144

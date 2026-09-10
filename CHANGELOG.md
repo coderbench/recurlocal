@@ -100,6 +100,23 @@ role-floor arbitration alone, and measures the same as it within noise.
 [`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
 maintainer has to answer before handing this to contributors.
 
+### Fixed — an empty plan and a plumbing failure read the same in the 0.1 counters
+
+`windows_applied 0, windows_attached_to_node 0, pre_touch_launches 0` is a NULL CANDIDATE — the
+hook loaded, bracketed layers, and nothing reached a kernel. It is also what a planner that
+**decided** to do nothing looks like, and the two are opposite facts about a run.
+
+`naive_both` — persist both tensor classes with no arbitration — declines every one of 512
+candidates as `below_min_hit_ratio` at concurrency 4, because a budget shared among that many
+gives each less than the configured floor. That is the arm doing precisely what the
+specification says it should do badly, and refusing it would have taken the other four arms of
+the five-arm run down with it.
+
+The transit engine's decline census tells them apart, and the incident the guard exists for
+keeps its guard: a window computed and handed back to a runtime that never attached it reports
+`windows_deferred_to_caller > 0`, which is checked first and still aborts. An engine that keeps
+no census — the 0.1 controller — gets no benefit of the doubt.
+
 ### Fixed — the packed-path guard counted prefill chunks in its denominator
 
 `eval/real_eval.py` refused a concurrency measurement whose `tokens_packed / tokens` fell below

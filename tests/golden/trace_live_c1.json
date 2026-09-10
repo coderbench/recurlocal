@@ -1,0 +1,3025 @@
+{
+ "active_requests": 1,
+ "cyclic": true,
+ "device": 0,
+ "device_name": "NVIDIA GeForce RTX 5090",
+ "events": [
+  {
+   "kernel_id": 1,
+   "name": "",
+   "order": 0,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 577
+    },
+    {
+     "access": "read_write",
+     "id": 578
+    },
+    {
+     "access": "read",
+     "id": 579
+    }
+   ]
+  },
+  {
+   "kernel_id": 2,
+   "name": "",
+   "order": 1,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 580
+    },
+    {
+     "access": "read_write",
+     "id": 581
+    },
+    {
+     "access": "read",
+     "id": 582
+    }
+   ]
+  },
+  {
+   "kernel_id": 3,
+   "name": "",
+   "order": 2,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 583
+    },
+    {
+     "access": "read_write",
+     "id": 584
+    },
+    {
+     "access": "read",
+     "id": 585
+    }
+   ]
+  },
+  {
+   "kernel_id": 4,
+   "name": "",
+   "order": 3,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 586
+    },
+    {
+     "access": "read",
+     "id": 587
+    },
+    {
+     "access": "read",
+     "id": 588
+    }
+   ]
+  },
+  {
+   "kernel_id": 5,
+   "name": "",
+   "order": 4,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 589
+    },
+    {
+     "access": "read_write",
+     "id": 590
+    },
+    {
+     "access": "read",
+     "id": 591
+    }
+   ]
+  },
+  {
+   "kernel_id": 6,
+   "name": "",
+   "order": 5,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 592
+    },
+    {
+     "access": "read_write",
+     "id": 593
+    },
+    {
+     "access": "read",
+     "id": 594
+    }
+   ]
+  },
+  {
+   "kernel_id": 7,
+   "name": "",
+   "order": 6,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 595
+    },
+    {
+     "access": "read_write",
+     "id": 596
+    },
+    {
+     "access": "read",
+     "id": 597
+    }
+   ]
+  },
+  {
+   "kernel_id": 8,
+   "name": "",
+   "order": 7,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 598
+    },
+    {
+     "access": "read",
+     "id": 599
+    },
+    {
+     "access": "read",
+     "id": 600
+    }
+   ]
+  },
+  {
+   "kernel_id": 9,
+   "name": "",
+   "order": 8,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 601
+    },
+    {
+     "access": "read_write",
+     "id": 602
+    },
+    {
+     "access": "read",
+     "id": 603
+    }
+   ]
+  },
+  {
+   "kernel_id": 10,
+   "name": "",
+   "order": 9,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 604
+    },
+    {
+     "access": "read_write",
+     "id": 605
+    },
+    {
+     "access": "read",
+     "id": 606
+    }
+   ]
+  },
+  {
+   "kernel_id": 11,
+   "name": "",
+   "order": 10,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 607
+    },
+    {
+     "access": "read_write",
+     "id": 608
+    },
+    {
+     "access": "read",
+     "id": 609
+    }
+   ]
+  },
+  {
+   "kernel_id": 12,
+   "name": "",
+   "order": 11,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 610
+    },
+    {
+     "access": "read",
+     "id": 611
+    },
+    {
+     "access": "read",
+     "id": 612
+    }
+   ]
+  },
+  {
+   "kernel_id": 13,
+   "name": "",
+   "order": 12,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 613
+    },
+    {
+     "access": "read_write",
+     "id": 614
+    },
+    {
+     "access": "read",
+     "id": 615
+    }
+   ]
+  },
+  {
+   "kernel_id": 14,
+   "name": "",
+   "order": 13,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 616
+    },
+    {
+     "access": "read_write",
+     "id": 617
+    },
+    {
+     "access": "read",
+     "id": 618
+    }
+   ]
+  },
+  {
+   "kernel_id": 15,
+   "name": "",
+   "order": 14,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 619
+    },
+    {
+     "access": "read_write",
+     "id": 620
+    },
+    {
+     "access": "read",
+     "id": 621
+    }
+   ]
+  },
+  {
+   "kernel_id": 16,
+   "name": "",
+   "order": 15,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 622
+    },
+    {
+     "access": "read",
+     "id": 623
+    },
+    {
+     "access": "read",
+     "id": 624
+    }
+   ]
+  },
+  {
+   "kernel_id": 17,
+   "name": "",
+   "order": 16,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 625
+    },
+    {
+     "access": "read_write",
+     "id": 626
+    },
+    {
+     "access": "read",
+     "id": 627
+    }
+   ]
+  },
+  {
+   "kernel_id": 18,
+   "name": "",
+   "order": 17,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 628
+    },
+    {
+     "access": "read_write",
+     "id": 629
+    },
+    {
+     "access": "read",
+     "id": 630
+    }
+   ]
+  },
+  {
+   "kernel_id": 19,
+   "name": "",
+   "order": 18,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 631
+    },
+    {
+     "access": "read_write",
+     "id": 632
+    },
+    {
+     "access": "read",
+     "id": 633
+    }
+   ]
+  },
+  {
+   "kernel_id": 20,
+   "name": "",
+   "order": 19,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 634
+    },
+    {
+     "access": "read",
+     "id": 635
+    },
+    {
+     "access": "read",
+     "id": 636
+    }
+   ]
+  },
+  {
+   "kernel_id": 21,
+   "name": "",
+   "order": 20,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 637
+    },
+    {
+     "access": "read_write",
+     "id": 638
+    },
+    {
+     "access": "read",
+     "id": 639
+    }
+   ]
+  },
+  {
+   "kernel_id": 22,
+   "name": "",
+   "order": 21,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 640
+    },
+    {
+     "access": "read_write",
+     "id": 641
+    },
+    {
+     "access": "read",
+     "id": 642
+    }
+   ]
+  },
+  {
+   "kernel_id": 23,
+   "name": "",
+   "order": 22,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 643
+    },
+    {
+     "access": "read_write",
+     "id": 644
+    },
+    {
+     "access": "read",
+     "id": 645
+    }
+   ]
+  },
+  {
+   "kernel_id": 24,
+   "name": "",
+   "order": 23,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 646
+    },
+    {
+     "access": "read",
+     "id": 647
+    },
+    {
+     "access": "read",
+     "id": 648
+    }
+   ]
+  },
+  {
+   "kernel_id": 25,
+   "name": "",
+   "order": 24,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 649
+    },
+    {
+     "access": "read_write",
+     "id": 650
+    },
+    {
+     "access": "read",
+     "id": 651
+    }
+   ]
+  },
+  {
+   "kernel_id": 26,
+   "name": "",
+   "order": 25,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 652
+    },
+    {
+     "access": "read_write",
+     "id": 653
+    },
+    {
+     "access": "read",
+     "id": 654
+    }
+   ]
+  },
+  {
+   "kernel_id": 27,
+   "name": "",
+   "order": 26,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 655
+    },
+    {
+     "access": "read_write",
+     "id": 656
+    },
+    {
+     "access": "read",
+     "id": 657
+    }
+   ]
+  },
+  {
+   "kernel_id": 28,
+   "name": "",
+   "order": 27,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 658
+    },
+    {
+     "access": "read",
+     "id": 659
+    },
+    {
+     "access": "read",
+     "id": 660
+    }
+   ]
+  },
+  {
+   "kernel_id": 29,
+   "name": "",
+   "order": 28,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 661
+    },
+    {
+     "access": "read_write",
+     "id": 662
+    },
+    {
+     "access": "read",
+     "id": 663
+    }
+   ]
+  },
+  {
+   "kernel_id": 30,
+   "name": "",
+   "order": 29,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 664
+    },
+    {
+     "access": "read_write",
+     "id": 665
+    },
+    {
+     "access": "read",
+     "id": 666
+    }
+   ]
+  },
+  {
+   "kernel_id": 31,
+   "name": "",
+   "order": 30,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 667
+    },
+    {
+     "access": "read_write",
+     "id": 668
+    },
+    {
+     "access": "read",
+     "id": 669
+    }
+   ]
+  },
+  {
+   "kernel_id": 32,
+   "name": "",
+   "order": 31,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 670
+    },
+    {
+     "access": "read",
+     "id": 671
+    },
+    {
+     "access": "read",
+     "id": 672
+    }
+   ]
+  },
+  {
+   "kernel_id": 33,
+   "name": "",
+   "order": 32,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 673
+    },
+    {
+     "access": "read_write",
+     "id": 674
+    },
+    {
+     "access": "read",
+     "id": 675
+    }
+   ]
+  },
+  {
+   "kernel_id": 34,
+   "name": "",
+   "order": 33,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 676
+    },
+    {
+     "access": "read_write",
+     "id": 677
+    },
+    {
+     "access": "read",
+     "id": 678
+    }
+   ]
+  },
+  {
+   "kernel_id": 35,
+   "name": "",
+   "order": 34,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 679
+    },
+    {
+     "access": "read_write",
+     "id": 680
+    },
+    {
+     "access": "read",
+     "id": 681
+    }
+   ]
+  },
+  {
+   "kernel_id": 36,
+   "name": "",
+   "order": 35,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 682
+    },
+    {
+     "access": "read",
+     "id": 683
+    },
+    {
+     "access": "read",
+     "id": 684
+    }
+   ]
+  },
+  {
+   "kernel_id": 37,
+   "name": "",
+   "order": 36,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 685
+    },
+    {
+     "access": "read_write",
+     "id": 686
+    },
+    {
+     "access": "read",
+     "id": 687
+    }
+   ]
+  },
+  {
+   "kernel_id": 38,
+   "name": "",
+   "order": 37,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 688
+    },
+    {
+     "access": "read_write",
+     "id": 689
+    },
+    {
+     "access": "read",
+     "id": 690
+    }
+   ]
+  },
+  {
+   "kernel_id": 39,
+   "name": "",
+   "order": 38,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 691
+    },
+    {
+     "access": "read_write",
+     "id": 692
+    },
+    {
+     "access": "read",
+     "id": 693
+    }
+   ]
+  },
+  {
+   "kernel_id": 40,
+   "name": "",
+   "order": 39,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 694
+    },
+    {
+     "access": "read",
+     "id": 695
+    },
+    {
+     "access": "read",
+     "id": 696
+    }
+   ]
+  },
+  {
+   "kernel_id": 41,
+   "name": "",
+   "order": 40,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 697
+    },
+    {
+     "access": "read_write",
+     "id": 698
+    },
+    {
+     "access": "read",
+     "id": 699
+    }
+   ]
+  },
+  {
+   "kernel_id": 42,
+   "name": "",
+   "order": 41,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 700
+    },
+    {
+     "access": "read_write",
+     "id": 701
+    },
+    {
+     "access": "read",
+     "id": 702
+    }
+   ]
+  },
+  {
+   "kernel_id": 43,
+   "name": "",
+   "order": 42,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 703
+    },
+    {
+     "access": "read_write",
+     "id": 704
+    },
+    {
+     "access": "read",
+     "id": 705
+    }
+   ]
+  },
+  {
+   "kernel_id": 44,
+   "name": "",
+   "order": 43,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 706
+    },
+    {
+     "access": "read",
+     "id": 707
+    },
+    {
+     "access": "read",
+     "id": 708
+    }
+   ]
+  },
+  {
+   "kernel_id": 45,
+   "name": "",
+   "order": 44,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 709
+    },
+    {
+     "access": "read_write",
+     "id": 710
+    },
+    {
+     "access": "read",
+     "id": 711
+    }
+   ]
+  },
+  {
+   "kernel_id": 46,
+   "name": "",
+   "order": 45,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 712
+    },
+    {
+     "access": "read_write",
+     "id": 713
+    },
+    {
+     "access": "read",
+     "id": 714
+    }
+   ]
+  },
+  {
+   "kernel_id": 47,
+   "name": "",
+   "order": 46,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 715
+    },
+    {
+     "access": "read_write",
+     "id": 716
+    },
+    {
+     "access": "read",
+     "id": 717
+    }
+   ]
+  },
+  {
+   "kernel_id": 48,
+   "name": "",
+   "order": 47,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 718
+    },
+    {
+     "access": "read",
+     "id": 719
+    },
+    {
+     "access": "read",
+     "id": 720
+    }
+   ]
+  },
+  {
+   "kernel_id": 49,
+   "name": "",
+   "order": 48,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 721
+    },
+    {
+     "access": "read_write",
+     "id": 722
+    },
+    {
+     "access": "read",
+     "id": 723
+    }
+   ]
+  },
+  {
+   "kernel_id": 50,
+   "name": "",
+   "order": 49,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 724
+    },
+    {
+     "access": "read_write",
+     "id": 725
+    },
+    {
+     "access": "read",
+     "id": 726
+    }
+   ]
+  },
+  {
+   "kernel_id": 51,
+   "name": "",
+   "order": 50,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 727
+    },
+    {
+     "access": "read_write",
+     "id": 728
+    },
+    {
+     "access": "read",
+     "id": 729
+    }
+   ]
+  },
+  {
+   "kernel_id": 52,
+   "name": "",
+   "order": 51,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 730
+    },
+    {
+     "access": "read",
+     "id": 731
+    },
+    {
+     "access": "read",
+     "id": 732
+    }
+   ]
+  },
+  {
+   "kernel_id": 53,
+   "name": "",
+   "order": 52,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 733
+    },
+    {
+     "access": "read_write",
+     "id": 734
+    },
+    {
+     "access": "read",
+     "id": 735
+    }
+   ]
+  },
+  {
+   "kernel_id": 54,
+   "name": "",
+   "order": 53,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 736
+    },
+    {
+     "access": "read_write",
+     "id": 737
+    },
+    {
+     "access": "read",
+     "id": 738
+    }
+   ]
+  },
+  {
+   "kernel_id": 55,
+   "name": "",
+   "order": 54,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 739
+    },
+    {
+     "access": "read_write",
+     "id": 740
+    },
+    {
+     "access": "read",
+     "id": 741
+    }
+   ]
+  },
+  {
+   "kernel_id": 56,
+   "name": "",
+   "order": 55,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 742
+    },
+    {
+     "access": "read",
+     "id": 743
+    },
+    {
+     "access": "read",
+     "id": 744
+    }
+   ]
+  },
+  {
+   "kernel_id": 57,
+   "name": "",
+   "order": 56,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 745
+    },
+    {
+     "access": "read_write",
+     "id": 746
+    },
+    {
+     "access": "read",
+     "id": 747
+    }
+   ]
+  },
+  {
+   "kernel_id": 58,
+   "name": "",
+   "order": 57,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 748
+    },
+    {
+     "access": "read_write",
+     "id": 749
+    },
+    {
+     "access": "read",
+     "id": 750
+    }
+   ]
+  },
+  {
+   "kernel_id": 59,
+   "name": "",
+   "order": 58,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 751
+    },
+    {
+     "access": "read_write",
+     "id": 752
+    },
+    {
+     "access": "read",
+     "id": 753
+    }
+   ]
+  },
+  {
+   "kernel_id": 60,
+   "name": "",
+   "order": 59,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 754
+    },
+    {
+     "access": "read",
+     "id": 755
+    },
+    {
+     "access": "read",
+     "id": 756
+    }
+   ]
+  },
+  {
+   "kernel_id": 61,
+   "name": "",
+   "order": 60,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 757
+    },
+    {
+     "access": "read_write",
+     "id": 758
+    },
+    {
+     "access": "read",
+     "id": 759
+    }
+   ]
+  },
+  {
+   "kernel_id": 62,
+   "name": "",
+   "order": 61,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 760
+    },
+    {
+     "access": "read_write",
+     "id": 761
+    },
+    {
+     "access": "read",
+     "id": 762
+    }
+   ]
+  },
+  {
+   "kernel_id": 63,
+   "name": "",
+   "order": 62,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read_write",
+     "id": 763
+    },
+    {
+     "access": "read_write",
+     "id": 764
+    },
+    {
+     "access": "read",
+     "id": 765
+    }
+   ]
+  },
+  {
+   "kernel_id": 64,
+   "name": "",
+   "order": 63,
+   "stream": 0,
+   "tensors": [
+    {
+     "access": "read",
+     "id": 766
+    },
+    {
+     "access": "read",
+     "id": 767
+    },
+    {
+     "access": "read",
+     "id": 768
+    }
+   ]
+  }
+ ],
+ "model": "Qwen3.8-27B",
+ "model_digest": "",
+ "notes": "RECORDED from the live SparkInfer adapter on an RTX 5090, batch 1, ctx 128, TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN=18500000000. Nothing here is synthetic: the KV slice sizes are the runtime's real live bytes per attention layer, the layer interleaving is the model's, and the weight traffic is the measured step. The hand-written trace_recurrent_kv.json beside it models 176 kernels and a KV block 1.5x too large; this is what the planner actually plans over.",
+ "phase": "decode",
+ "runtime": "SparkInfer",
+ "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+ "schema_version": 1,
+ "tensors": [
+  {
+   "bytes": 3145728,
+   "id": 577,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 578,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 579,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 580,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 581,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 582,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 583,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 584,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 585,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 586,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 587,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 588,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 589,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 590,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 591,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 592,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 593,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 594,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 595,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 596,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 597,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 598,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 599,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 600,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 601,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 602,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 603,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 604,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 605,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 606,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 607,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 608,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 609,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 610,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 611,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 612,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 613,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 614,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 615,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 616,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 617,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 618,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 619,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 620,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 621,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 622,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 623,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 624,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 625,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 626,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 627,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 628,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 629,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 630,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 631,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 632,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 633,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 634,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 635,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 636,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 637,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 638,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 639,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 640,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 641,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 642,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 643,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 644,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 645,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 646,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 647,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 648,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 649,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 650,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 651,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 652,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 653,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 654,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 655,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 656,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 657,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 658,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 659,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 660,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 661,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 662,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 663,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 664,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 665,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 666,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 667,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 668,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 669,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 670,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 671,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 672,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 673,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 674,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 675,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 676,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 677,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 678,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 679,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 680,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 681,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 682,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 683,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 684,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 685,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 686,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 687,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 688,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 689,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 690,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 691,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 692,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 693,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 694,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 695,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 696,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 697,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 698,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 699,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 700,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 701,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 702,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 703,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 704,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 705,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 706,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 707,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 708,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 709,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 710,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 711,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 712,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 713,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 714,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 715,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 716,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 717,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 718,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 719,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 720,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 721,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 722,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 723,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 724,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 725,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 726,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 727,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 728,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 729,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 730,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 731,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 732,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 733,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 734,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 735,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 736,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 737,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 738,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 739,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 740,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 741,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 742,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 743,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 744,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 745,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 746,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 747,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 748,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 749,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 750,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 751,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 752,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 753,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 754,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 755,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 756,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 757,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 758,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 759,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 760,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 761,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 762,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 3145728,
+   "id": 763,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 61440,
+   "id": 764,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "recurrent_state"
+  },
+  {
+   "bytes": 289062500,
+   "id": 765,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  },
+  {
+   "bytes": 4210688,
+   "id": 766,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 4210688,
+   "id": 767,
+   "model_global": false,
+   "mutable": true,
+   "request_id": -1,
+   "request_local": true,
+   "role": "kv_cache"
+  },
+  {
+   "bytes": 289062500,
+   "id": 768,
+   "model_global": true,
+   "mutable": false,
+   "request_id": -1,
+   "request_local": false,
+   "role": "model_weight"
+  }
+ ]
+}

@@ -196,6 +196,34 @@ def hook_ran(stats):
     return bool(stats.get("ever_initialised", stats.get("initialised")))
 
 
+def declined_every_candidate(stats):
+    """Did the PLANNER decide to do nothing, or did the plumbing fail?
+
+    Both look identical in the 0.1 counters -- windows_applied 0, attached 0, pre_touch 0 --
+    and they are opposite facts about a run. The transit engine's decline census tells them
+    apart, and the case is not hypothetical: `naive_both`, which persists both tensor classes
+    with no arbitration, declines every one of 512 candidates as `below_min_hit_ratio` at
+    concurrency 4, because a budget shared among that many gives each less than the configured
+    floor. That is the arm doing exactly what the specification says it should do badly, and
+    refusing it as a NULL CANDIDATE would have taken the other four arms down with it.
+
+    The plumbing failure keeps its guard: a window that was computed and handed back
+    (`windows_deferred_to_caller > 0`) never reached a kernel, which is the incident the
+    NULL CANDIDATE check exists for.
+    """
+    st = (stats or {}).get("stats", {})
+    if st.get("windows_deferred_to_caller", 0):
+        return None
+    declines = ((stats or {}).get("transit") or {}).get("declines")
+    if not isinstance(declines, dict):
+        return None                      # the v0 engine keeps no census; no opinion
+    total = sum(v for v in declines.values() if isinstance(v, (int, float)))
+    if total <= 0:
+        return None
+    named = {k: v for k, v in declines.items() if v and k != "none"}
+    return {"declined": total, "reasons": named} if named else None
+
+
 def require_hook_engaged(text, env_extra, label):
     """A candidate run that produced no telemetry ran the control.
 
@@ -221,6 +249,15 @@ def require_hook_engaged(text, env_extra, label):
                          "Either the model is not hybrid or the hook site was not reached.")
     if not is_baseline_arm(env_extra) and not policy_applied(stats):
         st = stats.get("stats", {})
+        decided = declined_every_candidate(stats)
+        if decided:
+            # An EMPTY PLAN, not a null candidate. Said out loud, because a run that applied
+            # nothing is worth a line in the log whichever of the two it was.
+            print(f"    {label}: empty plan -- the planner declined all "
+                  f"{decided['declined']} candidates ("
+                  + ", ".join(f"{k}={v}" for k, v in sorted(decided["reasons"].items()))
+                  + "). Measured as the arm it is.", file=sys.stderr, flush=True)
+            return stats
         raise SystemExit(
             f"{label}: NULL CANDIDATE. The hook loaded and bracketed "
             f"{st.get('layers')} layers but applied no policy at all — "

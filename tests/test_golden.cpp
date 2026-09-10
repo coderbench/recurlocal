@@ -194,8 +194,13 @@ int main(int argc, char** argv) {
     const std::map<std::string, std::string> expected = read_expected();
     std::ostringstream recorded;
 
+    // The last one is RECORDED, not written: the live SparkInfer adapter's own graph, with the
+    // runtime's real KV slice sizes and the model's real layer interleaving. The three before
+    // it are hand-built and say so in their own notes fields; keeping both is the point, since
+    // a digest that changes on the recorded trace and not on the synthetic ones is a fact
+    // about the deployment rather than about the planner.
     const char* traces[] = {"trace_recurrent.json", "trace_recurrent_kv.json",
-                            "trace_concurrency.json"};
+                            "trace_concurrency.json", "trace_live_c1.json"};
     DeviceProfile device{};
     CHECK(device_profile_by_name("rtx5090", &device));
 

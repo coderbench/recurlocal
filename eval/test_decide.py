@@ -345,6 +345,45 @@ class HarnessIntegrity(unittest.TestCase):
                                            {"TENSORTRANSIT": "persist"}, "arm")
         self.assertIn("persist", str(caught.exception))
 
+    def test_an_empty_plan_is_told_apart_from_a_plumbing_failure(self):
+        """Both read `windows_applied 0`, and they are opposite facts about a run.
+
+        `naive_both` -- persist both tensor classes, no arbitration -- declines every one of
+        512 candidates as `below_min_hit_ratio` at concurrency 4, because a budget shared among
+        that many gives each less than the configured floor. That is the arm doing exactly what
+        the specification says it should do badly. Refusing it as a NULL CANDIDATE would have
+        taken the other four arms of the five-arm run down with it.
+
+        The incident the NULL CANDIDATE guard exists for is different and keeps its guard: a
+        window that was computed and handed back to a runtime that never attached it.
+        """
+        def stats(deferred, declines):
+            body = {"ever_initialised": True, "initialised": True, "broken": False,
+                    "stats": {"layers": 48, "windows_applied": 0,
+                              "windows_attached_to_node": 0, "pre_touch_launches": 0,
+                              "windows_deferred_to_caller": deferred}}
+            if declines is not None:
+                body["transit"] = {"declines": declines}
+            return "RECURLOCAL_STATS " + json.dumps(body)
+
+        env = {"TENSORTRANSIT": "persist"}
+        # A planner that declined everything for a stated reason is an arm, not a failure.
+        self.assertIsNotNone(real_eval.require_hook_engaged(
+            stats(0, {"below_min_hit_ratio": 448, "role_excluded": 64}), env, "naive_both"))
+
+        # Deferred windows are the plumbing failure and still abort, census or no census.
+        for declines in (None, {"below_min_hit_ratio": 448}):
+            with self.assertRaises(SystemExit) as caught:
+                real_eval.require_hook_engaged(stats(192, declines), env, "arm")
+            self.assertIn("NULL CANDIDATE", str(caught.exception))
+
+        # And an engine that keeps no census gets no benefit of the doubt.
+        with self.assertRaises(SystemExit) as caught:
+            real_eval.require_hook_engaged(stats(0, None), env, "v0 arm")
+        self.assertIn("NULL CANDIDATE", str(caught.exception))
+        with self.assertRaises(SystemExit):
+            real_eval.require_hook_engaged(stats(0, {"none": 512}), env, "no reason given")
+
     def test_the_packed_path_guard_counts_decode_steps_not_prefill_chunks(self):
         """The measured numbers that corrected it, from the reference box.
 
