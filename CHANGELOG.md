@@ -47,6 +47,72 @@ $ tensortransit_bench persist --engine transit --planner budgeted --admission qu
   budgeted/proportional    ms/tok=1.0703 actions=96 declines=48 digest=a24d47d772c47fa3
 ```
 
+### Measured — the admission axis moves the end-to-end number
+
+Five configurations against a scrubbed control, paired and interleaved, three repeats,
+token-exact on every one, on the three TTF-1 cells whose control spread resolves. One binary,
+one model load, one box (`results/rtx5090-0.2.1-arms.json`).
+
+At sixteen concurrent sequences, control 564.9 tok/s, noise floor 0.283%:
+
+| arm | throughput gain | resolved |
+|---|--:|:--:|
+| `budgeted` / `density` | **+0.389%** | **yes** |
+| `global` preset | **+0.372%** | **yes** |
+| `budgeted` / `proportional` | +0.142% | no |
+| `budgeted` / `quota` | +0.089% | no |
+| `recurrent_v0` (shipped) | +0.071% | no |
+
+**Changing one enumerator moves the measured number by 0.32 points against a 0.283% floor.**
+That is the first measured evidence in this repository that the competition surface is a
+surface, and it could not have been produced before this release — the adapter drove the 0.1
+controller, so no admission rule was in the measured path.
+
+Scored by `tt-frontier` over those three cells (a PARTIAL matrix; every receipt says so):
+`density` +0.056% `INCONCLUSIVE` (99% CI −0.26…+0.33), `quota` −0.642% `NO_FRONTIER_GAIN`
+(−0.94…−0.39). Non-overlapping intervals: one admission rule is confidently worse than another,
+end to end, on a real model.
+
+Three findings that are not good news and are recorded with the same weight:
+
+- **Below sixteen sequences the whole family is negative** through the continuous-batching
+  path: −0.29% to −0.43% at one sequence, −0.27% to −0.54% at four, most resolved. Not in
+  tension with the +0.145% at batch 1 in the rewiring check — that is the single-sequence
+  bench; these cells run the CB engine with the generation's long-prefill injection alongside.
+- **The cost model's RANKING of admission rules is contradicted.** It predicts
+  `quota` ≈ `density` ahead of `proportional`; measured, the order is
+  `density` > `proportional` > `quota`. The model fits the persist family's *magnitude* better
+  than the linear one — that is what `cost_model_fit.py` establishes — and its ordering over
+  rules is not validated. A contributor tuning against that ordering would be tuning against
+  something a measurement contradicts. This is the highest-value open problem the release
+  leaves, and it needs no GPU.
+- **The p99 objective does not resolve at three repeats.** Control p99 spreads are 0.5–3.7% per
+  cell against arm effects of 0.3–2.3%; two of fifteen latency figures cleared their own noise.
+  A fact about the harness, not about a policy. The generation allows nine repeats and nobody
+  has spent them.
+
+And one about scope: `stream_applied` is zero on every measured arm, because the adapter
+registers a `ModelWeight` tensor only when the operator declares
+`TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN`. So the model's claim that coordination pays *through
+the Stream action* was **not** tested here. The measured `global` differs from `density` by
+role-floor arbitration alone, and measures the same as it within noise.
+
+[`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
+maintainer has to answer before handing this to contributors.
+
+### Fixed — the sanitizers covered the code a submission cannot change
+
+`scripts/sanitize.sh` ran memcheck, initcheck and synccheck over the 0.1 controller and
+racecheck over one bench mode. It did not touch `test_cuda_executor` — the transit executor,
+which is the half that manipulates a live graph capture, drops borrowed streams and hands a
+device-wide L2 partition back, and the half a submission can actually change. It now covers
+both, plus racecheck on *both* bench engines and a memcheck of the transit engine with a
+streaming buffer present.
+
+The first run of the extended script found 924 uninitialised device reads. They were the
+executor test's own fixture reading `cudaMalloc`'d memory nobody had written, not a library
+defect — but nothing would have caught the next one either. Clean on both engines now.
+
 ### Added — KV is registered, so the second proof track can be measured at all
 
 `declare_kv_cache()` exposes SparkInfer's paged K and V pools, and
