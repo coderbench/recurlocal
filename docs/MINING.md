@@ -92,12 +92,18 @@ Statuses describe evaluation state — `FRONTIER_GAIN`, `NO_FRONTIER_GAIN`, `INC
 `CORRECTNESS_FAIL`, `REGRESSION_GUARD_FAIL`, `BUILD_FAIL`, `EVAL_ERROR` — and none of them
 categorises impact magnitude.
 
-**The second objective is new and it is where the unexplored room is.** The old regime scored
-throughput and nothing else, so the 0.52% ceiling above was the whole story. The frontier is
-two-dimensional, and the tail-latency dimension has a mechanism the throughput ceiling does not
-bound in the same way: a resident state removes a variable-latency HBM round trip from the
-critical path, which moves a p99 more than it moves an average. Nobody has measured it. See
-"Where the open problems are".
+**The second objective is new, and the first thing measured about it is that this instrument
+cannot see it yet.** The old regime scored throughput and nothing else, so the 0.52% ceiling
+above was the whole story. The frontier is two-dimensional, and the tail-latency dimension has a
+mechanism the throughput ceiling does not bound in the same way: a resident state removes a
+variable-latency HBM round trip from the critical path, which moves a p99 more than it moves an
+average.
+
+It has now been measured, and the answer is **not yet**: the control p99 spread on this box is
+0.5–3.7% per cell against arm effects of 0.3–2.3%, so at three paired repeats only two of
+fifteen latency figures cleared their own noise (`results/rtx5090-0.2.1-arms.json`). That is a
+fact about the harness rather than about any policy, and it is what a contributor needs to know
+before choosing to work on latency: **more repeats first**. The generation allows up to nine.
 
 ### The ceiling that actually binds
 

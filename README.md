@@ -61,9 +61,13 @@ dF = F(candidate) / F(main) - 1
 
 `F` is the normalized Pareto hypervolume of the serving frontier — **goodput against p99
 inter-token latency** — over a frozen matrix of workload cells whose bounds and noise floors
-were calibrated on the target hardware and are published per cell. The second objective is not
-decoration: the 0.52% ceiling above bounds *throughput*, and nothing in this repository has
-ever measured what a resident state does to a tail. See
+were calibrated on the target hardware and are published per cell.
+
+The second objective is not decoration: the 0.52% ceiling above bounds *throughput* only. But
+it is also **not yet usable**, and that is measured rather than assumed — the control p99 spread
+on this box is 0.5–3.7% per cell against arm effects of 0.3–2.3%, so at three paired repeats
+only two of fifteen latency figures cleared their own noise
+(`results/rtx5090-0.2.1-arms.json`). Raising that needs repeats, not a better policy. See
 [`frontier/README.md`](frontier/README.md) and [`docs/MINING.md`](docs/MINING.md) before
 spending a week here.
 

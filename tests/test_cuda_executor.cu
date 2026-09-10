@@ -34,10 +34,19 @@ struct Fixture {
     TensorHandle ha, hb, hw;
 
     bool init() {
+        // Zeroed, not merely allocated. `touch` reads before it writes, so uninitialised
+        // device memory is an uninitialised READ -- 924 of them under
+        // `compute-sanitizer --tool initcheck`. The library was clean; the fixture was not,
+        // and it went unnoticed for as long as the sanitizer script covered only the 0.1
+        // controller. It covers this binary now, so the next one is caught the same way.
         if (cudaMalloc(&state_a, 4 * MiB) != cudaSuccess) return false;
+        if (cudaMemset(state_a, 0, 4 * MiB) != cudaSuccess) return false;
         if (cudaMalloc(&state_b, 4 * MiB) != cudaSuccess) return false;
+        if (cudaMemset(state_b, 0, 4 * MiB) != cudaSuccess) return false;
         if (cudaMalloc(&weights, 16 * MiB) != cudaSuccess) return false;
+        if (cudaMemset(weights, 0, 16 * MiB) != cudaSuccess) return false;
         if (cudaMalloc(&scratch, 1024 * sizeof(float)) != cudaSuccess) return false;
+        if (cudaMemset(scratch, 0, 1024 * sizeof(float)) != cudaSuccess) return false;
 
         DeviceProfile profile{};
         if (query_device_profile(0, &profile) != cudaSuccess) return false;
