@@ -74,6 +74,11 @@ struct Adapter {
     // sequence count. Declaring the geometry inside that borrowed call would size the
     // reservation for one sequence and then again for N, twice per token, forever.
     bool declare_suppressed = false;
+    // The widest geometry the run ever declared. The LAST one is not representative: a
+    // concurrent run's tail chunk is unpacked, so a run that spent 80% of its tokens at four
+    // sequences reports one at exit.
+    int max_geometry_sequences = 1;
+    std::size_t max_geometry_bytes_per_layer = 0;
     GdnPackedLayout packed_layout{};
 
     int recurrent_layers = 0;
@@ -340,6 +345,10 @@ bool begin_token_packed(const GdnPackedLayout& layout) noexcept {
     // At concurrency the sequence count is not a declaration, it is observed: this is how
     // many sequences the runtime is actually decoding in this step.
     a.geometry.sequences = layout.rows > 0 ? layout.rows : 1;
+    if (a.geometry.sequences > a.max_geometry_sequences) {
+        a.max_geometry_sequences = a.geometry.sequences;
+        a.max_geometry_bytes_per_layer = a.geometry.bytes_per_layer;
+    }
     declare_geometry_now(a);
     return true;
 }
@@ -459,6 +468,7 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"set_aside_policy\":\"%s\",\"min_residency\":%.4f,"
         "\"hit_ratio\":%.4f,\"budget_fraction\":%.4f},"
         "\"geometry\":{\"recurrent_layers\":%d,\"bytes_per_layer\":%zu,\"sequences\":%d,"
+        "\"max_sequences_declared\":%d,\"bytes_per_layer_at_max\":%zu,"
         "\"streamed_bytes_per_token\":%zu},"
         "\"l2_set_aside_bytes\":%zu,\"l2_set_aside_at_init_bytes\":%zu,"
         "\"stats\":{\"tokens\":%llu,\"tokens_packed\":%llu,\"layers\":%llu,"
@@ -482,12 +492,13 @@ void write_stats_json(std::FILE* out) noexcept {
         to_string(c.set_aside_policy), c.min_residency,
         c.hit_ratio, c.persisting_budget_fraction,
         a.geometry.recurrent_layers, a.geometry.bytes_per_layer, a.geometry.sequences,
+        a.max_geometry_sequences, a.max_geometry_bytes_per_layer,
         a.geometry.streamed_bytes_per_token,
-        // The set-aside IN FORCE. A workload-aware SetAsidePolicy resizes it once the
-        // geometry is known, and reporting only the init-time value made every such resize
-        // invisible to every sweep - the telemetry would show 45 MiB for a run that spent all
-        // its tokens at 30.
-        a.controller.l2_set_aside_bytes(),
+        // The LARGEST set-aside held during the run. Reporting only the init-time value made
+        // every resize by a workload-aware policy invisible to every sweep; reporting the
+        // value in force at exit reports 0, because shutdown has already given the partition
+        // back by the time an atexit handler runs.
+        a.controller.l2_set_aside_peak_bytes(),
         a.ever_initialised ? a.l2_set_aside_at_init : a.controller.l2_set_aside_bytes(),
         (unsigned long long)a.tokens, (unsigned long long)a.tokens_packed,
         (unsigned long long)s.layers, (unsigned long long)a.layers_packed, a.max_rows_seen,

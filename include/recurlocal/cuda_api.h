@@ -205,6 +205,11 @@ public:
 
     const LocalityPlanner& planner() const noexcept { return planner_; }
     std::size_t l2_set_aside_bytes() const noexcept { return l2_set_aside_bytes_; }
+    // The largest set-aside this controller ever held. Survives release(), which is what a
+    // telemetry dump at process exit reads - `l2_set_aside_bytes()` there is 0, because
+    // shutdown has already given the partition back, and reporting that made every run look
+    // as though it had reserved nothing.
+    std::size_t l2_set_aside_peak_bytes() const noexcept { return l2_set_aside_peak_; }
     const ControllerStats& stats() const noexcept { return stats_; }
     void reset_stats() noexcept { stats_ = ControllerStats{}; }
     // Restarts the per-layer counter the prefetch schedule is indexed by. Call at the top
@@ -251,6 +256,14 @@ private:
     // requests up, so a policy that re-derives its target every token needs the request to
     // compare against or it re-carves the L2 partition on every one of them.
     std::size_t l2_set_aside_requested_ = 0;
+    // A new set-aside target must hold for this many consecutive declarations before it is
+    // acted on. A runtime that packs most tokens and runs the tail unpacked declares two
+    // different geometries in alternation, and re-carving the L2 partition on each one evicts
+    // exactly the state the reservation exists to keep.
+    static constexpr int kSettleTokens = 8;
+    std::size_t l2_set_aside_peak_ = 0;
+    std::size_t settle_target_ = 0;
+    int settle_count_ = 0;
     // What the device's persisting-L2 limit was before we touched it. The limit is
     // device-wide and context-lifetime: without restoring it, merely constructing a
     // controller carves a permanent hole out of L2 for every other kernel in the process,

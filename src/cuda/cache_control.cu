@@ -122,6 +122,7 @@ cudaError_t CudaLocalityController::initialize(int device, PlannerConfig config)
         if (configure_persisting_l2(device_, wanted, &l2_set_aside_bytes_) == cudaSuccess) {
             l2_set_aside_owned_ = true;
             l2_set_aside_requested_ = wanted;
+            if (l2_set_aside_bytes_ > l2_set_aside_peak_) l2_set_aside_peak_ = l2_set_aside_bytes_;
             // Tell the planner what we GOT. Without this it keeps budgeting against the
             // request, and every hot-set decision inherits the driver's rounding error.
             planner_.set_granted_l2_set_aside(l2_set_aside_bytes_);
@@ -415,7 +416,19 @@ cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& ge
     // rounds up - on an RTX 5090 a 15 MiB request comes back as 18 - so comparing a fresh
     // request against the granted bytes never matches for any target that is not exactly the
     // device maximum, and the L2 partition would be re-carved on every single token.
-    if (wanted == l2_set_aside_requested_) return cudaSuccess;
+    if (wanted == l2_set_aside_requested_) { settle_count_ = 0; return cudaSuccess; }
+
+    // A workload does not always declare the same geometry on every token. SparkInfer's
+    // concurrent decode packs most tokens and runs the tail chunk unpacked, and the packed
+    // path compacts the matrix state to bf16 - so the declared bytes per layer ALTERNATE, and
+    // a policy that acted on each declaration would re-carve the device's L2 partition
+    // several times a second, evicting on every change exactly the state it had just kept.
+    // Measured on the MoE checkpoint at four sequences: 64 of 80 tokens packed, 16 not.
+    //
+    // So a new target has to hold for `kSettleTokens` consecutive declarations before it is
+    // acted on. A real workload change settles in eight tokens; an alternation never wins.
+    if (wanted != settle_target_) { settle_target_ = wanted; settle_count_ = 1; return cudaSuccess; }
+    if (++settle_count_ < kSettleTokens) return cudaSuccess;
 
     // Never resize the device's L2 partition from inside a capture. It is not a stream
     // operation, it would not be recorded, and it would take effect at a moment that has
@@ -440,6 +453,7 @@ cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& ge
         }
         l2_set_aside_bytes_ = 0;
         l2_set_aside_requested_ = 0;
+        settle_count_ = 0;
         planner_.set_granted_l2_set_aside(0);
         return cudaSuccess;
     }
@@ -456,6 +470,8 @@ cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& ge
     l2_set_aside_owned_ = true;
     l2_set_aside_bytes_ = granted;
     l2_set_aside_requested_ = wanted;
+    if (granted > l2_set_aside_peak_) l2_set_aside_peak_ = granted;
+    settle_count_ = 0;
     // Budget the hot set against what the driver GAVE, not what we asked for. Skipping this
     // is what made every oversubscription decision wrong by the driver's rounding.
     planner_.set_granted_l2_set_aside(granted);
