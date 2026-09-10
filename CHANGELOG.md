@@ -56,39 +56,74 @@ points, inside the floor, which is the consistency check this measurement had to
 resident fraction of 0.977 the two rules compute the *same* reservation, so any difference
 between them is noise and it is.
 
-**And the sign flips at concurrency, on the same axis**, four sequences, `SPARKINFER_PACKED_MAX_ROWS=8`
-on both arms, one warm-up discarded, control 545.1 tok/s, noise floor **0.367%**:
+Two further runs of the same sweep, across two rebuilds, resolve the same way and order the
+values the same way, at a smaller margin: `fixed` +1.32 / `fit_footprint` +1.37 /
+`residency` +1.41, spread 0.10% against a 0.043% floor. **The advantage is real and replicated;
+its size is bounded to 0.05-0.22 points rather than pinned**, because the between-run drift on
+one configuration (0.14 points) is larger than any single run's noise floor. Quote the range,
+not the best of the three.
 
-| `set_aside_policy` | set-aside asked for | gain |
-|---|--:|--:|
-| `fixed` | 45 MiB | -0.073% |
-| `fit_footprint` | 60 MiB | **-0.992%** |
+**At concurrency the axis does not resolve, and the one run that did resolve did not
+replicate.** Four sequences, `SPARKINFER_PACKED_MAX_ROWS=8` on both arms, one warm-up
+discarded, three interleaved pairs, three independent runs across two rebuilds:
 
-Axis spread **0.92%** against a 0.367% floor — **resolved**, and `fixed` wins. This is the
-trade the whole design is about, and it had never been measured on one axis before: previously
-it had to be inferred by comparing two different configurations across two different sweeps.
-Fifteen more MiB of set-aside is worth **+0.22 points at batch 1 and -0.92 points at four
-sequences**, on the same model, the same box and the same binary.
+| run | reservation `fit_footprint` took | `fixed` | `fit_footprint` | axis spread | floor | verdict |
+|---|---|--:|--:|--:|--:|---|
+| 1 | 60 MiB (sized from the TOTAL footprint) | -0.07% | **-0.99%** | 0.92% | 0.41% | resolved, `fixed` |
+| 2 | 31 / 60 MiB alternating | +0.07% | -0.07% | 0.15% | 0.41% | **open** |
+| 3 | 60 MiB (latched) | -0.18% | -0.28% | 0.09% | 0.13% | **open** |
 
-`residency` is excluded from the concurrency arm deliberately. At four sequences the resident
-fraction is 0.478, below its threshold, so it declines the reservation outright — and
-`real_eval.py`'s null-candidate guard refuses an arm that installed no policy, **by name**,
-which is correct: a policy whose response to pressure is to do nothing *is* `baseline`, and
-scoring it would report the hook's overhead as a locality result. So its value on that arm is
-`baseline` by construction rather than by measurement, and the guard's refusal is the
-observation that it declined.
+Runs 1 and 3 held the same 60 MiB reservation and measured -0.99% and -0.28%. The between-run
+spread on one configuration is therefore about 0.7 points while each run's own noise floor is
+0.13-0.41% — so **the concurrency arm on this checkpoint is not reproducible across rebuilds**,
+and the -0.99% that motivated half of this design is one unreplicated observation. It is
+reported here rather than quietly dropped because it is what the design was built on.
 
-**Neither constant is best on both arms, and that is the result.** `fixed` wins at concurrency
-and loses at batch 1; `fit_footprint` wins at batch 1 and loses at concurrency; `residency` is
-the only one that is best-or-tied on both, because it is the only one that asks how much of the
-footprint the reservation could hold before deciding how much to reserve.
+The honest statement of what this mechanism is worth:
 
-| arm | resident fraction | `fixed` | `fit_footprint` | `residency` |
-|---|--:|--:|--:|--:|
-| batch 1 | 0.977 | +1.285% | **+1.509%** | +1.441% |
-| concurrency 4 | 0.478 | **-0.073%** | -0.992% | declines (= `baseline`) |
-| concurrency 16 | 0.120 | — | — | declines |
-| concurrency 32 | 0.060 | — | — | declines |
+| arm | replication | result |
+|---|---|---|
+| batch 1 | 3 runs, all resolved, same ordering | workload-aware beats the constant by **+0.05 to +0.22 points** |
+| concurrency 4 | 3 runs, 1 resolved and not replicated | **indistinguishable** from the constant |
+
+`Residency` declines the reservation outright at four sequences (resident fraction 0.478,
+below its 0.50 threshold), and `real_eval.py`'s null-candidate guard refuses an arm that
+installed no policy, **by name** — correctly, because a policy whose response to pressure is
+to do nothing *is* `baseline`. So its value on that arm is `baseline` by construction, and the
+guard's refusal is the observation that it declined.
+
+**One implementation fact that decides how much of this is even reachable.** A persisting
+window is an address range and this library places ONE per layer, over one sequence's slice —
+at concurrency the runtime hands over a device array of per-row pointers for the pre-touch and
+a single host-nameable row for the window. So set-aside beyond one sequence's footprint holds
+nothing. `FitFootprint` and `Residency` now size from that *windowed* footprint rather than
+from the token footprint, which is what competes for the cache and counts every sequence.
+Conflating the two was a real defect: it reserved the whole 60 MiB at every concurrency, which
+is the setting run 1 measured worst.
+
+Three integration defects were fixed alongside it, each of which would have made a concurrency
+measurement meaningless:
+
+- The adapter declared `sequences = 1` to `declare_geometry()` on the packed path.
+  `begin_token_packed` borrows `begin_token` for its stream setup and only *afterwards*
+  overwrites the sequence count, so every workload-aware rule sized the reservation for a
+  workload that was not running.
+- The controller compared a fresh request against the bytes the driver **granted**. The driver
+  rounds up, so any target that is not exactly the device maximum never matched and the L2
+  partition was re-carved on every token.
+- A runtime does not declare the same geometry on every token: SparkInfer packs most of them
+  and runs the tail unpacked, and the packed path compacts the matrix state to bf16, so the
+  declared bytes per layer **alternate** — 64 of 80 tokens packed at four sequences. Acting on
+  each declaration re-carved the partition several times a second, evicting on every change
+  exactly the state it had just kept. A target now has to hold for eight consecutive
+  declarations. That is "first stable geometry wins", not "the majority wins", and the
+  distinction is documented because it is visible in the telemetry: at four sequences the
+  reservation latches during the opening unpacked tokens and holds there for the rest of the
+  run.
+- The telemetry reported the set-aside taken at `initialize()`, so every resize was invisible
+  to every sweep; and reporting the value *in force* instead reports 0, because shutdown has
+  already given the partition back by the time an `atexit` handler runs. It now reports the
+  peak held during the run, and the widest geometry declared rather than the last one.
 
 `results/rtx5090-setaside.json` carries the data. Registered on `eval/real_sweep.py` as
 `--axis set-aside-policy` and `--axis min-residency`, on `eval/sweep.py`, and on the synthetic
