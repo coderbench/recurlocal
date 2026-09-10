@@ -47,45 +47,96 @@ $ tensortransit_bench persist --engine transit --planner budgeted --admission qu
   budgeted/proportional    ms/tok=1.0703 actions=96 declines=48 digest=a24d47d772c47fa3
 ```
 
-### Measured — the admission axis moves the end-to-end number
+### Added — `tt-frontier generation show --reachable`, and the answer it gives is no
+
+One command for the question a contributor should ask first: which cells are worth trying to
+win. Per cell it prints the ceiling a **perfect** persisting-L2 policy could reach, the ceiling
+any mechanism that removed *all* recurrent traffic could reach, how much of peak bandwidth that
+step actually used, and how far the control moved between repeats of itself at calibration.
+Every figure is computed from the pinned geometry and that cell's own measured control rate.
+
+The answer for TTF-1 is worth stating plainly:
+
+```text
+    cell               persist  any mech.    bw    spread    floor   verdict
+    ctx128-c1           0.491%     1.210%   71%    0.144%   0.144%   measurable by the persist family
+    ctx128-c4           0.391%     1.983%   57%    0.090%   0.090%   measurable by the persist family
+    ctx16384-c1         0.159%     0.390%   23%    0.000%   0.221%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx128-c16          0.249%     5.217%   40%    0.424%   0.424%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx128-c32          0.200%     8.649%   36%    1.738%   1.738%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
+    ctx4096-c32         0.040%     1.615%    7%   39.008%  39.008%   PERSIST FAMILY UNWINNABLE; and so is any
+```
+
+**Seven of ten cells cannot be MEASURED to be won by a persisting-L2 policy**: the floor there
+is larger than the ceiling a perfect policy could reach, so no admission rule, window shape or
+hot-set heuristic can produce a result in them that is distinguishable from noise. The floor is
+the larger of the published spread and what the bench can resolve — aggregate throughput is
+printed to one decimal, which is 0.22% of a 22.6 tok/s cell. `ctx128-c16` is one of
+them — the cell at which every headline figure in this repository was measured, whose ceiling
+is 0.249% and at which the arms sweep reported +0.389%.
+
+**And the room at concurrency is real; it is just not this family's.** Removing all recurrent
+traffic is worth 5.2% at sixteen sequences and 8.6% at thirty-two, against spreads of 0.42% and
+1.74%. The persisting-L2 ceiling is `2 x persisting-L2 / step traffic` and the numerator is 60
+MiB of hardware. A mechanism that is not bounded by that numerator has one to two orders of
+magnitude more to play for — and docs/VERDICT.md section 7 names the four levers rather than
+leaving it at that: two are hardware or workload, one fails the exactness gate, and the fourth
+is a kernel change in SparkInfer. None of them is a better admission rule.
+
+The `bw` column is why the second number carries a caveat rather than a target: every TTF-1
+cell sits below the 80% utilisation at which a traffic ceiling is tight, so `any mech.` is a
+loose upper bound. The `persist` column does not depend on it.
+
+### Measured — the admission axis, and what the cell it was measured in can hold
 
 Five configurations against a scrubbed control, paired and interleaved, three repeats,
 token-exact on every one, on the three TTF-1 cells whose control spread resolves. One binary,
 one model load, one box (`results/rtx5090-0.2.1-arms.json`).
 
-At sixteen concurrent sequences, control 564.9 tok/s, noise floor 0.283%:
+At sixteen concurrent sequences, control 564.9 tok/s, that run's own floor 0.283%:
 
-| arm | throughput gain | resolved |
+| arm | throughput gain | resolved against that run's floor |
 |---|--:|:--:|
-| `budgeted` / `density` | **+0.389%** | **yes** |
-| `global` preset | **+0.372%** | **yes** |
+| `budgeted` / `density` | +0.389% | yes |
+| `global` preset | +0.372% | yes |
 | `budgeted` / `proportional` | +0.142% | no |
 | `budgeted` / `quota` | +0.089% | no |
 | `recurrent_v0` (shipped) | +0.071% | no |
 
-**Changing one enumerator moves the measured number by 0.32 points against a 0.283% floor.**
-That is the first measured evidence in this repository that the competition surface is a
-surface, and it could not have been produced before this release — the adapter drove the 0.1
-controller, so no admission rule was in the measured path.
+**Read against the section above, that table retracts itself.** `ctx128-c16`'s persist-family
+ceiling is **0.249%**, so +0.389% is above the most a perfect policy could deliver there; the
+cell's published control spread is 0.424%, which says the same thing a second way; and the same
+arm measured **−0.388%** in the full matrix two hours later. The numbers are what the box
+produced — three paired interleaved repeats, token-exact — and none of them is evidence that an
+admission rule moved the end-to-end number.
 
-Scored by `tt-frontier` over those three cells (a PARTIAL matrix; every receipt says so):
-`density` +0.056% `INCONCLUSIVE` (99% CI −0.26…+0.33), `quota` −0.642% `NO_FRONTIER_GAIN`
-(−0.94…−0.39). Non-overlapping intervals: one admission rule is confidently worse than another,
-end to end, on a real model.
+What survives is the comparison between arms, which is a different statistic: aggregated over
+c1, c4 and c16, `density` (+0.056%, 99% CI −0.26…+0.33) and `quota` (−0.642%, −0.94…−0.39) have
+non-overlapping intervals — `density` `INCONCLUSIVE`, `quota` `NO_FRONTIER_GAIN`, over a PARTIAL
+matrix every receipt marks as such. One admission rule is confidently worse than another. That
+much could not have been produced before this release: the adapter drove the 0.1 controller, so
+no admission rule was in the measured path at all.
 
-Three findings that are not good news and are recorded with the same weight:
+Four findings that are not good news and are recorded with the same weight:
 
 - **Below sixteen sequences the whole family is negative** through the continuous-batching
   path: −0.29% to −0.43% at one sequence, −0.27% to −0.54% at four, most resolved. Not in
   tension with the +0.145% at batch 1 in the rewiring check — that is the single-sequence
   bench; these cells run the CB engine with the generation's long-prefill injection alongside.
-- **The cost model's RANKING of admission rules is contradicted.** It predicts
+- **Every arm is ordered by the number of windows it attached**, in both the per-cell and the
+  aggregated view — 48 for `density`, 77 for `global`, 144 for each of the three that are
+  mutually indistinguishable. The residency cost model prices bytes, whole-line residency,
+  survival and the reservation; it has no per-window term, so it cannot express that and did
+  not predict it. Confounded, and the experiment that separates it is named in
+  docs/VERDICT.md section 3.3.
+- **The cost model's RANKING of admission rules is not validated.** It predicts
   `quota` ≈ `density` ahead of `proportional`; measured, the order is
   `density` > `proportional` > `quota`. The model fits the persist family's *magnitude* better
-  than the linear one — that is what `cost_model_fit.py` establishes — and its ordering over
-  rules is not validated. A contributor tuning against that ordering would be tuning against
-  something a measurement contradicts. This is the highest-value open problem the release
-  leaves, and it needs no GPU.
+  than the linear one — that is what `cost_model_fit.py` establishes — but no PAIR of arms
+  separates at that cell (the largest gap is 0.247 points against a 0.283% floor), so the
+  per-cell ordering is not evidence either way. What the aggregate does separate, the model does
+  not predict. Reconciling it is the highest-value open problem the release leaves, and it needs
+  no GPU.
 - **The p99 objective does not resolve at three repeats.** Control p99 spreads are 0.5–3.7% per
   cell against arm effects of 0.3–2.3%; two of fifteen latency figures cleared their own noise.
   A fact about the harness, not about a policy. The generation allows nine repeats and nobody
@@ -195,46 +246,6 @@ per-cell figure out of `docs/VERDICT.md` section 8 and compares it with
 `results/rtx5090-ttf1-first-matrix.json` — thirteen numbers, in ctest, failing loudly on a
 drift of more than a thousandth of a point. A figure that drifts in prose is worse than one in
 a report, because prose is what a contributor reads before deciding whether to spend a week.
-
-### Added — `tt-frontier generation show --reachable`, and the answer it gives is no
-
-One command for the question a contributor should ask first: which cells are worth trying to
-win. Per cell it prints the ceiling a **perfect** persisting-L2 policy could reach, the ceiling
-any mechanism that removed *all* recurrent traffic could reach, how much of peak bandwidth that
-step actually used, and how far the control moved between repeats of itself at calibration.
-Every figure is computed from the pinned geometry and that cell's own measured control rate.
-
-The answer for TTF-1 is worth stating plainly:
-
-```text
-    cell               persist  any mech.    bw    spread    floor   verdict
-    ctx128-c1           0.491%     1.210%   71%    0.144%   0.144%   measurable by the persist family
-    ctx128-c4           0.391%     1.983%   57%    0.090%   0.090%   measurable by the persist family
-    ctx16384-c1         0.159%     0.390%   23%    0.000%   0.221%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
-    ctx128-c16          0.249%     5.217%   40%    0.424%   0.424%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
-    ctx128-c32          0.200%     8.649%   36%    1.738%   1.738%   PERSIST FAMILY UNWINNABLE; the traffic is there, the cache is not
-    ctx4096-c32         0.040%     1.615%    7%   39.008%  39.008%   PERSIST FAMILY UNWINNABLE; and so is any
-```
-
-**Seven of ten cells cannot be MEASURED to be won by a persisting-L2 policy**: the floor there
-is larger than the ceiling a perfect policy could reach, so no admission rule, window shape or
-hot-set heuristic can produce a result in them that is distinguishable from noise. The floor is
-the larger of the published spread and what the bench can resolve — aggregate throughput is
-printed to one decimal, which is 0.22% of a 22.6 tok/s cell. `ctx128-c16` is one of
-them — the cell at which every headline figure in this repository was measured, whose ceiling
-is 0.249% and at which the arms sweep reported +0.389%.
-
-**And the room at concurrency is real; it is just not this family's.** Removing all recurrent
-traffic is worth 5.2% at sixteen sequences and 8.6% at thirty-two, against spreads of 0.42% and
-1.74%. The persisting-L2 ceiling is `2 x persisting-L2 / step traffic` and the numerator is 60
-MiB of hardware. A mechanism that is not bounded by that numerator has one to two orders of
-magnitude more to play for — and docs/VERDICT.md section 7 names the four levers rather than
-leaving it at that: two are hardware or workload, one fails the exactness gate, and the fourth
-is a kernel change in SparkInfer. None of them is a better admission rule.
-
-The `bw` column is why the second number carries a caveat rather than a target: every TTF-1
-cell sits below the 80% utilisation at which a traffic ceiling is tight, so `any mech.` is a
-loose upper bound. The `persist` column does not depend on it.
 
 ### Added — a frozen generation is stored twice, and a test says they are the same bytes
 
