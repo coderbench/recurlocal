@@ -2065,7 +2065,9 @@ regression check
 weighted real performance gain
  |
  v
-XS / S / M / L / XL
+XS / S / M / L / XL          <-- SUPERSEDED; see the note at the top of this file.
+                                 The last step is now a continuous Frontier Gain over a
+                                 Pareto hypervolume of goodput and p99 inter-token latency.
 ```
 
 The trusted evaluator should compare:

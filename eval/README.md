@@ -176,21 +176,18 @@ The real track takes a workload matrix and scores it:
 
 In order: output must be bit-identical or the verdict is `REJECT` however fast the run was;
 any workload regressing more than 2% is `REGRESSION` unless a maintainer waives it; then the
-weighted geometric mean across the matrix decides the band and tier. The exit status is 0
-only for a scored, significant improvement, so CI can gate on it directly.
+weighted geometric mean across the matrix decides the status. The exit status is 0 only for a
+scored, significant improvement, so CI can gate on it directly.
 
 Weights default by workload name, and a geometric mean is used deliberately — an arithmetic
 mean lets a 2x win cancel a 2x loss.
 
-Suggested project-local impact bands after correctness passes:
-
-| Real end-to-end gain | Tier |
-|---|---|
-| <2% | none |
-| 2–4% | XS |
-| 4–7% | S |
-| 7–10% | M |
-| 10–18% | L |
-| >18% | XL |
-
-These are not claims about official Gittensor scoring.
+**There are no impact tiers, and this file used to publish a table of them.** The lowest paying
+step was 2% weighted gain and `eval/traffic_budget.py` puts the physical ceiling for the persist
+family at 0.52% on the scored model, so a submission could remove every recoverable byte and
+score `none`. The table went in 0.2.1, and with it the 2% gate on `significant`. What decides a
+submission is the continuous Frontier Gain of [`frontier/README.md`](../frontier/README.md);
+what `decide.py` calls significant is a positive gain, on a complete matrix, clear of its own
+run-to-run spread. The 2% number survives in one place only — `verdict` and `go_no_go`, which
+answer whether this research direction should continue, and that is the project's decision
+about itself rather than a label attached to anybody's PR.
