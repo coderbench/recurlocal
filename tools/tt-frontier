@@ -103,6 +103,48 @@ def cmd_generation(args):
     print(f"  model         {generation.model}")
     print(f"  runtime       {generation.runtime}")
     print(f"  hardware      {generation.hardware}")
+
+    if getattr(args, "reachable", False):
+        # What a contributor is actually up against, per cell, before spending a week: where
+        # the control sat, and how far it moved between repeats of ITSELF when the generation
+        # was calibrated. A cell whose control spread is larger than any effect this hardware
+        # can produce is a cell nobody can win, and it is better to know that from the ruler
+        # than from a receipt.
+        print()
+        print("  what is reachable, per cell (from the frozen calibration):")
+        header = f"    {'cell':16s}"
+        for objective in generation.objectives:
+            header += f"  {objective.key:>14s} {'spread':>9s}"
+        print(header)
+        unmeasurable = []
+        for cell in generation.cells:
+            row = f"    {cell:16s}"
+            for objective in generation.objectives:
+                bounds = (generation.cell_bounds.get(cell) or {}).get(objective.key) or {}
+                control = bounds.get("measured_control")
+                spread = generation.published_spread(cell, objective.key)
+                row += f"  {control if control is None else f'{control:14.2f}'}"
+                if spread is None:
+                    row += f" {'?':>9s}"
+                else:
+                    row += f" {spread:8.2f}%"
+                    if spread >= 10.0:
+                        unmeasurable.append((cell, objective.key, spread))
+            print(row)
+        note = (generation.raw.get("_reference") or {}).get("unmeasurable_cells") or {}
+        if note:
+            print()
+            print("  cells this device could not run at calibration, and therefore not in the "
+                  "matrix at all:")
+            for cell, why in sorted(note.items()):
+                print(f"    {cell:16s} {', '.join(why)}")
+        if unmeasurable:
+            print()
+            print("  axes whose CONTROL moved by more than 10% between repeats of itself. No")
+            print("  policy can be measured on one of these; a cell decided on one is an")
+            print("  artifact, and every receipt says so on its face:")
+            for cell, key, spread in unmeasurable:
+                print(f"    {cell:16s} {key:16s} {spread:.1f}%")
     return 0
 
 
@@ -491,6 +533,11 @@ def main(argv=None):
     p = sub.add_parser("generation", help="inspect a frozen TTF-N definition")
     p.add_argument("action", choices=["show", "list"])
     p.add_argument("name", nargs="?", default="TTF-1")
+    p.add_argument("--reachable", action="store_true",
+                   help="per cell: where the control sat and how far it moved between repeats "
+                        "of itself at calibration. Read it before spending a week: an axis "
+                        "whose control spread exceeds anything the hardware can produce is a "
+                        "cell nobody can win.")
     p.set_defaults(func=cmd_generation)
 
     p = sub.add_parser("calibrate", help="derive frozen bounds from a measured control run")

@@ -188,6 +188,17 @@ is a file, a plan is a function of that file, two plans can be diffed, and a pla
 replayed against a recording executor. Write the planner, see exactly what it would do to a
 recorded workload, and only then ask for hardware.
 
+Before any of that, one command tells you which cells are worth trying to win:
+
+```bash
+tools/tt-frontier generation show TTF-1 --reachable
+```
+
+Three of TTF-1's twenty cell/objective pairs have a control spread larger than anything this
+hardware can produce — `ctx128-c32` p99 at 481%, both of `ctx4096-c32`'s at about 40% — and two
+more cells cannot be batched by the pinned runtime at all. That is nine of twenty pairs a
+submission cannot move, published rather than discovered.
+
 Your configuration reaches the measured path through the adapter's environment:
 
 ```bash

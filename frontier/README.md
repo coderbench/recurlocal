@@ -37,7 +37,17 @@ instrument that tells every contributor the wrong thing about where the room is.
 
 `reference.json` records what the generation's own calibration says is reachable — per cell,
 in raw units, with the measured run-to-run spread beside it — so a contributor can see the
-size of the prize, and the noise they have to beat, before spending a week.
+size of the prize, and the noise they have to beat, before spending a week:
+
+```bash
+tools/tt-frontier generation show TTF-1 --reachable
+```
+
+It prints where the control sat and how far it moved between repeats of *itself*, names the
+cells calibration found this device cannot run at all, and lists the axes whose control spread
+exceeds 10% — on TTF-1 that is `ctx128-c32`'s p99 at **481%** and both of `ctx4096-c32`'s
+objectives at about 40%. No policy can be measured on one of those, a cell decided on one is an
+artifact, and every receipt says so on its face.
 
 ## A cell that could not be served
 

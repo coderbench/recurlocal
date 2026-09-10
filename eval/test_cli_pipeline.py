@@ -183,6 +183,17 @@ def main():
         check(doc["coverage"]["partial"] and doc["coverage"]["missing_cells"] == ["ctx128-c32"],
               "--allow-partial scores it and marks it PARTIAL on its face")
 
+        print("\n== what is reachable, before anyone spends a week")
+        out = run(["generation", "show", GENERATION, "--reachable"]).stdout
+        check("what is reachable, per cell" in out, "the reachability view renders")
+        check("481.0" in out or "481" in out,
+              "and names the axis whose control moved 481% between repeats of itself")
+        check("ctx16384-c16" in out and "OOM" in out,
+              "and the cells calibration found this device could not run at all")
+        plain = run(["generation", "show", GENERATION]).stdout
+        check("what is reachable" not in plain,
+              "and it stays behind a flag, so `show` keeps its one-screen shape")
+
         print("\n== a serving loss, attributed and not attributed")
         # `probe` needs a GPU, so what is exercised here is the SCORING half: a raw file
         # carrying the attribution stamp the probe writes.
