@@ -323,7 +323,7 @@ during the gate.
 ```
 $ python3 eval/decide.py --real results/rtx5090-real-complete.json   # JSON on stdout, this on stderr
 
-verdict: reject   weighted gain +0.059%   impact none   significant false
+verdict: reject   weighted gain +0.059%   status NO_FRONTIER_GAIN   significant false
   batch1          +0.184%  (w=0.40)
   concurrency16   +0.000%  (w=0.20)
   concurrency32   -0.163%  (w=0.20)
@@ -334,7 +334,7 @@ verdict: reject   weighted gain +0.059%   impact none   significant false
 Batch 1 is the only arm that resolves, at +0.184% against a 0.01% noise floor — a real gain,
 and roughly a quarter of the 0.68% a persisting cache can reach there. Every concurrency arm
 sits inside its own run-to-run spread, and the verdict is **reject**: +0.059% weighted, far
-below the 2% floor.
+below the noise this matrix can resolve at concurrency.
 
 Two earlier runs are kept in `results/` because each is the reason a guard exists.
 `rtx5090-real.json` has **no concurrency-32 arm** — and a missing workload is renormalised
@@ -356,7 +356,7 @@ recurrent share                                                      1.66%
 Qwen3.8-27B is a **dense** hybrid: every weight is read every token, so at batch 1 the
 recurrent state is 1.66% of the memory traffic. Making it *free* would be worth 1.69% in
 throughput — a step carrying *f* less traffic runs in *(1−f)* of the time, so tok/s rise by
-*f/(1−f)* — still below the 2% floor the go/no-go table rejects at, before any policy is
+*f/(1−f)* — small enough to be worth knowing before any policy is
 chosen.
 `eval/traffic_budget.py` computes this from the pinned geometry, and it is worth running
 before optimizing for any new model or concurrency.
@@ -394,7 +394,7 @@ capacity that is 2.4x oversubscribed at batch 1 and **39.9x at 32 sequences**. T
 the fraction a cache can address shrinks faster.
 
 Weighted across the section 44 matrix: the most any submission could score is **5.22%**, and
-the persist family specifically tops out at **0.52%** — below the 2% floor, at every
+the persist family specifically tops out at **0.52%** of throughput, at every
 concurrency. Both are computed, not asserted:
 
 ```bash
@@ -499,7 +499,7 @@ Weighted across the whole matrix, and this is the number that decides the projec
 | share of removable traffic a cache can address | 10% | **48%** |
 
 The MoE's total room is *smaller*, but the persist family reaches 48% of it instead of 10% —
-**1.94% against a 2.0% floor.** The best model this work found, with both dials at maximum and
+**1.94% weighted, and 0.52% on the model that is scored.** The best model this work found, with both dials at maximum and
 a perfect replacement policy assumed, misses the significance floor by six hundredths of a
 point. No policy closes that: the numerator is the device's 60 MiB and the denominator is what
 the workload moves.
@@ -646,7 +646,9 @@ What that does and does not mean:
 No synthetic result should be marketed as a model speedup.
 
 This table is executable rather than advisory. `eval/decide.py` applies it, along with the
-impact tiers and the weighted workload score, as a deterministic function of measurements:
+weighted workload score and the ledger's status vocabulary, as a deterministic function of
+measurements. It no longer applies an impact band, because there is no longer a band table:
+see [`frontier/README.md`](frontier/README.md).
 
 ```bash
 python3 eval/decide.py --synthetic eval-result.json   # reports, never tiers
@@ -719,7 +721,8 @@ tensortransit planners
 ```
 
 `inspect` is the one to run first. If the device-bounded ceiling for the roles your policy
-may touch is under the 2% floor, nothing here can help you — one command, no hardware.
+may touch is under the run-to-run spread of the cells it would be measured in, nothing here
+can help you — one command, no hardware. `frontier/TTF-1/reference.json` publishes both.
 
 ## Build: CUDA
 
@@ -781,7 +784,9 @@ the floor the gate rejects at. **Concurrent decode has the room** — 12.71% at 
 but **a persisting L2 window is not the instrument that reaches it**: the resident footprint
 required is 40x the cache, so that policy family tops out at 0.52% weighted however well it is
 delivered. The brief states the highest score physically available on this model and device
-(**5.22%**, impact `S`) so that nobody spends a week chasing a band that does not exist here.
+(**5.22%** of throughput) so that nobody spends a week chasing room that is not there. That
+figure bounds ONE of the frontier's two objectives; what a resident state does to a p99 tail is
+unmeasured.
 
 ## Contribution model
 

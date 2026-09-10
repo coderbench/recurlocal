@@ -10,7 +10,7 @@ hot-set accounting, the SparkInfer adapter, the evaluation harness.
 
 **Answer: the persist family is bounded below the project's own significance floor.** Ceiling
 `2 x min(persisting capacity, footprint) / step traffic`; numerator pinned at 60 MiB by the
-hardware; **1.94% weighted against a 2.0% floor** on the best model found. The instrument
+hardware; **1.94% weighted** on the best model found -- under the 2% floor the 0.1 scorer rejected at, which is why 0.2.1 retired the floor rather than the project. The instrument
 turned out to be worth more than the policy.
 
 ## v0.2 — Core generalization (this release)

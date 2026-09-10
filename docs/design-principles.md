@@ -71,7 +71,7 @@ mode.
 ### 10. Fail fast when an idea does not move the real frontier
 
 The strongest evidence that this rule is real is that the project has applied it to itself.
-The recurrent-persist family is bounded at **1.94% weighted against a 2.0% floor** on the best
+The recurrent-persist family is bounded at **1.94% weighted** on the best
 model found, with both dials at maximum and a bound that already assumes perfect replacement.
 That is in the README's first screen, not in a footnote. The generalization to TensorTransit
 does not repeal it — it widens the frontier so that the bound applies to one policy family

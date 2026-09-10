@@ -15,8 +15,10 @@ the recurrent footprint at 1.02x the persisting cache instead of 2.4x, and batch
 measures **+1.63%** there against +0.10% on the dense model. Concurrency is the arm that cannot
 be measured on that checkpoint, because the runtime stops batching above 8 rows.
 
-Both are below the 2% floor as weighted matrices — 0.52% for the dense model against **1.94%**
-for the MoE, whose ceiling is 3.7x higher and still six hundredths of a point short. And the MoE
+As weighted matrices both are small — 0.52% for the dense model against **1.94%** for the MoE,
+whose ceiling is 3.7x higher. (Until 0.2.1 those numbers were compared against a 2% scoring
+floor and both were under it; there is no floor any more, and what a submission is measured
+against is its cells' own noise, published per cell in `frontier/TTF-1/reference.json`.) And the MoE
 result is not merely below the floor, it is **not scorable at all**: that checkpoint is not
 reproducible against itself, no checkpoint that this runtime can load and that fits 32 GB is,
 and the dense control is only reproducible because the gate is 64 tokens long. Read the section for
@@ -116,8 +118,10 @@ Against this device's 60 MiB persisting-L2 capacity (of a 96 MiB L2):
 
 **The persist family's ceiling falls as concurrency rises, while the traffic ceiling rises.**
 The room grows and the fraction a persisting cache can address shrinks faster. Weighted across
-the matrix the persist family tops out at **0.52%** — below the 2% floor, so it cannot produce
-a scorable result at any concurrency, on this model, on this device.
+the matrix the persist family tops out at **0.52%** of throughput on this model and device, at
+any concurrency. That is above the batch-1 cells' own noise (0.14%) and below the c32 cells'
+(1.7-39%), which is exactly the sort of thing a per-cell noise floor tells you and a single
+project-wide floor could not.
 
 That bound is deliberately generous: it assumes a perfect replacement policy in which every
 resident byte hits and the set-aside costs its neighbours nothing. Measurement agrees with it —
@@ -285,7 +289,7 @@ already known. Reordered by what is still genuinely open:
    cannot be raised, so the only lever is the denominator, and `eval/traffic_budget.py
    --persisting-l2-bytes` now prints the threshold rather than leaving it implied: **a decode
    step must move at most 6.42 GB** before a persisting window over this footprint reaches the
-   2% floor at all. Qwen3.8-27B moves 18.5 GB.
+   2% threshold the break-even is defined against. Qwen3.8-27B moves 18.5 GB.
 
    `configs/qwen3.6-35b-a3b-moe-ceiling.json` screens Qwen3.6-35B-A3B — same architecture
    family, same runtime, same hook, 256 experts with 8 used per token. It moves **3.56 GB** per
@@ -336,7 +340,7 @@ already known. Reordered by what is still genuinely open:
    the tools do not emit. The full survey is in the changelog.
 
    Do not spend a week looking for a checkpoint. The surface is unscorable on this runtime and
-   this device, and weighted the persist family reaches 1.94% here against a 2.0% floor — so
+   this device, and weighted the persist family reaches 1.94% here, which was under the 2% floor this project used to score against and is now simply a small number with a published noise floor beside it — so
    even a scorable version of this result would land just under. See below.
 
 2. **Reuse the cache can actually serve — CLOSED, and the answer is no.** Every shipped policy

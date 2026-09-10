@@ -1,5 +1,21 @@
 # RecurLocal
 
+> **This is the original project specification, kept as the historical record.** Two parts of
+> it have been superseded by measurement and are marked where they appear:
+>
+> * **Section 26's impact-label table (XS/S/M/L/XL).** Removed in 0.2.1. Its lowest paying step
+>   was 2% weighted throughput gain, and the physical ceiling for the whole shipped policy
+>   family is 0.52% on the scored model and 1.94% on the best model this project has found — so
+>   a submission could remove every recoverable byte of recurrent traffic and score `none`.
+>   Scoring is now the continuous Frontier Gain of [`frontier/README.md`](frontier/README.md).
+> * **Section 21's significance floor**, for the same reason. What replaces it is a per-cell
+>   noise floor, calibrated on the target hardware and published in
+>   [`frontier/TTF-1/reference.json`](frontier/TTF-1/reference.json), plus a paired bootstrap
+>   that returns `INCONCLUSIVE` rather than a number it cannot support.
+>
+> Everything else here — the boundary table, the go/no-go rules, the correctness standard, the
+> anti-gaming requirements, the security posture — is current.
+
 > **Status as of 0.2.0.** This is the RecurLocal specification, and it remains the document
 > every "section N" reference in this repository points at — the numbering is load-bearing in
 > `docs/`, in `results/*.json` and in `eval/decide.py`, so the file keeps its name.
@@ -1213,7 +1229,7 @@ Only real serving improvements should qualify for strong impact labels.
 
 Example project policy:
 
-| Real end-to-end improvement | Suggested impact |
+| Real end-to-end improvement | Suggested impact (SUPERSEDED -- see the note at the top of this file) |
 |---|---|
 | <2% | none |
 | 2–4% | XS |

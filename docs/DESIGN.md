@@ -152,7 +152,7 @@ slice.
 Before choosing a policy, it is worth knowing what the best possible policy would be worth.
 Recurrent-state locality can only ever recover the share of decode traffic that recurrent
 state accounts for. `eval/traffic_budget.py` computes it from the pinned geometry and a
-measured decode rate: on Qwen3.8-27B at batch 1 it is **1.65%**, below the 2% floor the
+measured decode rate: on Qwen3.8-27B at batch 1 it is **1.65%**, below the 2% threshold the
 go/no-go table rejects at, before any implementation question is asked. That share is not a
 property of the implementation and no amount of tuning moves it — but it grows with
 concurrency, because model weights are read once per step however many sequences are in

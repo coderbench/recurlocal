@@ -41,7 +41,7 @@ throughput ceiling          f/(1-f), the currency the scorer measures           
 
 `eval/traffic_budget.py` computes it. Qwen3.8-27B is a **dense** hybrid: every weight is read
 every token, and at batch 1 that is 98.34% of the traffic. Making recurrent state *free* would
-be worth 1.69%, which is below the 2% floor section 21 rejects at — **before** any policy is
+be worth 1.69%, which is below the 2% threshold section 21 used to reject at — **before** any policy is
 chosen, and no implementation can move it.
 
 That is the ceiling on removing the traffic. There is a second, much tighter one on the
@@ -351,7 +351,8 @@ This is `docs/MINING.md`'s first open surface, tested. The persist ceiling is
 `2 x min(capacity, footprint) / step_traffic`; the capacity is the device's 60 MiB and cannot be
 raised, so the only lever is the denominator, and `eval/traffic_budget.py` now prints the
 threshold: **a decode step must move at most 6.42 GB** for a persisting window over this
-footprint to reach the 2% floor at all. Qwen3.8-27B moves 18.5 GB. This model moves 3.56 GB.
+footprint to reach the 2% reference threshold at all. Qwen3.8-27B moves 18.5 GB. This model
+   moves 3.56 GB.
 
 **Nothing about the integration changed.** The adapter reads the state geometry from the
 runtime's own config, so the same binary brackets a 30-layer 2 MiB state as readily as a
@@ -624,7 +625,7 @@ Two things worth reading carefully. The MoE's *traffic* ceiling is **lower**, be
 concurrency steps are short and weight-light, so there is less total room. But the persist
 family reaches **48% of that room instead of 10%**, and 1.94% weighted instead of 0.52%.
 
-**1.94% against a 2.0% floor.** The best model this project has found, with both persistence
+**1.94% weighted, and 0.52% on the model that is scored.** The best model this project has found, with both persistence
 dials at maximum and a perfect replacement policy assumed, misses the significance floor by six
 hundredths of a point. That is not a tuning gap and no policy closes it: the numerator is the
 device's 60 MiB and the denominator is what the workload moves.

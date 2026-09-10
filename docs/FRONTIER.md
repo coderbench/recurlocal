@@ -1,11 +1,19 @@
 # Frontier model
 
+> **Superseded in part.** This file describes the *physical* frontier — the ceilings, what
+> bounds them, and what the real integration has overturned — and all of that still holds. How
+> a submission is SCORED moved to [`frontier/README.md`](../frontier/README.md) in 0.2.1: a
+> continuous Frontier Gain over a Pareto hypervolume of goodput and p99 inter-token latency,
+> with no XS/S/M/L/XL bands. The bands went because their lowest paying step sat above the
+> ceilings this file computes.
+
 **Read this first.** The frontier described below is real but it is bounded, and the bound is
 now measured rather than argued: weighted across the section 44 matrix, on the best model this
-project has found, a persisting L2 window tops out at **1.94% against a 2.0% significance
-floor**. That is with both dials at maximum, on a device whose 60 MiB of persisting L2 is the
-numerator and cannot be raised. No contributor effort moves it. The surfaces below are worth
-working because they are *measurable*, not because they are worth two percent.
+project has found, a persisting L2 window tops out at **1.94% of throughput** — and **0.52%**
+on the model that is actually scored. That is with both dials at maximum, on a device whose
+60 MiB of persisting L2 is the numerator and cannot be raised. No contributor effort moves it.
+The surfaces below are worth working because they are *measurable*, not because they are worth
+two percent.
 
 RecurLocal is intended for self-directed optimization. Contributors profile current `main`, find a bottleneck, and demonstrate an improvement.
 
@@ -17,9 +25,10 @@ A future release headline may look like this **only after measurement**:
 
 Never publish invented values.
 
-Labels are computed, never asserted: `eval/decide.py` derives the go/no-go band and impact tier
-from the measurements, so the verdict does not depend on who is reading the table. A synthetic
-result is reported but never tiered.
+Labels are computed, never asserted, and as of 0.2.1 there are no impact tiers to compute:
+scoring is the continuous Frontier Gain of [`frontier/README.md`](../frontier/README.md), and
+`eval/decide.py` reports a status from the same vocabulary rather than a band. A synthetic
+result is reported but never scored.
 
 Secondary metrics such as L2 hit rate explain why a change works but do not replace real end-to-end serving metrics.
 
@@ -34,9 +43,9 @@ device or a new concurrency:
 eval/traffic_budget.py --ms-per-token 10.41 --bandwidth-gbs 1792 --sequences 1
 ```
 
-On Qwen3.8-27B at batch 1 the answer is **1.69%**, below the 2% floor section 21 rejects at,
-before any implementation question is asked. A ceiling below the floor is not a reason to tune
-harder; it is the answer.
+On Qwen3.8-27B at batch 1 the answer is **1.69%**, and that arm's own control spread on the
+reference box is 0.14% — so the room is real but it is eleven times the noise, not a thousand.
+A ceiling below the cells' noise floor is not a reason to tune harder; it is the answer.
 
 The ceiling is quoted in throughput, not in traffic share, because that is what the scorer
 measures: a step carrying *f* less traffic runs in *(1−f)* of the time, so tok/s rise by
