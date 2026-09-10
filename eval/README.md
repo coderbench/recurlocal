@@ -1,5 +1,59 @@
 # Evaluation
 
+Two instruments live here, and they answer different questions:
+
+| | question | command |
+|---|---|---|
+| **the Frontier Ledger** | how much new useful serving capability does this candidate create beyond `main`? | `tools/tt-frontier` |
+| **`real_eval.py` / `decide.py`** | what does this one configuration do to throughput on one axis? | `eval/real_eval.py` |
+
+The frontier scorer is the authoritative one and the ledger is where results live; the
+single-axis instrument is what you reach for when you are isolating a mechanism rather than
+scoring a submission. They share every measurement primitive — `frontier/runner.py` *calls*
+`real_eval.py` rather than reimplementing it, because every guard in that file encodes an
+incident this project actually had, and a second measurement path would be a second place for
+all of them to come back.
+
+```text
+eval/
+|-- frontier/            the Transit Frontier Ledger: the scoring system
+|   |-- normalize.py     raw units -> [0,1], higher-is-better, frozen bounds
+|   |-- pareto.py        dominance, and the non-dominated frontier
+|   |-- hypervolume.py   deterministic, fixed reference point, exact
+|   |-- aggregate.py     per-cell hypervolume -> one frontier score
+|   |-- confidence.py    paired bootstrap over interleaved repeats
+|   |-- compute.py       raw measurements -> Frontier Gain, with every guard
+|   |-- receipt.py       the permanent evidence artifact, and its verification
+|   |-- report.py        Markdown, the PR comment, the terminal box -- generated, never typed
+|   |-- generations.py   a frozen TTF-N, loaded and checksummed
+|   |-- ledger.py        append-only receipt history
+|   `-- runner.py        the paired interleaved GPU runner
+|-- generations/TTF-1/   the frozen benchmark definition and its calibrated bounds
+|-- real_eval.py         the single-axis A/B, and every guard the frontier runner reuses
+|-- decide.py            the single-axis verdict, in the ledger's status vocabulary
+|-- cost_model_fit.py    the residency cost model, fitted to results/ and validated
+|-- traffic_budget.py    the ceilings, before anyone allocates hardware
+|-- run_from_base.sh     run the instrument from the BASE commit, not the submission
+`-- test_frontier.py     golden tests for all of the above
+```
+
+## The frontier evaluation
+
+```bash
+tools/tt-frontier generation show TTF-1          # what is frozen, and what it means
+tools/tt-frontier run --generation TTF-1 --model $MODEL     --cb-binary  $W/sparkinfer/build/runtime/qwen3_gguf_cb_bench     --generate   $W/sparkinfer/build/runtime/qwen3_gguf_generate     --main-config "control="     --candidate-config "persist=TENSORTRANSIT=persist,TENSORTRANSIT_WINDOW_ATTACH=capture_node"     --output raw.json
+tools/tt-frontier compute --generation TTF-1 --results raw.json --output receipt.json
+tools/tt-frontier report receipt.json --format markdown
+```
+
+The authoritative form runs on a trusted worker and never from the candidate's own tree:
+
+```bash
+scripts/trusted_eval.sh --candidate <ref> --model <path> --pr 184
+```
+
+## The synthetic evaluator
+
 The synthetic evaluator compares `baseline`, `persist`, `prefetch`, and `combined` against identical state data. It requires identical checksums and reports relative timing.
 
 Each mode is run `--repeats` times (default 3) with the repeats interleaved, and modes are compared on median elapsed time. The run is labelled `unstable` when any mode's spread exceeds `--stability-threshold-pct` (default 2.0), because a spread wider than the effect makes the mode ranking meaningless. Treat an unstable result as no result rather than as a weak one.

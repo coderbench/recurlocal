@@ -44,14 +44,46 @@ obvious mistakes before you spend a week on them — and with one command:
 tensortransit inspect <trace.json> --device rtx5090
 ```
 
-If the device-bounded ceiling for the roles your policy is allowed to touch is under the 2%
-significance floor, nothing in this repository can help you, and you have found that out for
-free. Several of the surfaces worth taking need **no GPU at all**: the cost model, a new
-admission rule, a reuse metric, trace fidelity. `docs/MINING.md` says which.
+If the device-bounded ceiling for the roles your policy is allowed to touch is under the
+run-to-run spread of the cells it would be measured in, nothing in this repository can help
+you, and you have found that out for free. `frontier/TTF-1/reference.json` publishes both
+numbers per cell — the measured control and its spread — so the size of the prize and the noise
+you have to beat are on the page before you start.
 
-Impact is applied by `eval/decide.py`, mechanically, from the bands in that document — not by
-a reviewer's judgement. Most of this repository's own results land in the `none` band, and
-saying so is the point rather than an embarrassment.
+Several of the surfaces worth taking need **no GPU at all**: the cost model, a new admission
+rule, a reuse metric, trace fidelity, plan replay. `docs/MINING.md` says which.
+
+## How a submission is scored
+
+One continuous number, computed and never assigned:
+
+```text
+Frontier Gain: dF = F(candidate) / F(main) - 1
+```
+
+`F` is the normalized Pareto hypervolume of the serving frontier — goodput against p99
+inter-token latency — over a frozen generation's workload cells. **There are no XS/S/M/L/XL
+bands**; the reason they went away is in [`frontier/README.md`](frontier/README.md) and it is
+not stylistic. Every figure in a PR comment is generated from the receipt, and the receipt
+from the raw measurements: do not type a benchmark number into a PR description.
+
+Most of this repository's own results are `NO_FRONTIER_GAIN` or `INCONCLUSIVE`, and saying so
+is the point rather than an embarrassment.
+
+Before asking for hardware, do all of this locally:
+
+```bash
+tensortransit compare <trace.json>                       # what your plan does, offline
+tensortransit plan <trace.json> --cost-model linear      # and whether it survives the control model
+tensortransit replay <plan.json> --trace <trace.json>    # and that an executor would fire it
+ctest --test-dir build --output-on-failure               # including the frontier scorer
+```
+
+The evaluator runs the instrument from the **base** commit, not from your tree: `eval/`,
+`tools/tt-frontier`, `schemas/`, `configs/`, `tests/golden/`, `workloads/` and
+`adapters/sparkinfer/pin.json` are overlaid from the baseline before anything is measured, and
+anything you changed in them is *named* in the output rather than silently dropped. Propose a
+change to what is measured separately from the optimization it would score.
 
 ## The synthetic benchmark is not the score
 
