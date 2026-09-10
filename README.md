@@ -48,7 +48,8 @@ because the runtime is not reproducible on it.
 **The 0.2 generalization does not repeal that bound.** It relocates it: the bound applies to one
 planner (`recurrent_v0`) over one tensor class, rather than to the project. And it bounds
 throughput specifically — it says nothing about latency, which is the other half of what a
-serving frontier is, and which nothing here has ever measured.
+serving frontier is. Latency is now measured; it is not yet resolvable, and one cell's p99
+control spread was calibrated at **481%**. See below.
 
 **0.2.1 draws the consequence for how work here is scored.** Until 0.2.1 a submission was
 sorted into `XS`/`S`/`M`/`L`/`XL` with the lowest paying step at 2% weighted throughput gain —
@@ -69,9 +70,18 @@ were calibrated on the target hardware and are published per cell.
 
 The second objective is not decoration: the 0.52% ceiling above bounds *throughput* only. But
 it is also **not yet usable**, and that is measured rather than assumed — the control p99 spread
-on this box is 0.5–3.7% per cell against arm effects of 0.3–2.3%, so at three paired repeats
-only two of fifteen latency figures cleared their own noise
-(`results/rtx5090-0.2.1-arms.json`). Raising that needs repeats, not a better policy. See
+is 0.5–3.7% per cell at short context against arm effects of 0.3–2.3%, so at three paired
+repeats only two of fifteen latency figures cleared their own noise
+(`results/rtx5090-0.2.1-arms.json`), and at 32 sequences the generation's own calibration froze
+that cell's p99 spread at **481%**. Raising it needs repeats, not a better policy.
+
+**The first run of the whole ten-cell generation is what put numbers on all of that**, and the
+numbers are not flattering to either the policy or the instrument: the receipt read −99.5%,
+four of the ten cells turned out not to be servable as concurrency cells by this runtime at
+all, and one more was decided at the cell floor on the 481% axis. Both defects were the
+evaluator's and both are fixed;
+[`results/rtx5090-ttf1-first-matrix.json`](results/rtx5090-ttf1-first-matrix.json) and
+[`docs/VERDICT.md`](docs/VERDICT.md) section 8 have it. Read those,
 [`frontier/README.md`](frontier/README.md) and [`docs/MINING.md`](docs/MINING.md) before
 spending a week here.
 
