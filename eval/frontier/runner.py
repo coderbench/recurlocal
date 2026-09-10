@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -110,10 +111,21 @@ def measure_cell(cb_binary, model, cell_id, env, label, *, max_new, long_prefill
         if status == "NULL_POLICY" and not expect_policy:
             # A configuration that declares no policy is SUPPOSED to apply none. Refusing it
             # would make the true control unmeasurable, which is the one arm every comparison
-            # needs.
-            raise RunnerError(f"{label}: control configuration was refused as a null "
-                              f"candidate; this is an evaluator bug, not a submission one")
+            # needs, and the `baseline` arm -- the hook with no window -- unmeasurable too.
+            raise RunnerError(f"{label}: a configuration that declares no policy was refused "
+                              f"as a null candidate; this is an evaluator bug, not a "
+                              f"submission one")
         return {}, status, {"guard": message.strip()[:800]}
+    except subprocess.TimeoutExpired as exc:
+        # A hung run is a serving failure like any other, and it must not take the other
+        # fifty-nine down with it. A matrix that aborts two thirds of the way through has
+        # spent an hour of device time and produced nothing scoreable.
+        return {}, "TIMEOUT", {"guard": f"{label}: timed out after {exc.timeout}s"}
+    except Exception as exc:  # noqa: BLE001 -- deliberately broad; see below
+        # Anything else the harness did not anticipate. Recorded as a failure of THIS cell
+        # rather than allowed to end the run, for the same reason: the receipt can say a cell
+        # produced no operating point and why, and a traceback in a log cannot.
+        return {}, "EVAL_ERROR", {"guard": f"{label}: {type(exc).__name__}: {exc}"[:800]}
 
     metrics = {"goodput_tps": tps}
     for key, pattern in (("p99_itl_ms", r"p99_itl_ms=([0-9.]+)"),
