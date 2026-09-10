@@ -142,6 +142,53 @@ static void test_the_linear_control_still_reproduces_the_published_sweep(
     }
 }
 
+static std::size_t persist_count(const TransitPlan& plan) {
+    std::size_t n = 0;
+    for (const TransitAction& action : plan.actions())
+        if (action.kind == TransitActionKind::Persist) ++n;
+    return n;
+}
+
+// A dial that never differs is a dial that misleads.
+//
+// `AdmissionRule::Survival` prices the WHOLE admitted set with each candidate added and stops
+// when the next admission is not worth its share of the reservation. At the FITTED
+// beta = 0.1108 that stopping rule never fires and the plan is byte-identical to Density's; a
+// little under 0.2 the FIRST candidate stops paying and it admits nothing at all. There is no
+// useful middle, and a contributor who selects `--admission survival` expecting a third
+// behaviour is entitled to know they got one of the other two.
+//
+// Pinned rather than described: a change to beta, to the reservation cost or to the stopping
+// rule moves this boundary without moving anything a reader would look at.
+static void test_survival_is_density_at_the_fitted_beta_and_nothing_above_it(
+        const DeviceProfile& device) {
+    for (const char* name : {"trace_recurrent.json", "trace_recurrent_kv.json",
+                             "trace_concurrency.json"}) {
+        Loaded loaded = load(name);
+        if (!loaded.ok) { ++g_failures; continue; }
+        RuntimeState state{};
+        state.active_requests = loaded.meta.active_requests;
+        parse_runtime_phase(loaded.meta.phase.c_str(), &state.phase);
+        PlanInput input{&loaded.graph, &loaded.registry, device, state};
+
+        TransitPlannerConfig config = base();
+        config.persist_roles = RoleMask::of(TensorRole::RecurrentState);
+
+        config.admission = AdmissionRule::Density;
+        const auto density = make_budgeted_planner(config)->build_plan(input);
+        config.admission = AdmissionRule::Survival;
+        const auto survival = make_budgeted_planner(config)->build_plan(input);
+        CHECK(persist_count(density) > 0);
+        CHECK(density.digest() == survival.digest());
+
+        // Steepen the miss-ratio curve and the stopping rule fires on the first candidate.
+        config.residency_beta = 0.30;
+        CHECK(persist_count(make_budgeted_planner(config)->build_plan(input)) == 0);
+        config.admission = AdmissionRule::Density;
+        CHECK(persist_count(make_budgeted_planner(config)->build_plan(input)) > 0);
+    }
+}
+
 int main(int argc, char** argv) {
     const bool record = argc > 1 && std::strcmp(argv[1], "--record") == 0;
     const std::map<std::string, std::string> expected = read_expected();
@@ -153,6 +200,7 @@ int main(int argc, char** argv) {
     CHECK(device_profile_by_name("rtx5090", &device));
 
     test_the_linear_control_still_reproduces_the_published_sweep(device, &g_failures);
+    test_survival_is_density_at_the_fitted_beta_and_nothing_above_it(device);
 
     for (const char* trace_name : traces) {
         Loaded loaded = load(trace_name);

@@ -233,6 +233,15 @@ Greedy on MARGINAL saving under the cost model, stopping when the next admission
 the plan worse. Under `Linear` the marginal value never decreases and it is exactly `Density`;
 under `Residency` it is not, because a fractional knapsack can never say "stop".
 
+**Measured against itself, it is currently a null control, and that is pinned rather than
+described.** At the fitted `beta = 0.1108` the stopping rule never fires and the plan is
+byte-identical to `Density`'s on all three golden traces; a little under `beta = 0.2` the FIRST
+candidate stops paying for its share of the reservation and it admits nothing at all. There is
+no useful middle, so a contributor who selects `--admission survival` expecting a third
+behaviour gets one of the other two. `tests/test_golden.cpp` asserts both ends, because a
+change to beta, to the reservation cost or to the stopping rule moves that boundary without
+moving anything a reader would look at.
+
 ### Added — `max_windows_per_kernel`, and `WindowPreference`
 
 CUDA binds ONE access-policy window to a stream, a launch or a graph node at a time. A plan
