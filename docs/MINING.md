@@ -81,6 +81,15 @@ replaces the bands is *calibration*: `frontier/TTF-1/reference.json` publishes, 
 measured control rate and the measured run-to-run spread, so the size of the prize and the
 noise you have to beat are both on the page before you start.
 
+**And the same arithmetic that killed the bands does not stop at the bands.** Applied per cell
+rather than weighted, it says a persisting-L2 policy cannot be measured to win **seven of
+TTF-1's ten cells**: its ceiling there is smaller than the floor. Everything below in this
+document that is a *persisting-window* surface — hot-set policy, window scope, window target,
+set-aside size, admission rule — inherits that. The three cells where the family can still be
+measured are `ctx128-c1`, `ctx4096-c1` and `ctx128-c4`, and on all three the shipped policy
+currently measures negative. Run `tools/tt-frontier generation show TTF-1 --reachable` first;
+it takes a second and it is the most useful thing on this page.
+
 A receipt has to clear four things, in this order:
 
 1. **Correctness.** Token-exact greedy replay, against a control replayed against itself first.
