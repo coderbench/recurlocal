@@ -82,6 +82,8 @@
         "used_packed_path": null,
         "note": "single-sequence path; nothing to pack"
       },
+      "packing_with_row_cap_8": null,
+      "runtime_row_cap": "default (32)",
       "traffic_ceiling_pct": 3.751684046325184,
       "persist_family_ceiling_pct": 3.6626208247797067,
       "state_footprint_over_persisting_l2": 1.0234375,
@@ -98,55 +100,55 @@
       "context": 128,
       "tokens": 128,
       "repeats": 3,
-      "warmup_runs_discarded": 0,
+      "warmup_runs_discarded": 1,
       "control_tps": [
-        841.9,
-        910.9,
-        917.6
+        913.8,
+        909.6,
+        913.3
       ],
-      "control_mean_tps": 890.1333333333333,
-      "control_noise_floor_pct": 8.310462180261286,
-      "effective_floor_pct": 8.310462180261286,
+      "control_mean_tps": 912.2333333333332,
+      "control_noise_floor_pct": 0.45987079820430654,
+      "effective_floor_pct": 0.45987079820430654,
       "modes": {
         "baseline": {
-          "gain_pct": 0.4171698320342587,
-          "spread_pct": 8.22595865337441,
+          "gain_pct": -0.13131976362441566,
+          "spread_pct": 0.5833506800035265,
           "paired_ratios": [
-            1.0805321297066162,
-            1.0041716983203426,
-            0.9979293809938972
+            0.9986868023637558,
+            0.9943931398416886,
+            1.000218986094383
           ]
         },
         "persist": {
-          "gain_pct": 0.42814798550883104,
-          "spread_pct": 9.366066230200115,
+          "gain_pct": -0.4617414248021201,
+          "spread_pct": 1.3851996388512215,
           "paired_ratios": [
-            1.0846893930395536,
-            1.0042814798550883,
-            0.9906277244986922
+            0.9852265265922522,
+            0.9953825857519788,
+            0.9990145625752765
           ]
         },
         "prefetch": {
-          "gain_pct": -2.7884509825447323,
-          "spread_pct": 8.427579100717153,
+          "gain_pct": -3.65706777619621,
+          "spread_pct": 0.9380825369810768,
           "paired_ratios": [
-            1.0406224017104169,
-            0.9721154901745527,
-            0.9586965998256322
+            0.9573210768220617,
+            0.9663588390501319,
+            0.9634293222380379
           ]
         },
         "combined": {
-          "gain_pct": -3.029970358985623,
-          "spread_pct": 8.479526988456106,
+          "gain_pct": -3.0123131046613905,
+          "spread_pct": 0.5286116302326596,
           "paired_ratios": [
-            1.048224254662074,
-            0.9697002964101438,
-            0.9659982563208369
+            0.9647625300941126,
+            0.9698768689533861,
+            0.9698894120223366
           ]
         }
       },
-      "best": null,
-      "resolved": false,
+      "best": "baseline",
+      "resolved": true,
       "packing": {
         "concurrency": 4,
         "tokens": 138,
@@ -155,15 +157,17 @@
         "max_rows_seen": 5,
         "used_packed_path": true
       },
-      "traffic_ceiling_pct": 3.382276779540043,
-      "persist_family_ceiling_pct": 1.5873691684716946,
+      "packing_with_row_cap_8": null,
+      "runtime_row_cap": 8,
+      "traffic_ceiling_pct": 3.4691642781174696,
+      "persist_family_ceiling_pct": 1.6274213389356775,
       "state_footprint_over_persisting_l2": 2.09375,
       "state_footprint_mib": 125.625,
       "resident_fraction_of_state": 0.47761194029850745,
-      "step_traffic_gb": 8.052726183343319,
+      "step_traffic_gb": 7.857638762012644,
       "break_even_step_traffic_gb": 6.41728512,
       "clears_significance_floor": false,
-      "within_layer_ceiling_pct": 0.04885402693367291
+      "within_layer_ceiling_pct": 0.050067569356261894
     },
     "concurrency16": {
       "workload": "concurrency 16 (aggregate)",
@@ -171,50 +175,50 @@
       "context": 128,
       "tokens": 128,
       "repeats": 3,
-      "warmup_runs_discarded": 0,
+      "warmup_runs_discarded": 1,
       "control_tps": [
-        452.9,
-        453.1,
-        453.1
+        1203.0,
+        1209.9,
+        1207.7
       ],
-      "control_mean_tps": 453.0333333333333,
-      "control_noise_floor_pct": 0.044140366365050865,
-      "effective_floor_pct": 0.044140366365050865,
+      "control_mean_tps": 1206.8666666666668,
+      "control_noise_floor_pct": 0.5713339405481569,
+      "effective_floor_pct": 0.5713339405481569,
       "modes": {
         "baseline": {
-          "gain_pct": -0.1765614654601677,
-          "spread_pct": 0.5085413397249822,
+          "gain_pct": -0.05818786367415285,
+          "spread_pct": 0.3059583158470347,
           "paired_ratios": [
-            1.0006623978803268,
-            0.9955859633634959,
-            0.9982343853453983
+            0.9994181213632585,
+            0.9967765931068683,
+            0.9998343959592614
           ]
         },
         "persist": {
-          "gain_pct": -0.33105274773780335,
-          "spread_pct": 0.04444343616894456,
+          "gain_pct": -0.16560404073859836,
+          "spread_pct": 0.7378628476149176,
           "paired_ratios": [
-            0.9964672113049239,
-            0.9969101743544471,
-            0.996689472522622
+            1.001828761429759,
+            0.9944623522605174,
+            0.998343959592614
           ]
         },
         "prefetch": {
-          "gain_pct": -3.908147493928016,
-          "spread_pct": 0.11483899314526361,
+          "gain_pct": -2.80698849051918,
+          "spread_pct": 0.6158715689160327,
           "paired_ratios": [
-            0.9609185250607198,
-            0.9598322666078127,
-            0.9609357757669388
+            0.9771404821280133,
+            0.9711546408794115,
+            0.9719301150948082
           ]
         },
         "combined": {
-          "gain_pct": -4.592625303599018,
-          "spread_pct": 0.09253030283140465,
+          "gain_pct": -2.8428927680798077,
+          "spread_pct": 0.43734257117660724,
           "paired_ratios": [
-            0.9540737469640098,
-            0.9534319134848819,
-            0.9543147208121826
+            0.9715710723192019,
+            0.9689230514918588,
+            0.9731721454003477
           ]
         }
       },
@@ -228,7 +232,24 @@
         "max_rows_seen": 17,
         "used_packed_path": false
       },
-      "no_ceiling_because": "the runtime did not batch this width, so the measured step time is one row at a time and a ceiling computed from it would describe a workload that did not run"
+      "packing_with_row_cap_8": {
+        "concurrency": 16,
+        "tokens": 269,
+        "tokens_packed": 254,
+        "aggregate_tps": 1204.4,
+        "max_rows_seen": 8,
+        "used_packed_path": true
+      },
+      "runtime_row_cap": 8,
+      "traffic_ceiling_pct": 4.6416440583312095,
+      "persist_family_ceiling_pct": 0.5324622008971973,
+      "state_footprint_over_persisting_l2": 8.375,
+      "state_footprint_mib": 502.5,
+      "resident_fraction_of_state": 0.11940298507462686,
+      "step_traffic_gb": 23.757388278185932,
+      "break_even_step_traffic_gb": 6.41728512,
+      "clears_significance_floor": false,
+      "within_layer_ceiling_pct": 0.06624911754148036
     },
     "concurrency32": {
       "workload": "concurrency 32 (aggregate)",
@@ -236,50 +257,50 @@
       "context": 128,
       "tokens": 128,
       "repeats": 3,
-      "warmup_runs_discarded": 0,
+      "warmup_runs_discarded": 1,
       "control_tps": [
-        456.0,
-        455.6,
-        456.5
+        1229.6,
+        1232.8,
+        1229.6
       ],
-      "control_mean_tps": 456.0333333333333,
-      "control_noise_floor_pct": 0.19736842105262659,
-      "effective_floor_pct": 0.19736842105262659,
+      "control_mean_tps": 1230.6666666666667,
+      "control_noise_floor_pct": 0.26024723487313317,
+      "effective_floor_pct": 0.26024723487313317,
       "modes": {
         "baseline": {
-          "gain_pct": -0.021929824561406353,
-          "spread_pct": 0.1972387725621821,
+          "gain_pct": -0.16265452179570206,
+          "spread_pct": 0.21090729784289214,
           "paired_ratios": [
-            0.9997807017543859,
-            1.000219490781387,
-            0.9982475355969331
+            0.998373454782043,
+            0.9965931213497728,
+            0.9986987638256344
           ]
         },
         "persist": {
-          "gain_pct": -0.3728070175438525,
-          "spread_pct": 0.32933886988926253,
+          "gain_pct": -0.21958360442418945,
+          "spread_pct": 0.19474753932888467,
           "paired_ratios": [
-            0.9962719298245615,
-            0.997585601404741,
-            0.9943044906900328
+            0.9986174365647367,
+            0.9966742375081117,
+            0.9978041639557581
           ]
         },
         "prefetch": {
-          "gain_pct": -3.8815789473684137,
-          "spread_pct": 0.17448988342015762,
+          "gain_pct": -2.668721609344571,
+          "spread_pct": 0.7436588052257581,
           "paired_ratios": [
-            0.9611842105263159,
-            0.9618086040386303,
-            0.96013143483023
+            0.979586857514639,
+            0.9733127839065543,
+            0.97234873129473
           ]
         },
         "combined": {
-          "gain_pct": -4.631255487269536,
-          "spread_pct": 0.15562397701432168,
+          "gain_pct": -2.708197787898503,
+          "spread_pct": 0.4933229393268258,
           "paired_ratios": [
-            0.9550438596491229,
-            0.9536874451273046,
-            0.9535596933187295
+            0.974056603773585,
+            0.9692569759896172,
+            0.972918022121015
           ]
         }
       },
@@ -293,14 +314,37 @@
         "max_rows_seen": 32,
         "used_packed_path": false
       },
-      "no_ceiling_because": "the runtime did not batch this width, so the measured step time is one row at a time and a ceiling computed from it would describe a workload that did not run"
+      "packing_with_row_cap_8": {
+        "concurrency": 32,
+        "tokens": 522,
+        "tokens_packed": 508,
+        "aggregate_tps": 1226.8,
+        "max_rows_seen": 8,
+        "used_packed_path": true
+      },
+      "runtime_row_cap": 8,
+      "traffic_ceiling_pct": 4.737516054166461,
+      "persist_family_ceiling_pct": 0.2707746376867397,
+      "state_footprint_over_persisting_l2": 16.75,
+      "state_footprint_mib": 1005.0,
+      "resident_fraction_of_state": 0.05970149253731343,
+      "step_traffic_gb": 46.59588299024919,
+      "break_even_step_traffic_gb": 6.41728512,
+      "clears_significance_floor": false,
+      "within_layer_ceiling_pct": 0.06755646509149583
     }
   },
   "ceilings": {
-    "weighted_traffic_ceiling_pct": null,
-    "weighted_persist_family_ceiling_pct": null,
-    "weights_covered": 0.6,
-    "coverage_note": "the section 44 weights this ceiling covers. concurrency 16 and 32 are withheld because the runtime does not batch this checkpoint above 8 rows, so there is no concurrent decode at those widths to bound. A weighted figure over the remaining 0.60 would renormalise those weights away and read higher than the matrix can actually pay, which is the same mistake decide.py refuses for a partial result - so the per-arm ceilings below are the answer and the weighted one is not published for this model.",
+    "weighted_traffic_ceiling_pct": 4.069055969908564,
+    "weighted_persist_family_ceiling_pct": 1.940601758721372,
+    "best_possible_impact": "S",
+    "reachable_bands": [
+      "S",
+      "XS",
+      "none"
+    ],
+    "weights_covered": 1.0,
+    "coverage_note": "the whole section 44 matrix is covered, so a weighted figure is published",
     "computed_by": "eval/traffic_budget.py --matrix configs/qwen3.6-35b-a3b-moe-ceiling.json --bandwidth-gbs 1792 --persisting-l2-bytes 62914560"
   },
   "how_to_reproduce": {
@@ -309,10 +353,11 @@
     "sweep": "eval/real_sweep.py --binary $W/qwen3_gguf_bench --model $MODEL.gguf --axis mode --repeats 3 --warmup-runs 1 --fixed RECURLOCAL_STATS=1 RECURLOCAL_WINDOW_ATTACH=capture_node",
     "why_capture_node": "production decode is a captured CUDA graph and a stream access-policy window is host-side state capture never records, so without it the persist family defers every window and applies no policy at all"
   },
-  "the_concurrency_arms_are_not_concurrency_measurements": {
-    "what": "On this checkpoint the runtime stops batching above 8 rows. At 16 and 32 sequences it packed 127 of 2173 and 127 of 4205 tokens and decoded the rest one row at a time, which is why aggregate throughput at both is ~455 tok/s - BELOW the 503 tok/s single-sequence rate, and 5.4x below the 2456 tok/s it reaches at 8 rows.",
+  "the_runtime_stops_batching_above_eight_rows": {
+    "what": "At its default packed-row cap this runtime stops batching above 8 rows. At 16 and 32 sequences it packed 127 of 2173 and 127 of 4205 tokens and decoded the rest one row at a time, which is why aggregate throughput at both is ~455 tok/s - BELOW the 503 tok/s single-sequence rate, and 5.4x below the 2456 tok/s it reaches at 8 rows.",
     "cause": "launch_mmvq_q4k_rows refuses M > 8 (kernels/csrc/cuda/gemm/gemv.cu) and the bf16 launch_mmvq_rows dispatcher has no chunking loop, unlike its own _f32 sibling which chunks M into groups of 8. So the first Q4_K projection of a wider batch is refused, dflash_verify_short_run declines at layer 0, and decode_packed returns false for the whole batch. The runtime says so itself: '[dflash-verify] mmvq_rows refused type=12 N=16 n_out=8192 K=2048' followed by '[dflash-verify] declined at layer=0'.",
-    "consequence_for_this_matrix": "the concurrency-16 and concurrency-32 rows below are recorded because they were measured, not because they mean what their labels say. eval/real_eval.py now refuses such an arm by name.",
+    "proof": "The engine already splits a batch wider than its packed-row cap into chunks of that cap, and the cap is an environment variable, so setting it to the width the GEMV accepts isolates the cause with nothing else changed. With SPARKINFER_PACKED_MAX_ROWS=8: concurrency 16 goes from 5.8% packed at 452.8 tok/s to 94.4% at 1204.4, and concurrency 32 from 3.0% at 455.6 to 97.3% at 1226.8. The cliff is 5.4x (8 rows vs 16 at the default cap); the cap recovers 2.7x of it, not all, because chunking re-reads the weights once per chunk.",
+    "consequence_for_this_matrix": "every arm marked runtime_row_cap 8 was measured with the cap set on BOTH arms - it is a property of the workload, not of the candidate. Any arm still marked 'default (32)' at 16 or 32 sequences is recorded because it was measured, not because it means what its label says; eval/real_eval.py now refuses such an arm by name.",
     "whose_bug": "SparkInfer's, not RecurLocal's. It is the surface docs/MINING.md lists third, and it is worth two orders of magnitude more than anything this library does."
   },
   "provenance": {

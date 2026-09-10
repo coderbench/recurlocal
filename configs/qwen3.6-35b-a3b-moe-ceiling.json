@@ -34,15 +34,28 @@
     },
     "concurrency4": {
       "sequences": 4,
-      "aggregate_tps": 890.1333333333333,
+      "aggregate_tps": 912.2333333333332,
       "state_bytes_scale": 0.5,
-      "control_noise_floor_pct": 8.310462180261286,
+      "control_noise_floor_pct": 0.45987079820430654,
       "source": "results/rtx5090-moe-matrix.json concurrency4, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the matrix state to bf16"
+    },
+    "concurrency16": {
+      "sequences": 16,
+      "aggregate_tps": 1206.8666666666668,
+      "state_bytes_scale": 0.5,
+      "control_noise_floor_pct": 0.5713339405481569,
+      "source": "results/rtx5090-moe-matrix.json concurrency16, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the matrix state to bf16"
+    },
+    "concurrency32": {
+      "sequences": 32,
+      "aggregate_tps": 1230.6666666666667,
+      "state_bytes_scale": 0.5,
+      "control_noise_floor_pct": 0.26024723487313317,
+      "source": "results/rtx5090-moe-matrix.json concurrency32, control arm, mean of 3 interleaved repeats on one box; packed decode compacts the matrix state to bf16"
     }
   },
   "_active_weight_bytes_note": "Declared on the batch1 arm only, and deliberately. At batch 1 the step reads a known set of weights: 1.5975 GB of per-block non-expert weights (attn_qkv Q8_0, attn_gate, ssm_out, the shared expert, the router), 0.4172 GB of output head (Q6_K), and 0.6115 GB for the 8 of 256 experts that ONE token routes to. token_embd is excluded - one row per token. At concurrency it is not knowable this way: concurrent rows sit at different positions in their own sequences, so they route to different experts and a step touches up to min(256, 8 x rows) of them. Declaring a constant there would produce a confident utilisation figure resting on an assumption the workload does not satisfy, so the concurrency arms carry no bandwidth-bound check rather than a guessed one.",
   "_withheld_arms": {
-    "concurrency16": "measured, but the runtime packed 127 of 2173 tokens and decoded the rest one row at a time; the step time a ceiling would be computed from is not this workload's",
-    "concurrency32": "measured, but the runtime packed 127 of 4205 tokens; same reason"
+    "concurrency32": "measured at the runtime's default packed-row cap, where it packed a few percent of its tokens and decoded the rest one row at a time; the step time a ceiling would be computed from is not this workload's"
   }
 }

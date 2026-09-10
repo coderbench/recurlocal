@@ -262,6 +262,36 @@ floor, so it is **open, not solved**. That fits: at 1.02× oversubscription ther
 nothing for a policy to ration. The regime where it should differ is concurrency, where the
 footprint is 8–16× the set-aside, and that is unmeasured.
 
+### It does not rescue concurrency, and the crossover is at half residency
+
+With the runtime made to batch this checkpoint (below), all four arms are measurable:
+
+| | control | floor | footprint vs cache | persist ceiling | `persist` |
+|---|--:|--:|--:|--:|--:|
+| batch 1 | 503.2 tok/s | 0.08% | **1.02×** | **3.66%** | **+1.26%** |
+| concurrency 4 | 912.2 | 0.46% | 2.09× | 1.63% | −0.46% |
+| concurrency 16 | 1206.9 | 0.57% | 8.38× | 0.53% | −0.17% |
+| concurrency 32 | 1230.7 | 0.26% | 16.75× | 0.27% | −0.22% |
+
+`persist` pays where 98% of the footprint is resident and is negative from four sequences on,
+where 48% is. The *traffic* ceiling still rises across the matrix (3.75% → 4.74%); the fraction
+a persisting window can hold falls faster (3.66% → 0.27%). Past the crossover the set-aside
+costs the weight stream more than residency returns.
+
+Weighted across the whole matrix, and this is the number that decides the project:
+
+| | dense Qwen3.8-27B | sparse-MoE Qwen3.6-35B-A3B |
+|---|--:|--:|
+| weighted traffic ceiling | 5.22% | 4.07% |
+| **weighted persist-family ceiling** | **0.52%** | **1.94%** |
+| share of removable traffic a cache can address | 10% | **48%** |
+
+The MoE's total room is *smaller*, but the persist family reaches 48% of it instead of 10% —
+**1.94% against a 2.0% floor.** The best model this work found, with both dials at maximum and
+a perfect replacement policy assumed, misses the significance floor by six hundredths of a
+point. No policy closes that: the numerator is the device's 60 MiB and the denominator is what
+the workload moves.
+
 ### And a 5.4× cliff in the runtime, found on the way
 
 Concurrency on this checkpoint could not be measured at first: above 8 rows the runtime stops

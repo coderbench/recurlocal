@@ -438,28 +438,54 @@ name — `windows_applied=0, windows_attached_to_node=0, pre_touch_launches=0`. 
 answer to pressure is to do nothing *is* `baseline`. Sweep the axis with
 `--values proportional,fixed,sqrt,quota`.
 
-## The concurrency arms of this matrix are not concurrency measurements
+## Concurrency, once the runtime can be made to batch this checkpoint
 
-Aggregate throughput at 16 and 32 sequences came in at 453 and 456 tok/s — *below* the 503 tok/s
-single-sequence rate. The adapter's packing counters say why, one isolated run per width:
+Aggregate throughput at 16 and 32 sequences first came in at 453 and 456 tok/s — *below* the
+503 tok/s single-sequence rate. The adapter's packing counters said why, one isolated run per
+width, and the runtime's own stderr named the cause. Above 8 rows it stops batching:
+`launch_mmvq_q4k_rows` refuses `M > 8` and the bf16 `launch_mmvq_rows` dispatcher has no
+chunking loop where three of its four siblings do. `SPARKINFER_PACKED_MAX_ROWS=8` makes the
+engine split a wide batch into packs the GEMV accepts, and the arms become measurable. See
+[`MINING.md`](MINING.md) for the full account — it is a runtime defect worth 5.4x, not a
+locality result.
 
-| concurrency | tokens packed | max rows seen | aggregate |
-|---|--:|--:|--:|
-| 4 | 129/138 (93%) | 5 | 907.5 tok/s |
-| 8 | 133/151 (88%) | 9 | **2456.0 tok/s** |
-| 16 | **127/2173 (6%)** | 17 | 452.3 tok/s |
-| 32 | **127/4205 (3%)** | 32 | 456.1 tok/s |
+Every row below is measured with that cap set on **both** arms, three interleaved pairs, the
+opening run discarded.
 
-Above 8 rows the runtime stops batching and decodes one row at a time. Its own stderr names the
-cause — `mmvq_rows refused type=12 N=16 n_out=8192 K=2048`, then `declined at layer=0` — and the
-code confirms it: `launch_mmvq_q4k_rows` refuses `M > 8`, and the bf16 `launch_mmvq_rows`
-dispatcher has no chunking loop where its `_f32` sibling has one. See
-[`MINING.md`](MINING.md) for the full account; it is a runtime defect worth 5.4x, not a locality
-result.
+| | control | floor | footprint vs cache | traffic ceiling | persist ceiling | `baseline` | `persist` | `prefetch` |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| batch 1 | 503.2 tok/s | 0.08% | **1.02x** | 3.75% | **3.66%** | +0.05% | **+1.26%** | -3.93% |
+| concurrency 4 | 912.2 | 0.46% | 2.09x | 3.47% | 1.63% | -0.13% | -0.46% | -3.66% |
+| concurrency 16 | 1206.9 | 0.57% | 8.38x | 4.64% | 0.53% | -0.06% | -0.17% | -2.81% |
+| concurrency 32 | 1230.7 | 0.26% | 16.75x | 4.74% | 0.27% | -0.16% | -0.22% | -2.67% |
 
-So this model's ceiling is published per arm and **not weighted**: 40% of the section 44 weight
-sits on workloads that cannot currently be run here, and renormalising them away would read
-higher than the matrix can pay — the same mistake `decide.py` refuses for a partial result.
+**The crossover is visible, and it is where residency crosses one half.** `persist` pays at
+batch 1, where 98% of the footprint is resident, and is negative from four sequences on, where
+48% is. It is not that the room disappears — the *traffic* ceiling rises from 3.75% to 4.74%
+across the matrix, as it does on the dense model. It is that the fraction of that room a
+persisting window can hold falls faster: 3.66% to 0.27%. Past the crossover the set-aside costs
+the weight stream more than the residency returns, and `persist` sits a few hundredths below
+`baseline` — which is the hook's own overhead and nothing else.
+
+## What the whole matrix can pay, on each model
+
+`eval/traffic_budget.py --matrix ... --persisting-l2-bytes 62914560`, weighted the way
+`decide.py` weights:
+
+| | dense Qwen3.8-27B | sparse-MoE Qwen3.6-35B-A3B |
+|---|--:|--:|
+| weighted traffic ceiling | 5.22% | **4.07%** |
+| weighted persist-family ceiling | **0.52%** | **1.94%** |
+| the share of removable traffic a persisting cache can address | 10% | **48%** |
+
+Two things worth reading carefully. The MoE's *traffic* ceiling is **lower**, because its
+concurrency steps are short and weight-light, so there is less total room. But the persist
+family reaches **48% of that room instead of 10%**, and 1.94% weighted instead of 0.52%.
+
+**1.94% against a 2.0% floor.** The best model this project has found, with both persistence
+dials at maximum and a perfect replacement policy assumed, misses the significance floor by six
+hundredths of a point. That is not a tuning gap and no policy closes it: the numerator is the
+device's 60 MiB and the denominator is what the workload moves.
 
 ---
 
