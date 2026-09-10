@@ -296,19 +296,35 @@ already known. Reordered by what is still genuinely open:
    throughput on the runtime's own SOTA speed target, against fractions of a percent for a
    cache policy. `results/rtx5090-moe-matrix.json` carries the counters and the account.
 
-   **It is an omission, not a design choice.** Four multi-row launchers sit in that file and
-   three of them chunk `M > 8` into groups of 8: `launch_gemv_nvfp4_rows`,
-   `launch_gemv_nvfp4_rows_dp4a`, and `launch_mmvq_rows_f32`. Only the bf16 `launch_mmvq_rows`
-   does not.
+   **It is an omission, not a design choice.** Several multi-row launchers in that file chunk
+   `M > 8` into groups of 8 — `launch_gemv_rows2`, `launch_gemv_nvfp4_rows_dp4a`,
+   `launch_gemv_nvfp4_rows_dp4a2` and `launch_mmvq_rows_f32`, the last of them seven lines
+   below `launch_mmvq_rows` in the same file. `launch_mmvq_rows` does not.
+   `docs/UPSTREAM-SPARKINFER-MMVQ.md` is the report, and it establishes the part that decides
+   the fix: the 8-row limit is **not** a kernel constraint. `MMAX` is a template parameter
+   sizing one accumulator array and one shared-memory buffer, the 8-row instantiation costs 60
+   registers with zero spill, and the shared-memory budget does not bind until `MMAX = 64`.
 
-   **And that is why the dense model's collapse is a different bug.** Qwen3.8-27B is uniform
-   NVFP4, so its projections take the NVFP4 path — which has the loop — and never reach the
-   refusal. Its 32-sequence collapse is intermittent (`prefetch` ratios `[0.932, 0.676,
-   0.925]`, one run of three collapsing 32%), hit `baseline` which installs no window at all,
-   and remains **unexplained**. Same family, different cause, and the code says so rather than
-   the two being lumped together. What is new is that neither can pass unnoticed:
-   `real_eval.py` refuses a concurrency arm whose telemetry shows the packed path was not
-   used, and names the counters.
+   **A correction, and it undoes a conclusion this document drew.** This section previously
+   named `launch_gemv_nvfp4_rows` among the chunkers and concluded from that the dense model
+   "never reaches the refusal", so its collapse must be a different bug. `launch_gemv_nvfp4_rows`
+   does **not** chunk — `gemv.cu:3518` is `if (M < 2 || M > 8) return false;` with no loop.
+
+   What the dense model actually has is a **third** tier the MoE path does not
+   (`qwen35_prefill.cpp:3202-3216`): the dp4a rows kernel, which chunks; then
+   `launch_gemv_nvfp4_rows`, which refuses; and then a bare per-row loop that runs the
+   projection one row at a time and **returns true**. So the dense model does not decline — it
+   silently pays per-row weight traffic inside a forward that is still counted as packed. No
+   `[dflash-verify]` line is printed, `tokens_packed` still increments, and `real_eval.py`'s
+   packed-path guard cannot see it: that guard catches `decode_packed` refusing the batch,
+   which is the MoE's failure and not this one.
+
+   That is a mechanism consistent with every observation about the dense collapse — it is
+   intermittent, it hit `baseline` which installs no window at all, it costs about 28%, and it
+   is invisible to the counters. It is a **candidate**, not a proof: the first tier is a
+   process-static environment switch, so something else would have to make
+   `launch_gemv_nvfp4_rows_dp4a` return false on some runs and not others. The decisive
+   experiment is cheap and is in the changelog.
 
 4. ~~**Delivering a persisting window under graph decode.**~~ **CLOSED, and the premise was
    wrong.** This repository said `capture_node` was undocumented in CUDA. It is not:

@@ -560,9 +560,15 @@ It also makes the MoE's concurrency arms measurable, so the scored matrix for th
 complete rather than partial — with the cap set on **both** arms, because it is a property of
 the workload rather than of the candidate.
 
-**An omission, not a design choice.** Four multi-row launchers sit in that file and three of
-them chunk `M > 8` into groups of 8 — `launch_gemv_nvfp4_rows`, `launch_gemv_nvfp4_rows_dp4a`
-and `launch_mmvq_rows_f32`. Only the bf16 `launch_mmvq_rows` does not.
+**An omission, not a design choice.** Several multi-row launchers in that file chunk `M > 8`
+into groups of 8 — `launch_gemv_rows2`, `launch_gemv_nvfp4_rows_dp4a`,
+`launch_gemv_nvfp4_rows_dp4a2` and `launch_mmvq_rows_f32`, the last of them seven lines below
+`launch_mmvq_rows` in the same file. `launch_mmvq_rows` does not.
+
+**One name in that list was wrong, and correcting it undoes a conclusion.** This entry
+previously named `launch_gemv_nvfp4_rows` as a chunker. It is not:
+`gemv.cu:3518` reads `if (M < 2 || M > 8) return false;` and there is no loop. See the
+correction below — it changes what the dense model's collapse is.
 
 That also settles that the dense model's collapse is a **different** bug: Qwen3.8-27B is
 uniform NVFP4, so its projections take the NVFP4 path, which has the loop, and never reach the
