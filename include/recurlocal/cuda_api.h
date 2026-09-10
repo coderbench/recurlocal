@@ -256,10 +256,12 @@ private:
     // requests up, so a policy that re-derives its target every token needs the request to
     // compare against or it re-carves the L2 partition on every one of them.
     std::size_t l2_set_aside_requested_ = 0;
-    // A new set-aside target must hold for this many consecutive declarations before it is
+    // A new set-aside target must hold for this many CONSECUTIVE declarations before it is
     // acted on. A runtime that packs most tokens and runs the tail unpacked declares two
     // different geometries in alternation, and re-carving the L2 partition on each one evicts
-    // exactly the state the reservation exists to keep.
+    // exactly the state the reservation exists to keep. Consecutive, not majority: the first
+    // target to string eight together sticks for the run, and a later majority does not
+    // displace it - a reservation that tracked the mix would shrink and grow with it.
     static constexpr int kSettleTokens = 8;
     std::size_t l2_set_aside_peak_ = 0;
     std::size_t settle_target_ = 0;

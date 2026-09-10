@@ -425,8 +425,17 @@ cudaError_t CudaLocalityController::declare_geometry(const RecurrentGeometry& ge
     // several times a second, evicting on every change exactly the state it had just kept.
     // Measured on the MoE checkpoint at four sequences: 64 of 80 tokens packed, 16 not.
     //
-    // So a new target has to hold for `kSettleTokens` consecutive declarations before it is
-    // acted on. A real workload change settles in eight tokens; an alternation never wins.
+    // So a new target has to hold for `kSettleTokens` CONSECUTIVE declarations before it is
+    // acted on. Be clear about what that means in practice, because it is not "the majority
+    // wins": in a run that alternates, the FIRST target to string eight declarations together
+    // is the one that sticks, and a later majority never displaces it. That is deliberate -
+    // a reservation that tracked the majority would shrink and grow as the mix drifted, and
+    // every change evicts exactly the state the reservation exists to keep. Measured on the
+    // MoE at four sequences, 64 of 80 tokens packed: the reservation latches during the
+    // opening unpacked tokens and then holds for the rest of the run.
+    //
+    // A runtime whose geometry changes materially between phases should use one controller
+    // per phase rather than expect this to follow it.
     if (wanted != settle_target_) { settle_target_ = wanted; settle_count_ = 1; return cudaSuccess; }
     if (++settle_count_ < kSettleTokens) return cudaSuccess;
 
