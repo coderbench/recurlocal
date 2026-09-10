@@ -25,7 +25,7 @@ public:
         // is a more useful control than an empty document.
         std::vector<TransitDecline> declined;
         detail::build_candidates(input, RoleMask::none(), ReuseMetric::Bytes, &declined);
-        detail::finish_plan(&plan, input, 0, declined, RoleMask::all());
+        detail::finish_plan(&plan, input, 0, declined, RoleMask::all(), TransitPlannerConfig{});
         return plan;
     }
     const char* name() const noexcept override { return "baseline"; }

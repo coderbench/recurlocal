@@ -1,5 +1,5 @@
 diff --git a/runtime/CMakeLists.txt b/runtime/CMakeLists.txt
-index b0babf5..bc9373b 100644
+index b0babf5..70f685f 100644
 --- a/runtime/CMakeLists.txt
 +++ b/runtime/CMakeLists.txt
 @@ -40,6 +40,12 @@ target_include_directories(sparkinfer_runtime PUBLIC include)
@@ -16,7 +16,7 @@ index b0babf5..bc9373b 100644
  # with the CUDA toolkit as CUDA::nvml — link + flag it when present so the build degrades cleanly
  # on boxes/toolkits without the NVML stub.
 diff --git a/runtime/src/models/qwen35.cpp b/runtime/src/models/qwen35.cpp
-index 8646140..bd47f4d 100644
+index 8646140..382d0c7 100644
 --- a/runtime/src/models/qwen35.cpp
 +++ b/runtime/src/models/qwen35.cpp
 @@ -26,6 +26,10 @@
@@ -41,7 +41,7 @@ index 8646140..bd47f4d 100644
      if (p_->lm_head_fp4_payload) cudaFree(p_->lm_head_fp4_payload);
      if (p_->lm_head_fp4_sf_buf) cudaFree(p_->lm_head_fp4_sf_buf);
      if (p_->gdn_state_stage) cudaFree(p_->gdn_state_stage);
-@@ -1269,6 +1277,24 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1269,6 +1277,45 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
             "linear conv reset");
      }
  
@@ -61,12 +61,33 @@ index 8646140..bd47f4d 100644
 +        tt_layout.full_attn_interval = c.full_attn_interval;
 +        tt_layout.compute = st;
 +        tensortransit::sparkinfer::begin_token(tt_layout);
++        // TensorTransit: the OTHER tensor class. Until this call no adapter exposed KV to the
++        // registry at all, so the second proof track -- does one planner arbitrating a shared
++        // budget across two classes beat two independent policies -- could not be measured.
++        // Live bytes, not the slot stride: the pool is sized for the longest context the
++        // server will ever hold, and a decode step at this position reads the blocks it has.
++        if (s.kv) {
++            const int kv_elem_bytes = s.kv->int8_kv() ? 1 : 2;
++            const int blk = s.kv->block_size();
++            const int blocks = blk > 0 ? (position + blk) / blk : 0;
++            tensortransit::sparkinfer::KvCacheLayout tt_kv;
++            tt_kv.k_pool = s.kv->k_pool();
++            tt_kv.v_pool = s.kv->v_pool();
++            tt_kv.layer_stride_bytes = s.kv->layer_stride_elems() * (size_t)kv_elem_bytes;
++            tt_kv.kv_slots = s.kv->kv_slots();
++            tt_kv.pool_bytes = tt_kv.layer_stride_bytes * (size_t)tt_kv.kv_slots;
++            tt_kv.live_bytes_per_layer = (size_t)blocks * (size_t)blk *
++                                         (size_t)c.n_kv_heads * (size_t)c.head_dim *
++                                         (size_t)kv_elem_bytes;
++            tt_kv.rows = 1;
++            tensortransit::sparkinfer::declare_kv_cache(tt_kv);
++        }
 +    }
 +
      // Prefill graph: embed→layers→final norm (no LM head). Decode graph: full path + argmax.
      // DFlash's per-layer hidden capture used to require the eager path entirely (a captured
      // graph bakes fixed destinations, and dflash_hidden[cap_row] varies call to call) -- the
-@@ -1513,6 +1539,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1513,6 +1560,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
          };
  
          if (w.linear_attn) {
@@ -76,7 +97,7 @@ index 8646140..bd47f4d 100644
              const bool any_q4k = (w.wqkv_type == 12 || w.wqkv_gate_type == 12 ||
                                    w.ssm_alpha_type == 12 || w.ssm_beta_type == 12);
              const bool any_q6k = (w.wqkv_type == 14 || w.wqkv_gate_type == 14 ||
-@@ -1591,6 +1620,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1591,6 +1641,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
                                                   c.linear_head_dim, c.linear_conv_kernel,
                                                   c.rms_eps, st);
              }
@@ -86,7 +107,7 @@ index 8646140..bd47f4d 100644
              if (gdn_pipelined) cudaStreamWaitEvent(st, s.ev_gdn_ab, 0);
              float* layer_state = s.lin_state +
                  (size_t)L * c.linear_v_heads * c.linear_head_dim * c.linear_head_dim;
-@@ -1603,6 +1635,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1603,6 +1656,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
                                            c.linear_q_heads, c.linear_v_heads,
                                            c.linear_head_dim, c.gdn_qh_block, st,
                                            s.active_lin_state_b16);
@@ -95,7 +116,7 @@ index 8646140..bd47f4d 100644
              if (gdn_pipelined && !gdn_fused_proj) cudaStreamWaitEvent(st, s.ev_gdn_z, 0);
              const bool gdn_gn_q8 = s.gguf && s.use_pq && s.use_llama &&
                                     (w.ssm_out_type == 12 || w.ssm_out_type == 8) &&
-@@ -1631,6 +1665,10 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+@@ -1631,7 +1686,15 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
                                                    c.linear_v_heads, c.linear_head_dim, c.rms_eps, st);
                  proj_from(s.lin_norm, w.ssm_out, w.ssm_out_type, s.ao, H, s.linear_vdim);
              }
@@ -104,9 +125,32 @@ index 8646140..bd47f4d 100644
 +            // stream, against a pointer none of them touch.
 +            tensortransit::sparkinfer::after_layer();
          } else {
++            // TensorTransit: a FULL-ATTENTION layer. Separate from before_layer(), which the 0.1
++            // engine drives and which has no policy for one -- routing these through the same
++            // pair would change what every published number was measured under.
++            tensortransit::sparkinfer::before_attention_layer(L);
              // ---- Q/K/V projection (q_has_gate-aware; q_has_gate=false is byte-identical to Qwen3-MoE) ----
              if (s.gguf) {
-@@ -2283,6 +2321,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+                 const bool any_q4k = (w.wq_type == 12 || w.wk_type == 12 || w.wv_type == 12);
+@@ -1901,6 +1964,9 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+                                                attn_gate_q8 ? s.qgate : nullptr,
+                                                mg_gate_ok ? 1 : 0);
+             }
++            // TensorTransit: the attention kernel is the one that reads the paged KV a KV
++            // window covers, so this is where a deferred window reaches a captured node.
++            tensortransit::sparkinfer::after_launch(tensortransit::sparkinfer::StateKernel::Attention);
+             dbg_bf16(s.attn, s.qdim, 30, L);   // tag 30: SDPA output, pre-gate
+             if (w.q_has_gate && !attn_gate_q8) {
+                 kernels::launch_qwen36_mul_sigmoid(s.attn, s.qgate, s.qdim, st);
+@@ -1935,6 +2001,7 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
+             else if (s.gguf)         kernels::launch_gemv(s.attn, w.wo, s.ao, H, s.qdim, st);
+             else                     kernels::launch_gemm(s.attn, w.wo, s.ao, 1, H, s.qdim, 1.f, 0.f, gc, st);
+             dbg_bf16(s.ao, H, 40, L);   // tag 40: attn_o_proj output (post wo)
++            tensortransit::sparkinfer::after_attention_layer(L);
+         }
+ 
+         if (c.muse_glimmer) {
+@@ -2283,6 +2350,8 @@ int Qwen35Model::forward_token(int token_id, int position, bool sample, float te
          dflash_maybe_capture_layer(L);
      }
      pf_join();   // last layer's prefetch: must be joined before the capture ends or the graph is malformed
@@ -115,7 +159,7 @@ index 8646140..bd47f4d 100644
      // xn now holds RMSNorm(x_final, final_norm)
      dbg_bf16(s.xn, H, 80, -2);   // tag 80: final-norm output (lm_head input)
      dbg_xn_snapshot(s.xn, c.n_layers);   // extra slot: final-norm output, for lm_head cross-check
-@@ -3419,6 +3459,29 @@ bool Qwen35Model::decode_packed(const int* tokens, const int* positions,
+@@ -3419,6 +3488,29 @@ bool Qwen35Model::decode_packed(const int* tokens, const int* positions,
      ctx.packed_lin_state = reinterpret_cast<float* const*>(s.packed_dev_states);
      ctx.packed_lin_conv  = reinterpret_cast<void* const*>(s.packed_dev_convs);
      ctx.packed_state_b16 = packed_state_b16;
@@ -146,7 +190,7 @@ index 8646140..bd47f4d 100644
                                                   nullptr, 0, nullptr, out_sampled);
      return consumed == n;
 diff --git a/runtime/src/models/qwen35_prefill.cpp b/runtime/src/models/qwen35_prefill.cpp
-index 4a2e74c..5921a75 100644
+index 4a2e74c..7c39e61 100644
 --- a/runtime/src/models/qwen35_prefill.cpp
 +++ b/runtime/src/models/qwen35_prefill.cpp
 @@ -38,6 +38,8 @@

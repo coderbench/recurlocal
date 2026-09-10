@@ -41,7 +41,7 @@ public:
                                                   DeclineReason::BudgetExhausted, candidate.bytes,
                                                   candidate.saved_bytes});
             detail::emit_stream_hints(&plan, input, config_);
-            detail::finish_plan(&plan, input, budget, declined, config_.persist_roles);
+            detail::finish_plan(&plan, input, budget, declined, config_.persist_roles, config_);
             return plan;
         }
 
@@ -108,7 +108,7 @@ public:
 
         detail::emit_prefetch(&plan, emitted, config_, input);
         detail::emit_stream_hints(&plan, input, config_);
-        detail::finish_plan(&plan, input, budget, declined, config_.persist_roles);
+        detail::finish_plan(&plan, input, budget, declined, config_.persist_roles, config_);
         return plan;
     }
 

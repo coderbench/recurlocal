@@ -127,7 +127,9 @@ if(TENSORTRANSIT_BUILD_CUDA)
 
     # The SparkInfer adapter ships as its own target, so a runtime links the integration it
     # wants and nothing else. It compiles as C++ (no kernels of its own).
-    add_library(tensortransit_sparkinfer STATIC adapters/sparkinfer/tensortransit_sparkinfer.cpp)
+    add_library(tensortransit_sparkinfer STATIC
+        adapters/sparkinfer/tensortransit_sparkinfer.cpp
+        adapters/sparkinfer/transit_backend.cpp)
     add_library(TensorTransit::tensortransit_sparkinfer ALIAS tensortransit_sparkinfer)
     add_library(RecurLocal::recurlocal_sparkinfer ALIAS tensortransit_sparkinfer)
     target_link_libraries(tensortransit_sparkinfer PUBLIC tensortransit_cuda)
@@ -208,6 +210,11 @@ if(TENSORTRANSIT_BUILD_TESTS)
     if(Python3_Interpreter_FOUND)
         add_test(NAME decision COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/eval/test_decide.py)
         add_test(NAME schemas COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/eval/test_schemas.py)
+        # The Transit Frontier Ledger's golden tests. Registered here rather than run by hand
+        # because the scoring math is the ruler: a change to normalization, dominance,
+        # hypervolume, aggregation or the receipt's status derivation silently redefines every
+        # past receipt, and this suite is what makes that a build failure.
+        add_test(NAME frontier COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/eval/test_frontier.py)
     else()
         message(STATUS "Python3 not found - skipping the eval decision and schema tests")
     endif()

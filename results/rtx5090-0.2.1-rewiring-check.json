@@ -1,0 +1,205 @@
+{
+ "schema_version": 1,
+ "what_this_is": "The 0.2.1 REWIRING check, not a new result. In 0.2.0 the SparkInfer adapter drove the 0.1 CudaLocalityController directly, so TransitRuntime, TensorRegistry, TransitGraph, ITransitPlanner and CudaTransitExecutor were reachable only from the CLI and the tests: a contributor who wrote a planner changed nothing about the measured end-to-end number. 0.2.1 routes the adapter through TransitRuntime + CudaTransitExecutor and keeps the 0.1 controller as a second engine selected by TENSORTRANSIT_ENGINE, so the two can be A/B'd in ONE process against ONE model load. This file is that A/B. It answers one question: did putting the new core in the measured path change what the recurrent policy does? It did not. Both engines are token-exact against a reproducible control, both attach 96 windows to captured graph nodes with zero capture invalidations, and their gains agree within their own noise floors -- and with the +0.13% at a 0.06% floor that 0.2.0 published for this arm. PARTIAL matrix by design (batch 1, 0.40 of the section 44 weight), so decide.py will not call it significant; that is correct and is the point of running it as a check rather than as a submission.",
+ "provenance": {
+  "timestamp_utc": "2026-09-10T05:36:27+00:00",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "driver": "595.84",
+  "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+  "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+  "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+  "contexts": [
+   128
+  ],
+  "repeats": 3,
+  "tokens_per_measurement": 128,
+  "note": "Both arms in one session on one box, interleaved pairs, one binary. The only variable between the two rows below is TENSORTRANSIT_ENGINE."
+ },
+ "engines": {
+  "v0": {
+   "engine": "v0",
+   "what_it_is": "the 0.1 CudaLocalityController, driven directly",
+   "candidate_env": {
+    "TENSORTRANSIT": "persist",
+    "TENSORTRANSIT_WINDOW_ATTACH": "capture_node",
+    "TENSORTRANSIT_ENGINE": "v0",
+    "RECURLOCAL_STATS": "1"
+   },
+   "gain_pct": 0.11530407033757406,
+   "noise_floor_pct": 0.07459027292975226,
+   "resolved": true,
+   "baseline_tps": 96.2592,
+   "candidate_tps": 96.37019077567439,
+   "paired_ratios": [
+    1.0016601625441548,
+    1.0007729131345366,
+    1.0011530407033757
+   ],
+   "correctness": {
+    "output_identical": true,
+    "method": "greedy replay, token-exact",
+    "tokens_compared": 64,
+    "prompt_ids": [
+     9707,
+     3837,
+     1879,
+     13,
+     25001,
+     752,
+     911
+    ],
+    "runtime_reproducible": true,
+    "control_replays": 3,
+    "control_replays_requested": 3,
+    "candidate_matches_control": true,
+    "first_divergence": null,
+    "candidate_hook_active": true
+   },
+   "adapter_stats": {
+    "tokens": 16,
+    "tokens_packed": 0,
+    "layers": 96,
+    "layers_packed": 0,
+    "max_rows_seen": 0,
+    "windows_applied": 0,
+    "windows_deferred_to_caller": 96,
+    "windows_attached_to_node": 96,
+    "window_nodes_attached": 96,
+    "window_attach_ambiguous": 0,
+    "window_attach_failures": 0,
+    "capture_invalidations": 0,
+    "released_during_capture": 0,
+    "hit_ratio_reduced": 96,
+    "hot_set_oversubscribed": 96,
+    "pre_touch_launches": 0,
+    "pre_touch_segments": 0,
+    "pre_touch_bytes": 0,
+    "pre_touch_skipped": 0,
+    "compute_stream_priority": 0,
+    "prefetch_stream_priority": 0
+   },
+   "transit": null,
+   "l2_set_aside_bytes": 50331648
+  },
+  "transit": {
+   "engine": "transit",
+   "what_it_is": "TensorRegistry -> TransitGraph -> recurrent_v0 planner -> CudaTransitExecutor",
+   "candidate_env": {
+    "TENSORTRANSIT": "persist",
+    "TENSORTRANSIT_WINDOW_ATTACH": "capture_node",
+    "TENSORTRANSIT_ENGINE": "transit",
+    "RECURLOCAL_STATS": "1"
+   },
+   "gain_pct": 0.1450675977595628,
+   "noise_floor_pct": 0.10942419802350567,
+   "resolved": true,
+   "baseline_tps": 96.231,
+   "candidate_tps": 96.3706,
+   "paired_ratios": [
+    1.0021266705282983,
+    1.0014506759775956,
+    1.001298498935231
+   ],
+   "correctness": {
+    "output_identical": true,
+    "method": "greedy replay, token-exact",
+    "tokens_compared": 64,
+    "prompt_ids": [
+     9707,
+     3837,
+     1879,
+     13,
+     25001,
+     752,
+     911
+    ],
+    "runtime_reproducible": true,
+    "control_replays": 3,
+    "control_replays_requested": 3,
+    "candidate_matches_control": true,
+    "first_divergence": null,
+    "candidate_hook_active": true
+   },
+   "adapter_stats": {
+    "tokens": 16,
+    "tokens_packed": 0,
+    "layers": 96,
+    "layers_packed": 0,
+    "max_rows_seen": 0,
+    "windows_applied": 0,
+    "windows_deferred_to_caller": 96,
+    "windows_attached_to_node": 96,
+    "window_nodes_attached": 96,
+    "window_attach_ambiguous": 0,
+    "window_attach_failures": 0,
+    "capture_invalidations": 0,
+    "released_during_capture": 0,
+    "hit_ratio_reduced": 96,
+    "hot_set_oversubscribed": 96,
+    "pre_touch_launches": 0,
+    "pre_touch_segments": 0,
+    "pre_touch_bytes": 0,
+    "pre_touch_skipped": 0,
+    "compute_stream_priority": 0,
+    "prefetch_stream_priority": 0
+   },
+   "transit": {
+    "engine": "transit",
+    "planner": "recurrent_v0",
+    "admission": "density",
+    "reuse_metric": "bytes",
+    "window_binding": "per_consumer",
+    "window_preference": "widest",
+    "max_windows_per_kernel": 1,
+    "plan_digest": "21c1b692cce750b3",
+    "recurrent_tensors": 48,
+    "kv_tensors": 16,
+    "kv_declared": true,
+    "committed_bytes": 150994944,
+    "predicted_saved_bytes": 69114384,
+    "step_traffic_bytes": 317325312,
+    "compiles": 3,
+    "plan_reuses": 0,
+    "reuse_rate": 0.0,
+    "geometry_rebuilds": 3,
+    "last_recompile_reason": "first_compile",
+    "planner_ns": 240607,
+    "executor_ns": 29991,
+    "record_ns": 26585,
+    "attach_calls": 96,
+    "attach_skipped_wrong_kernel": 96,
+    "stale_tensor_refs": 0,
+    "actions_skipped": 96,
+    "stream_applied": 0,
+    "clear_applied": 0,
+    "executor_steps": 16,
+    "executor_kernels": 128,
+    "declines": {
+     "none": 0,
+     "no_reuse": 0,
+     "budget_exhausted": 0,
+     "too_large": 0,
+     "reuse_too_far": 0,
+     "role_excluded": 32,
+     "below_min_hit_ratio": 0,
+     "not_supported": 48
+    }
+   },
+   "l2_set_aside_bytes": 50331648
+  }
+ },
+ "verdict": {
+  "policy_unchanged": true,
+  "how_it_was_checked": [
+   "token-exact greedy replay against a control replayed against itself three times first",
+   "windows_attached_to_node == 96 on both engines: 2 graph captures x 48 recurrent layers, one window per layer. A second window per layer -- which persisting both the matrix and the convolution state would give -- would read 192, so this count pins the delivered policy and not just its telemetry.",
+   "capture_invalidations == 0 on both: the node attachment did not break the runtime's graph",
+   "the two gains overlap inside their own noise floors"
+  ],
+  "what_is_new_and_not_a_regression": [
+   "the transit engine registers the paged KV cache: recurrent_tensors 48, kv_tensors 16. No adapter exposed KV before, so the specification's second proof track could not be measured at all -- not 'had not been', could not be.",
+   "a planner is now on the measured path: TENSORTRANSIT_PLANNER, TENSORTRANSIT_ADMISSION and TENSORTRANSIT_PRESET change the plan the executor applies to this binary."
+  ]
+ },
+ "note_on_scope": "Do NOT quote either figure as a TensorTransit result. This is the recurrent_v0 policy family, whose weighted ceiling is 0.52% on this model and 1.94% on the best model found -- both below the 2.0% floor the 0.1 scorer used. See README and docs/MINING.md."
+}

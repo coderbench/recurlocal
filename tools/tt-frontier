@@ -1,0 +1,432 @@
+#!/usr/bin/env python3
+"""tt-frontier -- the Transit Frontier Ledger command line.
+
+    tt-frontier generation show TTF-1
+    tt-frontier generation list
+    tt-frontier calibrate --results control.json --generation TTF-1 [--write]
+    tt-frontier run       --generation TTF-1 --model ... --cb-binary ... [--candidate-cb ...]
+    tt-frontier compute   --generation TTF-1 --results raw.json --output receipt.json
+    tt-frontier report    receipt.json [--format markdown|comment|box] [--output f]
+    tt-frontier receipt verify receipt.json [--generation TTF-1]
+    tt-frontier ledger show   TTF-1
+    tt-frontier ledger append receipt.json [--id pr-000184]
+    tt-frontier ledger audit  TTF-1
+
+Every figure any of these prints is computed from raw measurements. Nothing here accepts a
+performance number as an argument, and nothing produces an S, M, L or XL.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import statistics
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "eval"))
+
+from frontier import (compute_frontier, load_generation, verify_receipt,   # noqa: E402
+                      build_receipt)
+from frontier import ledger as ledger_mod                                   # noqa: E402
+from frontier import report as report_mod                                   # noqa: E402
+from frontier.generations import GenerationError                            # noqa: E402
+from frontier.receipt import ReceiptError                                   # noqa: E402
+
+import os
+
+# Resolved relative to this file, so a copy staged by `eval/run_from_base.sh` uses the BASE
+# commit's frozen generations -- a TTF-N definition is part of the ruler, and a submission
+# that shipped its own would be scoring itself.
+GENERATIONS_DIR = Path(os.environ.get("TT_GENERATIONS_DIR") or (REPO / "eval" / "generations"))
+# The ledger is the one thing that must NOT come from a staged copy: it is the permanent
+# history, it lives in the real repository, and a trusted evaluator writes it outside the
+# candidate's reach.
+LEDGER_DIR = Path(os.environ.get("TT_LEDGER_DIR") or (REPO / "frontier"))
+
+
+def resolve_generation(name_or_path):
+    candidate = Path(name_or_path)
+    if candidate.exists():
+        return load_generation(candidate)
+    for root in (GENERATIONS_DIR, LEDGER_DIR):
+        path = root / str(name_or_path) / "generation.json"
+        if path.exists():
+            return load_generation(path)
+    raise GenerationError(
+        f"no generation {name_or_path!r} under {GENERATIONS_DIR} or {LEDGER_DIR}. "
+        f"Available: {', '.join(sorted(p.parent.name for p in GENERATIONS_DIR.glob('*/generation.json'))) or 'none'}")
+
+
+def load_results(path):
+    doc = json.loads(Path(path).read_text())
+    if isinstance(doc, list):
+        return doc, {}
+    return doc.get("results", []), doc.get("provenance", {})
+
+
+# --------------------------------------------------------------------------- generation ---
+def cmd_generation(args):
+    if args.action == "list":
+        found = sorted(GENERATIONS_DIR.glob("*/generation.json"))
+        if not found:
+            print("no generations")
+            return 0
+        for path in found:
+            generation = load_generation(path)
+            print(f"{generation.name:8s} {len(generation.cells):3d} cells  "
+                  f"{len(generation.objectives)} objectives  {generation.checksum()[:19]}  "
+                  f"{generation.description}")
+        return 0
+
+    generation = resolve_generation(args.name)
+    print(f"{generation.name}: {generation.description}")
+    print(f"  checksum      {generation.checksum()}")
+    print(f"  objectives    " + ", ".join(
+        f"{o.key} ({o.direction}, 0 at {o.lo:g}, 1 at {o.hi:g})" for o in generation.objectives))
+    print(f"  reference     {generation.reference_point}")
+    print(f"  cells         {len(generation.cells)}: {', '.join(generation.cells)}")
+    print(f"  weights       " + ", ".join(f"{c}={generation.weights[c]:g}"
+                                          for c in generation.cells))
+    print(f"  aggregation   {generation.aggregation}, cell floor {generation.cell_floor:g}")
+    print(f"  repeats       {generation.min_repeats}..{generation.max_repeats} paired")
+    print(f"  confidence    {generation.confidence_level:.2f} lower bound > 0, "
+          f"{generation.bootstrap_resamples} resamples, seed {generation.bootstrap_seed}")
+    print(f"  protected     {', '.join(generation.protected_cells) or 'none'} "
+          f"(max regression {generation.protected_max_regression * 100:.1f}%)")
+    print(f"  portfolio     <= {generation.max_configurations} configurations; planners "
+          f"{', '.join(generation.allowed_planners) or 'any'}")
+    print(f"  model         {generation.model}")
+    print(f"  runtime       {generation.runtime}")
+    print(f"  hardware      {generation.hardware}")
+    return 0
+
+
+# ---------------------------------------------------------------------------- calibrate ---
+def cmd_calibrate(args):
+    """Derive frozen normalization bounds from a measured CONTROL run.
+
+    Section 23: bounds are calibrated on real target hardware BEFORE a generation launches,
+    and then frozen for its lifetime. This prints the bounds a control run implies and, with
+    --write, edits them into the generation -- which is legitimate before launch and is
+    exactly what must never happen afterwards, so it refuses a generation that already has
+    receipts.
+    """
+    generation = resolve_generation(args.generation)
+    records, _ = load_results(args.results)
+    by_cell = {}
+    for record in records:
+        if record.get("status", "OK") != "OK":
+            continue
+        by_cell.setdefault(record["workload_id"], []).append(record["metrics"])
+
+    bounds = {}
+    for cell, metrics in sorted(by_cell.items()):
+        cell_bounds = {}
+        for objective in generation.objectives:
+            values = [m[objective.key] for m in metrics if objective.key in m]
+            if not values:
+                continue
+            control = statistics.median(values)
+            if objective.direction == "max":
+                # 0 at zero, 1 at a ceiling no plausible submission reaches. Anchoring the
+                # low end at ZERO is what makes a maximized objective's contribution to dF
+                # exactly its own ratio -- so this generation's dF stays comparable with every
+                # throughput figure this repository has ever published.
+                cell_bounds[objective.key] = {"lo": 0.0,
+                                              "hi": round(control * args.headroom, 3)}
+            else:
+                # 0 at the SLO limit, 1 at zero. Headroom against the published SLO is the
+                # thing a serving frontier actually trades against throughput.
+                cell_bounds[objective.key] = {"lo": round(control * args.slo_multiple, 3),
+                                              "hi": 0.0}
+            cell_bounds[objective.key]["measured_control"] = round(control, 4)
+        bounds[cell] = cell_bounds
+
+    document = {
+        "generation": generation.name,
+        "calibrated_from": str(args.results),
+        "headroom_multiple": args.headroom,
+        "slo_multiple": args.slo_multiple,
+        "note": ("Frozen for the lifetime of this generation. `measured_control` is recorded "
+                 "so a reader can see where the control sat inside the bounds; it is not used "
+                 "in scoring. A maximized objective anchored at lo=0 contributes its own "
+                 "ratio to dF, which keeps this generation's numbers comparable with the "
+                 "throughput figures in results/."),
+        "cell_bounds": bounds,
+    }
+    text = json.dumps(document, indent=1, sort_keys=True) + "\n"
+    if args.write:
+        target = GENERATIONS_DIR / generation.name / "reference.json"
+        receipts = list((LEDGER_DIR / generation.name / "receipts").glob("*.json"))
+        if receipts:
+            print(f"!! {generation.name} already has {len(receipts)} receipt(s). Its bounds "
+                  f"are frozen: re-calibrating would silently redefine every one of them. "
+                  f"Create a new TTF-N instead.", file=sys.stderr)
+            return 2
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+        print(f"wrote {target}")
+    else:
+        print(text, end="")
+    return 0
+
+
+# ------------------------------------------------------------------------------ compute ---
+def cmd_compute(args):
+    generation = resolve_generation(args.generation)
+    records, provenance = load_results(args.results)
+    computation = compute_frontier(generation, records, allow_partial=args.allow_partial)
+
+    correctness = args.correctness or provenance.get("correctness", {}).get("correctness") \
+        or "PASS"
+    receipt = build_receipt(
+        generation=generation, computation=computation, correctness=correctness,
+        provenance={**provenance, "correctness_method":
+                    provenance.get("correctness", {}).get("method",
+                                                          "greedy replay, token-exact")},
+        pr=args.pr, supersedes=args.supersedes, reason=args.supersede_reason)
+
+    if args.output:
+        Path(args.output).write_text(json.dumps(receipt, indent=1, sort_keys=True) + "\n")
+        print(f"wrote {args.output}", file=sys.stderr)
+    else:
+        print(json.dumps(receipt, indent=1, sort_keys=True))
+    print(report_mod.receipt_box(receipt), file=sys.stderr)
+    return 0 if receipt["status"] in ("FRONTIER_GAIN", "NO_FRONTIER_GAIN") else 1
+
+
+# ------------------------------------------------------------------------------- report ---
+def cmd_report(args):
+    receipt = json.loads(Path(args.receipt).read_text())
+    renderers = {"markdown": report_mod.markdown,
+                 "comment": report_mod.pr_comment,
+                 "box": report_mod.receipt_box,
+                 "map": report_mod.contribution_map}
+    text = renderers[args.format](receipt)
+    if not text.endswith("\n"):
+        text += "\n"
+    if args.output:
+        Path(args.output).write_text(text)
+        print(f"wrote {args.output}", file=sys.stderr)
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
+# ------------------------------------------------------------------------------ receipt ---
+def cmd_receipt(args):
+    receipt = json.loads(Path(args.receipt).read_text())
+    generation = resolve_generation(args.generation) if args.generation else None
+    try:
+        result = verify_receipt(receipt, generation)
+    except ReceiptError as exc:
+        print(f"INVALID: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=1))
+    return 0
+
+
+# ------------------------------------------------------------------------------- ledger ---
+def cmd_ledger(args):
+    if args.action == "show":
+        document = ledger_mod.show(LEDGER_DIR, args.name)
+        print(f"{document['generation']}: "
+              f"{document['compounded_expansion_percent']:+.4f}% compounded over "
+              f"{document['verified_frontier_receipts']} verified receipt(s) of "
+              f"{document['canonical_receipts']}")
+        for entry in document["history"]:
+            print(f"  {entry['receipt']:<20s} {entry['status']:<24s} "
+                  f"measured {entry['gain_percent']:+8.4f}%  "
+                  f"credited {entry['verified_gain_percent']:+8.4f}%  "
+                  f"{entry['timestamp_utc']}")
+        return 0
+    if args.action == "append":
+        receipt = json.loads(Path(args.receipt).read_text())
+        generation = resolve_generation(receipt["benchmark_generation"])
+        path = ledger_mod.append_receipt(LEDGER_DIR, receipt, receipt_id=args.id,
+                                         generation=generation)
+        print(f"appended {path}")
+        return 0
+    if args.action == "audit":
+        try:
+            generation = resolve_generation(args.name)
+        except GenerationError:
+            generation = None
+        result = ledger_mod.audit(LEDGER_DIR, args.name, generation)
+        print(json.dumps(result, indent=1))
+        return 0 if result["ok"] else 1
+    return 2
+
+
+# ---------------------------------------------------------------------------------- run ---
+def cmd_run(args):
+    from frontier import runner as runner_mod
+
+    generation = resolve_generation(args.generation)
+    cells = args.cells.split(",") if args.cells else generation.cells
+    unknown = [c for c in cells if c not in generation.weights]
+    if unknown:
+        print(f"!! cells not declared by {generation.name}: {unknown}", file=sys.stderr)
+        return 2
+
+    def parse_configs(specs, variant):
+        configs = []
+        for spec in specs or []:
+            config_id, _, env_text = spec.partition("=")
+            if not config_id:
+                raise SystemExit(f"--{variant}-config needs <id>=<KEY=VALUE,...>")
+            env = {}
+            for pair in filter(None, env_text.split(",")):
+                key, _, value = pair.partition("=")
+                env[key] = value
+            configs.append({"config_id": config_id, "env": env,
+                            "expect_policy": bool(env)})
+        return configs
+
+    main_configs = parse_configs(args.main_config, "main") or [
+        {"config_id": "control", "env": {}, "expect_policy": False}]
+    candidate_configs = parse_configs(args.candidate_config, "candidate")
+    if not candidate_configs:
+        print("!! at least one --candidate-config is required", file=sys.stderr)
+        return 2
+    for config in candidate_configs:
+        config["env"].setdefault("RECURLOCAL_STATS", "1")
+
+    variants = {
+        "main": {"cb_binary": args.cb_binary, "configs": main_configs},
+        "candidate": {"cb_binary": args.candidate_cb or args.cb_binary,
+                      "configs": candidate_configs},
+    }
+
+    correctness = {"correctness": "SKIPPED"}
+    if args.generate:
+        prompt_ids = [int(t) for t in args.gate_prompt.split(",")]
+        correctness = runner_mod.correctness_gate(
+            args.generate, args.model, prompt_ids=prompt_ids, gate_tokens=args.gate_tokens,
+            control_env={}, candidate_envs=[(c["config_id"], c["env"])
+                                            for c in candidate_configs],
+            replays=args.gate_control_replays)
+        print(f">> correctness: {correctness['correctness']}", file=sys.stderr)
+
+    records = runner_mod.run_matrix(
+        generation=generation, cells=cells, model=args.model, variants=variants,
+        repeats=args.repeats, max_new=args.max_new, long_prefill=args.long_prefill,
+        settle_seconds=args.settle_seconds, verbose=not args.quiet)
+
+    provenance = {
+        "baseline_commit": args.baseline_commit,
+        "candidate_commit": args.candidate_commit,
+        "evaluator_commit": args.evaluator_commit,
+        "hardware": {"gpu": args.gpu, "count": 1},
+        "runtime": {"name": "SparkInfer", "commit": args.runtime_commit},
+        "model": {"name": args.model_name or Path(args.model).name, "digest": args.model_digest},
+        "environment_fingerprint": args.environment_fingerprint,
+        "correctness": correctness,
+        "cells_requested": cells,
+        "repeats": args.repeats,
+        "max_new": args.max_new,
+        "long_prefill": args.long_prefill,
+    }
+    runner_mod.write_raw(args.output, records, provenance)
+    print(f"wrote {args.output}", file=sys.stderr)
+    print(f"score it: tools/tt-frontier compute --generation {generation.name} "
+          f"--results {args.output} --output receipt.json", file=sys.stderr)
+    return 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(prog="tt-frontier", description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("generation", help="inspect a frozen TTF-N definition")
+    p.add_argument("action", choices=["show", "list"])
+    p.add_argument("name", nargs="?", default="TTF-1")
+    p.set_defaults(func=cmd_generation)
+
+    p = sub.add_parser("calibrate", help="derive frozen bounds from a measured control run")
+    p.add_argument("--generation", default="TTF-1")
+    p.add_argument("--results", required=True)
+    p.add_argument("--headroom", type=float, default=4.0,
+                   help="a maximized objective normalizes to 1 at this multiple of the "
+                        "measured control, so no plausible submission clips (default 4)")
+    p.add_argument("--slo-multiple", type=float, default=3.0,
+                   help="a minimized objective normalizes to 0 at this multiple of the "
+                        "measured control: the generation's SLO limit (default 3)")
+    p.add_argument("--write", action="store_true")
+    p.set_defaults(func=cmd_calibrate)
+
+    p = sub.add_parser("compute", help="raw results -> Frontier Receipt")
+    p.add_argument("--generation", default="TTF-1")
+    p.add_argument("--results", required=True)
+    p.add_argument("--output")
+    p.add_argument("--pr", type=int)
+    p.add_argument("--correctness", choices=["PASS", "FAIL", "BUILD_FAIL", "UNSCORABLE"])
+    p.add_argument("--allow-partial", action="store_true",
+                   help="score a matrix with cells missing. The receipt says PARTIAL on its "
+                        "face; a partial matrix is not a full-coverage contribution.")
+    p.add_argument("--supersedes", nargs="*")
+    p.add_argument("--supersede-reason")
+    p.set_defaults(func=cmd_compute)
+
+    p = sub.add_parser("report", help="receipt -> Markdown, PR comment, or the terminal box")
+    p.add_argument("receipt")
+    p.add_argument("--format", choices=["markdown", "comment", "box", "map"],
+                   default="markdown")
+    p.add_argument("--output")
+    p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("receipt", help="verify a receipt against itself and its generation")
+    p.add_argument("action", choices=["verify"])
+    p.add_argument("receipt")
+    p.add_argument("--generation")
+    p.set_defaults(func=cmd_receipt)
+
+    p = sub.add_parser("ledger", help="the append-only receipt history")
+    p.add_argument("action", choices=["show", "append", "audit"])
+    p.add_argument("name", nargs="?", default="TTF-1")
+    p.add_argument("--receipt")
+    p.add_argument("--id")
+    p.set_defaults(func=cmd_ledger)
+
+    p = sub.add_parser("run", help="paired interleaved GPU run of a whole generation")
+    p.add_argument("--generation", default="TTF-1")
+    p.add_argument("--model", required=True)
+    p.add_argument("--cb-binary", required=True, help="qwen3_gguf_cb_bench for main")
+    p.add_argument("--candidate-cb", help="the candidate build's cb bench; defaults to "
+                                          "--cb-binary, which is the same-binary A/B")
+    p.add_argument("--generate", help="qwen3_gguf_generate, for the token-exact gate")
+    p.add_argument("--main-config", action="append", metavar="ID=K=V,K=V")
+    p.add_argument("--candidate-config", action="append", metavar="ID=K=V,K=V")
+    p.add_argument("--cells", help="comma-separated subset, for local iteration")
+    p.add_argument("--repeats", type=int, default=3)
+    p.add_argument("--max-new", type=int, default=64)
+    p.add_argument("--long-prefill", type=int, default=4096)
+    p.add_argument("--settle-seconds", type=int, default=30)
+    p.add_argument("--gate-tokens", type=int, default=64)
+    p.add_argument("--gate-prompt", default="9707,3837,1879,13,25001,752,911")
+    p.add_argument("--gate-control-replays", type=int, default=3)
+    p.add_argument("--output", default="frontier-raw.json")
+    p.add_argument("--baseline-commit")
+    p.add_argument("--candidate-commit")
+    p.add_argument("--evaluator-commit")
+    p.add_argument("--runtime-commit")
+    p.add_argument("--model-name")
+    p.add_argument("--model-digest")
+    p.add_argument("--environment-fingerprint")
+    p.add_argument("--gpu", default="RTX 5090")
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(func=cmd_run)
+
+    args = parser.parse_args(argv)
+    try:
+        return args.func(args)
+    except (GenerationError, ReceiptError, ledger_mod.LedgerError) as exc:
+        print(f"!! {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

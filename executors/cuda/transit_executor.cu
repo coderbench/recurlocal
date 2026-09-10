@@ -177,7 +177,11 @@ void CudaTransitExecutor::apply(const TransitAction* const* actions, int count) 
 
             case TransitActionKind::Prefetch: {
                 const TensorDesc* desc = resolve(action);
-                if (!desc || !prefetch_ || !scratch_) { ++stats_.actions_skipped; break; }
+                if (!desc || !prefetch_ || !scratch_) {
+                    ++stats_.actions_skipped;
+                    ++stats_.prefetch_skipped;
+                    break;
+                }
                 const cudaError_t err = pre_touch_bytes_async(
                     PreTouchStrategy::Vec4, action.ptr, action.bytes, scratch_, scratch_count_,
                     prefetch_);
@@ -306,6 +310,7 @@ cudaError_t CudaTransitExecutor::attach_window_to_captured_node() noexcept {
     if (cudaStreamIsCapturing(compute_, &after) == cudaSuccess &&
         after == cudaStreamCaptureStatusInvalidated) {
         node_attach_disabled_ = true;
+        ++stats_.capture_invalidations;
         ++stats_.actions_failed;
     }
     return cudaSuccess;
@@ -328,6 +333,7 @@ void CudaTransitExecutor::end_step() noexcept {
 cudaError_t CudaTransitExecutor::release() noexcept {
     cudaError_t first = cudaSuccess;
     const bool capturing = graph_capture_active();
+    if (capturing) ++stats_.released_during_capture;
 
     // Never spray failing CUDA calls into a caller's context mid-capture. Being torn down
     // during a capture is a caller bug (an exception unwinding, usually), but it is one this

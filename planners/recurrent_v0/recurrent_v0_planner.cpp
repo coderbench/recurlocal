@@ -44,8 +44,16 @@ public:
         caps.persisting_l2_max_bytes = input.device.persisting_l2_max_bytes;
         caps.access_policy_max_window_bytes = input.device.access_policy_max_window_bytes;
 
+        // The caller's mask decides whether the persisting half runs at all. Without this the
+        // planner had no way to express LocalityMode::Prefetch -- prefetch with no window --
+        // which is one of the four modes every result in results/ was measured under, and an
+        // arm that silently persisted as well would not be that arm.
+        const bool persist = config_.persist_roles.has(TensorRole::RecurrentState);
         PlannerConfig legacy{};
-        legacy.mode = config_.prefetch_enabled ? LocalityMode::Combined : LocalityMode::Persist;
+        legacy.mode = persist ? (config_.prefetch_enabled ? LocalityMode::Combined
+                                                          : LocalityMode::Persist)
+                              : (config_.prefetch_enabled ? LocalityMode::Prefetch
+                                                          : LocalityMode::Baseline);
         legacy.persisting_budget_fraction = config_.budget_fraction;
         legacy.hit_ratio = config_.hit_ratio;
         legacy.min_hit_ratio = config_.min_hit_ratio;
@@ -88,7 +96,8 @@ public:
         }
 
         detail::emit_prefetch(&plan, candidates, config_, input);
-        detail::finish_plan(&plan, input, budget, declined, RoleMask::of(TensorRole::RecurrentState));
+        detail::finish_plan(&plan, input, budget, declined,
+                            RoleMask::of(TensorRole::RecurrentState), config_);
         return plan;
     }
 

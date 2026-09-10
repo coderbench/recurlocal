@@ -24,6 +24,13 @@ constexpr BindingName kBindings[] = {
     {WindowBinding::PerConsumer, "per_consumer"},
     {WindowBinding::Sticky, "sticky"},
 };
+struct PreferenceName { WindowPreference preference; const char* name; };
+constexpr PreferenceName kPreferences[] = {
+    {WindowPreference::Densest, "densest"},
+    {WindowPreference::Widest, "widest"},
+    {WindowPreference::Narrowest, "narrowest"},
+    {WindowPreference::SoonestReuse, "soonest_reuse"},
+};
 struct PresetName { PolicyPreset preset; const char* name; };
 constexpr PresetName kPresets[] = {
     {PolicyPreset::Baseline, "baseline"},
@@ -73,6 +80,17 @@ bool parse_window_binding(const char* text, WindowBinding* out) noexcept {
         if (std::strcmp(text, entry.name) == 0) { *out = entry.binding; return true; }
     return false;
 }
+const char* to_string(WindowPreference preference) noexcept {
+    for (const auto& entry : kPreferences)
+        if (entry.preference == preference) return entry.name;
+    return "densest";
+}
+bool parse_window_preference(const char* text, WindowPreference* out) noexcept {
+    if (!text || !out) return false;
+    for (const auto& entry : kPreferences)
+        if (std::strcmp(text, entry.name) == 0) { *out = entry.preference; return true; }
+    return false;
+}
 const char* to_string(PolicyPreset preset) noexcept {
     for (const auto& entry : kPresets)
         if (entry.preset == preset) return entry.name;
@@ -101,6 +119,8 @@ const char* validate(const TransitPlannerConfig& config) noexcept {
     if (!(config.max_reuse_distance_budgets >= 0.0))
         return "max_reuse_distance_budgets must be >= 0";
     if (config.max_actions == 0) return "max_actions must be non-zero";
+    if (config.max_windows_per_kernel < 0)
+        return "max_windows_per_kernel must be >= 0 (0 means unbounded)";
     return nullptr;
 }
 

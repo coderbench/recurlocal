@@ -89,8 +89,11 @@ void emit_stream_hints(TransitPlan* plan, const PlanInput& input,
 // Fills in the graph-derived parts of the cost model and finalizes the plan.
 // `scope` is the roles the planner was allowed to act on, so the ceiling recorded next to
 // the prediction is the ceiling for THAT policy rather than for an unrelated one.
+// `config` is read for the plan-level constraints that are not any one candidate's business:
+// today, how many windows one kernel may carry (max_windows_per_kernel).
 void finish_plan(TransitPlan* plan, const PlanInput& input, std::size_t budget,
-                 const std::vector<TransitDecline>& declined, RoleMask scope);
+                 const std::vector<TransitDecline>& declined, RoleMask scope,
+                 const TransitPlannerConfig& config);
 
 }  // namespace detail
 }  // namespace tensortransit

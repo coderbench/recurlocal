@@ -47,6 +47,21 @@ struct ExecutorStats {
     // executor under 0.5% of token latency, and a budget nobody measures is a wish.
     std::uint64_t host_ns = 0;
 
+    // Captures this executor's own node attachment INVALIDATED. Non-zero means the run
+    // measured the runtime's fallback path, whatever throughput it reported, and the
+    // mechanism has latched itself off. It has to be a counter and not a log line: an
+    // evaluator reads this struct, and "the number is fine but it is a number about a
+    // different code path" is exactly the failure a locality harness cannot see.
+    std::uint64_t capture_invalidations = 0;
+    // release() reached while the compute stream was capturing. A caller bug (an exception
+    // unwinding, usually), and one this library must not make worse by spraying failing CUDA
+    // calls into a live capture -- so it declines, and says how often.
+    std::uint64_t released_during_capture = 0;
+    // Prefetch actions the backend declined: no prefetch stream, or no scratch. Separated
+    // from actions_skipped so that "the prefetch arm applied no prefetch" is answerable
+    // without subtracting two other counters.
+    std::uint64_t prefetch_skipped = 0;
+
     bool applied_anything() const noexcept {
         return actions_applied != 0 || persist_attached_to_node != 0;
     }

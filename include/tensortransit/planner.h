@@ -109,6 +109,22 @@ enum class WindowBinding : int {
 const char* to_string(WindowBinding binding) noexcept;
 bool parse_window_binding(const char* text, WindowBinding* out) noexcept;
 
+// Which candidate keeps the window when more than one wants it across the same kernel and
+// `max_windows_per_kernel` forces a choice. Under a LINEAR cost model two whole-tensor
+// candidates have identical density -- saved/granted collapses to the hit ratio -- so
+// density alone does not choose, and something has to. New enumerators are appended.
+enum class WindowPreference : int {
+    Densest = 0,       // most modelled bytes saved per byte of budget
+    Widest = 1,        // the largest region. Reproduces RecurLocal's WindowTarget::Matrix on
+                       // a model whose matrix state is the larger of the two segments, which
+                       // is what every published number here was measured under.
+    Narrowest = 2,     // the smallest region: the one most likely to be held WHOLE
+    SoonestReuse = 3,  // nearest next use, in bytes of intervening traffic
+};
+
+const char* to_string(WindowPreference preference) noexcept;
+bool parse_window_preference(const char* text, WindowPreference* out) noexcept;
+
 struct TransitPlannerConfig {
     // --- what the planner is allowed to touch ---------------------------------------
     RoleMask persist_roles = RoleMask::all();
@@ -140,6 +156,22 @@ struct TransitPlannerConfig {
     // How long an admitted window stays bound. Under Sticky the single densest admitted
     // candidate holds the window for the whole recorded step and the rest bind per consumer.
     WindowBinding window_binding = WindowBinding::PerConsumer;
+
+    // How many tensors may hold a persisting window ACROSS ONE KERNEL.
+    //
+    // CUDA binds one access-policy window to a stream, to a launch, or to a graph node at a
+    // time. A plan that marks two regions before one kernel is therefore not describing
+    // something the hardware can do: the second window replaces the first, the first is
+    // silently absent, and the plan's own telemetry counts two applied windows. That is a
+    // null policy wearing a real one's counters, which is this repository's oldest failure
+    // mode.
+    //
+    // 0 is unbounded -- the historical behaviour, what the golden plans were recorded under,
+    // and correct for an integration that delivers per-tensor windows some other way. An
+    // integration that delivers through the singular stream/node binding sets 1;
+    // adapters/sparkinfer does.
+    int max_windows_per_kernel = 0;
+    WindowPreference window_preference = WindowPreference::Densest;
 
     // --- prefetch --------------------------------------------------------------------
     bool prefetch_enabled = false;

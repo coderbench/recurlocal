@@ -85,10 +85,48 @@ void before_layer(int layer) noexcept;
 // to the node this launch recorded, so it has to be the launch that reads the state the
 // window was aimed at - the convolution kernel for the conv state, the recurrence for the
 // matrix state. Calling both is correct and costs one capture query.
-enum class StateKernel : int { Conv, Gdn };
+//
+// `Attention` is the same rule for the OTHER tensor class: the attention kernel is the one
+// that reads the paged KV a KV window covers. Appended, never inserted - the numeric values
+// are ABI (docs/STABILITY.md section 2).
+enum class StateKernel : int { Conv, Gdn, Attention };
 void after_launch(StateKernel which) noexcept;
 
 void after_layer() noexcept;
+
+// The paged KV pools this decode step will read. Declared once per step, beside
+// begin_token(), and OPTIONAL: a runtime that never calls this simply has no KV in the
+// tensor registry, and every KV-scoped planner declines it with `no_reuse`.
+//
+// It exists because until 0.2.1 no adapter exposed KV at all, so the specification's second
+// proof track -- does one planner arbitrating a shared budget across two tensor classes beat
+// two independent policies -- could not be measured. Not "had not been": could not be.
+struct KvCacheLayout {
+    const void* k_pool = nullptr;        // device base of the K pool
+    const void* v_pool = nullptr;        // device base of the V pool, or null
+    std::size_t pool_bytes = 0;          // bytes of ONE pool
+    std::size_t layer_stride_bytes = 0;  // between consecutive slots' sub-pools
+    // Bytes ONE attention layer's K (or V) actually reads in this step, over every live
+    // sequence. NOT the slot stride: the pool is sized for the longest context the server
+    // will ever hold, and a decode step at 128 tokens reads a thousandth of it. Declaring
+    // the stride would put a KV footprint two orders of magnitude too large into every
+    // ceiling this graph feeds.
+    std::size_t live_bytes_per_layer = 0;
+    int kv_slots = 0;                    // pool slots actually allocated
+    int rows = 1;                        // sequences the live bytes cover
+};
+void declare_kv_cache(const KvCacheLayout& kv) noexcept;
+
+// Bracket one FULL-ATTENTION layer, by absolute layer index.
+//
+// Deliberately not before_layer()/after_layer(), which bracket a RECURRENT layer: the 0.1
+// engine has no policy for attention layers and must not see them -- routing them through
+// the same pair would change what every published number was measured under. The
+// TensorTransit engine needs them for two things a KV policy cannot work without: somewhere
+// to place a KV window, and the right ORDER for reuse distance, which is a question about
+// what runs between two uses.
+void before_attention_layer(int layer) noexcept;
+void after_attention_layer(int layer) noexcept;
 
 // Close the step's layer walk. Under PrefetchJoin::TokenEnd this emits the single join,
 // which under capture is mandatory: an unjoined fork ends the capture invalid.
@@ -126,9 +164,15 @@ struct GdnPackedLayout { const void* const* device_lin_state; const void* const*
 inline bool begin_token(const GdnStateLayout&) noexcept { return false; }
 inline bool begin_token_packed(const GdnPackedLayout&) noexcept { return false; }
 inline void before_layer(int) noexcept {}
-enum class StateKernel : int { Conv, Gdn };
+enum class StateKernel : int { Conv, Gdn, Attention };
 inline void after_launch(StateKernel) noexcept {}
 inline void after_layer() noexcept {}
+struct KvCacheLayout { const void* k_pool; const void* v_pool; std::size_t pool_bytes;
+                       std::size_t layer_stride_bytes; std::size_t live_bytes_per_layer;
+                       int kv_slots; int rows; };
+inline void declare_kv_cache(const KvCacheLayout&) noexcept {}
+inline void before_attention_layer(int) noexcept {}
+inline void after_attention_layer(int) noexcept {}
 inline void end_token() noexcept {}
 inline void write_stats_json(std::FILE*) noexcept {}
 inline void shutdown() noexcept {}

@@ -1,7 +1,10 @@
 #include "tensortransit/cuda_recurrent.h"
+#include "tensortransit/cuda_executor.h"
 #include "tensortransit/recurrent.h"
+#include "tensortransit/runtime.h"
 #include <cuda_runtime.h>
 #include <algorithm>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <cstdlib>
@@ -114,6 +117,18 @@ int main(int argc,char** argv){
     auto hot_set_model=tensortransit::HotSetModel::CurrentLayer;
     auto schedule=tensortransit::PrefetchSchedule::Uniform;
     int layout=kLinear; bool fused=false, qos=false, stream_distinct=false;
+    // Which engine runs the token. `transit` is Registry -> Graph -> Planner -> Executor,
+    // where a contributor's planner decides the policy; `v0` is the 0.1 controller, kept so
+    // the two are comparable in one binary against one allocation on one box. Defaulting to
+    // transit is the point of the change: before it, writing a planner moved no number here.
+    bool engine_transit=true;
+    std::string planner="recurrent_v0";
+    auto admission=tensortransit::AdmissionRule::Density;
+    auto reuse_metric=tensortransit::ReuseMetric::Bytes;
+    auto window_binding=tensortransit::WindowBinding::PerConsumer;
+    auto window_preference=tensortransit::WindowPreference::Widest;
+    int max_windows_per_kernel=1;
+    double budget_fraction=0.75;
     for(int i=2;i<argc;i+=2){
       if(i+1>=argc) throw std::invalid_argument(std::string("option ")+argv[i]+" needs a value");
       std::string k=argv[i],v=argv[i+1];
@@ -138,6 +153,19 @@ int main(int argc,char** argv){
                            else throw std::invalid_argument("--qos must be on or off"); }
       else if(k=="--stream-mode"){ if(v=="distinct")stream_distinct=true; else if(v=="reuse")stream_distinct=false;
                                    else throw std::invalid_argument("--stream-mode must be reuse or distinct"); }
+      else if(k=="--engine"){ if(v=="transit")engine_transit=true; else if(v=="v0")engine_transit=false;
+                              else throw std::invalid_argument("--engine must be transit or v0"); }
+      else if(k=="--planner")planner=v;
+      else if(k=="--admission"){ if(!tensortransit::parse_admission_rule(v.c_str(),&admission))
+                                   throw std::invalid_argument("unknown --admission "+v); }
+      else if(k=="--reuse-metric"){ if(!tensortransit::parse_reuse_metric(v.c_str(),&reuse_metric))
+                                      throw std::invalid_argument("unknown --reuse-metric "+v); }
+      else if(k=="--window-binding"){ if(!tensortransit::parse_window_binding(v.c_str(),&window_binding))
+                                        throw std::invalid_argument("unknown --window-binding "+v); }
+      else if(k=="--window-preference"){ if(!tensortransit::parse_window_preference(v.c_str(),&window_preference))
+                                           throw std::invalid_argument("unknown --window-preference "+v); }
+      else if(k=="--max-windows-per-kernel")max_windows_per_kernel=std::stoi(v);
+      else if(k=="--budget-fraction")budget_fraction=std::stod(v);
       else throw std::invalid_argument("unknown option "+k);}
     if(layers<1) throw std::invalid_argument("--layers must be >= 1");
     if(tokens<1) throw std::invalid_argument("--tokens must be >= 1");
@@ -147,6 +175,8 @@ int main(int argc,char** argv){
     if(distance<0||distance>tensortransit::kMaxPrefetchDistance) throw std::invalid_argument("--prefetch-distance must be in [0,8]");
     if(sequences<1) throw std::invalid_argument("--sequences must be >= 1");
     if(stream_bytes%sizeof(float)) throw std::invalid_argument("--stream-bytes must be a multiple of 4");
+    if(!(budget_fraction>=0.0&&budget_fraction<=1.0)) throw std::invalid_argument("--budget-fraction must be in [0,1]");
+    if(max_windows_per_kernel<0) throw std::invalid_argument("--max-windows-per-kernel must be >= 0");
 
     check(cudaSetDevice(device),"set device"); cudaDeviceProp prop{}; check(cudaGetDeviceProperties(&prop,device),"props");
     // Provenance: a timing without the driver/toolkit/device it came from cannot be
@@ -170,13 +200,160 @@ int main(int argc,char** argv){
     cudaEvent_t st{},sp{},pf{}; check(cudaEventCreate(&st),"event"); check(cudaEventCreate(&sp),"event"); check(cudaEventCreate(&pf),"event");
 
     float ms=0.0f; double sum=0.0; std::size_t set_aside=0; tensortransit::ControllerStats stats{};
-    { // The controller clears its access-policy window on destruction, so it has
-      // to outlive nothing: it must die while the compute stream is still valid.
-    // Kernel-integrated prefetch is done by the compute kernel, so the controller must not
-    // also issue it on the prefetch stream; it keeps only the persisting half of the mode.
+    // Transit-engine telemetry, zero when the v0 engine ran. Reported unconditionally so a
+    // sweep across engines produces one schema rather than two.
+    tensortransit::ExecutorStats xstats{}; tensortransit::RuntimeStats rstats{};
+    std::uint64_t plan_digest=0; std::size_t predicted_saved=0, committed=0, step_traffic=0;
+    int plan_actions=0, plan_declines=0;
+
+    double *dpart=nullptr,*dsum=nullptr;
+    check(cudaMalloc(&dpart,kChecksumBlocks*sizeof(double)),"partial malloc");
+    check(cudaMalloc(&dsum,sizeof(double)),"sum malloc");
+    // Warm-up, timing and checksum are identical for both engines and must stay identical:
+    // an A/B whose two arms measured over different regions would not be an A/B. Untimed
+    // warm-up absorbs module load, first-touch page mapping and cold-cache effects that would
+    // otherwise dilute a delta the go/no-go gate has to resolve at a few percent.
+    auto measure=[&](const std::function<void()>& run_token){
+      for(int tok=0;tok<warmup;++tok) run_token();
+      check(cudaStreamSynchronize(compute),"warmup compute"); check(cudaStreamSynchronize(prefetch),"warmup prefetch");
+      check(cudaEventRecord(st,compute),"start");
+      for(int tok=0;tok<tokens;++tok) run_token();
+      // Join the prefetch stream before stopping the clock. Pre-touch is a cost this
+      // benchmark exists to weigh, so it must not run off the measured region.
+      check(cudaEventRecord(pf,prefetch),"prefetch mark"); check(cudaStreamWaitEvent(compute,pf,0),"join prefetch");
+      check(cudaEventRecord(sp,compute),"stop"); check(cudaEventSynchronize(sp),"sync"); check(cudaEventElapsedTime(&ms,st,sp),"elapsed");
+      checksum_partials<<<kChecksumBlocks,kChecksumThreads,0,compute>>>(state,total,dpart); check(cudaGetLastError(),"checksum");
+      checksum_fold<<<1,1,0,compute>>>(dpart,kChecksumBlocks,dsum); check(cudaGetLastError(),"checksum fold");
+      check(cudaMemcpyAsync(&sum,dsum,sizeof(double),cudaMemcpyDeviceToHost,compute),"sum copy"); check(cudaStreamSynchronize(compute),"done");
+    };
+
     const bool mode_prefetches = mode==tensortransit::LocalityMode::Prefetch || mode==tensortransit::LocalityMode::Combined;
     const bool mode_persists = mode==tensortransit::LocalityMode::Persist || mode==tensortransit::LocalityMode::Combined;
     const bool fused_active = fused && mode_prefetches;
+
+    if(engine_transit){
+      // ---- TensorTransit engine: Registry -> Graph -> Planner -> Executor ----------------
+      //
+      // This is what makes the benchmark a competition surface. Before it, the bench drove
+      // the 0.1 controller directly, so a contributor who wrote a planner changed nothing
+      // about the number it printed. Here the planner's plan IS the policy: every window,
+      // every hit ratio and every prefetch below came out of `--planner`.
+      tensortransit::DeviceProfile profile{};
+      check(tensortransit::query_device_profile(device,&profile),"device profile");
+      tensortransit::TransitRuntime rt;
+      rt.set_device_profile(profile);
+
+      tensortransit::TransitPlannerConfig pc;
+      pc.hit_ratio=0.70; pc.budget_fraction=budget_fraction;
+      pc.admission=admission; pc.reuse_metric=reuse_metric;
+      pc.window_binding=window_binding; pc.window_preference=window_preference;
+      pc.max_windows_per_kernel=max_windows_per_kernel;
+      pc.persist_roles = mode_persists ? tensortransit::RoleMask::of(tensortransit::TensorRole::RecurrentState)
+                                       : tensortransit::RoleMask::none();
+      // The kernel-integrated prefetch is done by the compute kernel itself, so the plan must
+      // not also issue one on the prefetch stream; it keeps only the persisting half.
+      pc.prefetch_enabled = mode_prefetches && !fused_active;
+      pc.prefetch_roles = pc.prefetch_enabled ? tensortransit::RoleMask::of(tensortransit::TensorRole::RecurrentState)
+                                              : tensortransit::RoleMask::none();
+      pc.prefetch_distance=distance; pc.prefetch_min_bytes=0;
+      pc.prefetch_join_at_end=false;
+      // The streaming half of the cache, which is the only place a Stream action can have a
+      // value at all -- and the reason --stream-bytes exists.
+      if(qos && stream_count) pc.stream_roles=tensortransit::RoleMask::of(tensortransit::TensorRole::ModelWeight);
+      pc.stream_min_bytes=0;
+      if(const char* bad=tensortransit::validate(pc)) throw std::invalid_argument(std::string("planner config: ")+bad);
+      if(!rt.set_planner(planner.c_str(),pc))
+        throw std::invalid_argument("unknown --planner "+planner+" (see `tensortransit plan --help`)");
+
+      tensortransit::CudaTransitExecutor exec;
+      const std::size_t want=(std::size_t)((double)profile.persisting_l2_max_bytes*budget_fraction);
+      check(exec.initialize(device,want),"executor init");
+      check(exec.bind_streams(compute,prefetch),"executor streams");
+      exec.set_registry(&rt.registry());
+      float* scratch=nullptr; check(cudaMalloc(&scratch,1024*sizeof(float)),"scratch");
+      exec.set_scratch(scratch,1024);
+      set_aside=exec.set_aside_bytes();
+
+      // One tensor per layer: the slice every sequence's state for that layer lives in. The
+      // BASE is the whole allocation, so a widened window is clamped to memory this process
+      // actually owns rather than to whatever follows it.
+      std::vector<tensortransit::TensorId> state_ids((std::size_t)layers), weight_ids((std::size_t)layers);
+      for(int l=0;l<layers;++l){
+        tensortransit::TensorDesc d;
+        d.ptr=state+(std::size_t)l*block; d.bytes=block_bytes;
+        d.base=state; d.base_bytes=bytes;
+        d.role=tensortransit::TensorRole::RecurrentState;
+        d.mutable_data=true; d.request_local=true; d.device=device;
+        state_ids[(std::size_t)l]=rt.register_tensor(d).id;
+        if(stream_count){
+          const std::size_t slice = stream_distinct ? stream_count/(std::size_t)layers : stream_count;
+          if(slice){
+            tensortransit::TensorDesc w;
+            w.ptr = stream_distinct ? weights+(std::size_t)l*slice : weights;
+            w.bytes=slice*sizeof(float);
+            w.base=weights; w.base_bytes=stream_count*sizeof(float);
+            w.role=tensortransit::TensorRole::ModelWeight; w.model_global=true; w.device=device;
+            weight_ids[(std::size_t)l]=rt.register_tensor(w).id;
+          }
+        }
+      }
+
+      // Two kernels per layer, in the order they run. Recording only the state kernel would
+      // leave the interference the streaming buffer causes out of every reuse distance, and
+      // the reuse distance is what decides whether a window survives to pay off.
+      rt.begin_recording();
+      for(int l=0;l<layers;++l){
+        tensortransit::KernelEvent k; k.id=(tensortransit::KernelId)(2*l+1); k.order=(std::uint64_t)(2*l);
+        rt.record_kernel(k);
+        tensortransit::TensorUse u; u.tensor=state_ids[(std::size_t)l]; u.kernel=k.id;
+        u.access=tensortransit::AccessKind::ReadWrite; rt.record_use(u);
+        if(weight_ids[(std::size_t)l]){
+          tensortransit::KernelEvent kw; kw.id=(tensortransit::KernelId)(2*l+2); kw.order=(std::uint64_t)(2*l+1);
+          rt.record_kernel(kw);
+          tensortransit::TensorUse uw; uw.tensor=weight_ids[(std::size_t)l]; uw.kernel=kw.id;
+          uw.access=tensortransit::AccessKind::Read; rt.record_use(uw);
+        }
+      }
+      // One token IS one iteration of a loop: layer 0's state is next read a whole token
+      // later. Without closing it every state looks unreused and every planner declines.
+      rt.end_recording(/*cyclic=*/true);
+
+      tensortransit::RuntimeState rs; rs.phase=tensortransit::RuntimePhase::Decode;
+      rs.active_requests=sequences; rs.granted_budget_bytes=exec.set_aside_bytes();
+      const tensortransit::TransitPlan& plan=rt.compile(rs);
+      if(const char* bad=plan.validate()) throw std::runtime_error(std::string("plan invalid: ")+bad);
+      plan_digest=plan.digest(); predicted_saved=plan.cost().predicted_saved_bytes;
+      committed=plan.cost().committed_bytes; step_traffic=plan.cost().step_traffic_bytes;
+      plan_actions=(int)plan.actions().size(); plan_declines=(int)plan.declines().size();
+      rt.set_executor(&exec);
+
+      auto run_token=[&]{ rt.begin_step(); for(int l=0;l<layers;++l){
+        float* cur=state+(std::size_t)l*block;
+        const int ahead=distance>0?distance:1;
+        const bool hn=l+ahead<layers;
+        const float* nxt=hn?state+(std::size_t)(l+ahead)*block:nullptr;
+        const tensortransit::KernelId kid=(tensortransit::KernelId)(2*l+1);
+        rt.before_kernel(kid);
+        const float* fnext=(fused_active&&hn)?nxt:nullptr;
+        update_state<<<1024,256,0,compute>>>(cur,block,0.999999f,0.000001f*(l+1),iters,layout,
+                                             fnext,fnext?block:0,sink); check(cudaGetLastError(),"update");
+        rt.after_kernel(kid);
+        if(weight_ids[(std::size_t)l]){
+          const std::size_t slice = stream_distinct ? stream_count/(std::size_t)layers : stream_count;
+          const float* w = stream_distinct ? weights+(std::size_t)l*slice : weights;
+          const tensortransit::KernelId kw=(tensortransit::KernelId)(2*l+2);
+          rt.before_kernel(kw);
+          stream_interference<<<1024,256,0,compute>>>(w,slice,sink); check(cudaGetLastError(),"stream");
+          rt.after_kernel(kw);
+        }}
+        rt.end_step(); };
+
+      measure(run_token);
+      xstats=exec.stats(); rstats=rt.stats();
+      rt.set_executor(nullptr); exec.release(); cudaFree(scratch);
+    } else {
+    { // The controller clears its access-policy window on destruction, so it has
+      // to outlive nothing: it must die while the compute stream is still valid.
     tensortransit::PlannerConfig cfg;
     cfg.mode = fused_active ? (mode_persists ? tensortransit::LocalityMode::Persist
                                              : tensortransit::LocalityMode::Baseline) : mode;
@@ -223,29 +400,13 @@ int main(int argc,char** argv){
           stream_interference<<<1024,256,0,compute>>>(w,slice,sink); check(cudaGetLastError(),"stream");
           if(qos) check(ctl.after_streaming_region(),"qos end"); } }}};
 
-    // Untimed warm-up absorbs module load, first-touch page mapping and cold-cache
-    // effects that would otherwise dilute a mode-to-mode delta the go/no-go gate
-    // has to resolve at a few percent.
-    for(int tok=0;tok<warmup;++tok) run_token();
-    check(cudaStreamSynchronize(compute),"warmup compute"); check(cudaStreamSynchronize(prefetch),"warmup prefetch");
-
-    check(cudaEventRecord(st,compute),"start");
-    for(int tok=0;tok<tokens;++tok) run_token();
-    // Join the prefetch stream before stopping the clock. Pre-touch is a cost this
-    // benchmark exists to weigh, so it must not run off the measured region.
-    check(cudaEventRecord(pf,prefetch),"prefetch mark"); check(cudaStreamWaitEvent(compute,pf,0),"join prefetch");
-    check(cudaEventRecord(sp,compute),"stop"); check(cudaEventSynchronize(sp),"sync"); check(cudaEventElapsedTime(&ms,st,sp),"elapsed");
-
-    double *dpart=nullptr,*dsum=nullptr;
-    check(cudaMalloc(&dpart,kChecksumBlocks*sizeof(double)),"partial malloc"); check(cudaMalloc(&dsum,sizeof(double)),"sum malloc");
-    checksum_partials<<<kChecksumBlocks,kChecksumThreads,0,compute>>>(state,total,dpart); check(cudaGetLastError(),"checksum");
-    checksum_fold<<<1,1,0,compute>>>(dpart,kChecksumBlocks,dsum); check(cudaGetLastError(),"checksum fold");
-    check(cudaMemcpyAsync(&sum,dsum,sizeof(double),cudaMemcpyDeviceToHost,compute),"sum copy"); check(cudaStreamSynchronize(compute),"done");
-    cudaFree(dsum); cudaFree(dpart); stats=ctl.stats(); ctl.reset(); }
+    measure(run_token);
+    stats=ctl.stats(); ctl.reset(); } }
+    cudaFree(dsum); cudaFree(dpart);
 
     const double layer_updates=(double)layers*(double)tokens;
     std::cout<<std::fixed<<std::setprecision(6)<<"{"
-      <<"\"mode\":\""<<tensortransit::to_string(mode)<<"\","<<"\"gpu\":\""<<prop.name<<"\","<<"\"compute_capability\":\""<<prop.major<<"."<<prop.minor<<"\","<<"\"sm_count\":"<<prop.multiProcessorCount<<","<<"\"driver_version\":"<<driver_version<<","<<"\"runtime_version\":"<<runtime_version<<","<<"\"layers\":"<<layers<<","<<"\"state_bytes_per_layer\":"<<state_bytes<<","<<"\"total_state_bytes\":"<<bytes<<","<<"\"tokens\":"<<tokens<<","<<"\"warmup_tokens\":"<<warmup<<","<<"\"prefetch_distance\":"<<distance<<","<<"\"sequences\":"<<sequences<<","<<"\"stream_bytes\":"<<stream_bytes<<","<<"\"hot_set_policy\":\""<<tensortransit::to_string(hot_set_policy)<<"\","<<"\"set_aside_policy\":\""<<tensortransit::to_string(set_aside_policy)<<"\","<<"\"hot_set_model\":\""<<tensortransit::to_string(hot_set_model)<<"\","<<"\"prefetch_schedule\":\""<<tensortransit::to_string(schedule)<<"\","<<"\"prefetch_impl\":\""<<(fused?"fused":"stream")<<"\","<<"\"state_layout\":\""<<(layout==kLinear?"linear":layout==kHeadInterleaved?"head_interleaved":"tile_swapped")<<"\","<<"\"qos\":"<<(qos?"true":"false")<<","<<"\"stream_mode\":\""<<(stream_distinct?"distinct":"reuse")<<"\","<<"\"pre_touch_strategy\":\""<<tensortransit::to_string(pre_touch)<<"\","<<"\"elapsed_ms\":"<<ms<<","<<"\"ms_per_token\":"<<(ms/tokens)<<","<<"\"layer_updates_per_s\":"<<(ms>0.0f?layer_updates/((double)ms/1000.0):0.0)<<","<<"\"l2_bytes\":"<<prop.l2CacheSize<<","<<"\"persisting_l2_max_bytes\":"<<prop.persistingL2CacheMaxSize<<","<<"\"access_policy_max_window_bytes\":"<<prop.accessPolicyMaxWindowSize<<","<<"\"actual_l2_set_aside_bytes\":"<<set_aside<<","<<"\"windows_applied\":"<<stats.windows_applied<<","<<"\"windows_deferred_to_caller\":"<<stats.windows_deferred_to_caller<<","<<"\"hot_set_oversubscribed\":"<<stats.hot_set_oversubscribed<<","<<"\"pre_touch_launches\":"<<stats.pre_touch_launches<<","<<"\"pre_touch_bytes\":"<<stats.pre_touch_bytes<<","<<"\"checksum\":"<<sum<<"}\n";
+      <<"\"mode\":\""<<tensortransit::to_string(mode)<<"\","<<"\"gpu\":\""<<prop.name<<"\","<<"\"compute_capability\":\""<<prop.major<<"."<<prop.minor<<"\","<<"\"sm_count\":"<<prop.multiProcessorCount<<","<<"\"driver_version\":"<<driver_version<<","<<"\"runtime_version\":"<<runtime_version<<","<<"\"layers\":"<<layers<<","<<"\"state_bytes_per_layer\":"<<state_bytes<<","<<"\"total_state_bytes\":"<<bytes<<","<<"\"tokens\":"<<tokens<<","<<"\"warmup_tokens\":"<<warmup<<","<<"\"prefetch_distance\":"<<distance<<","<<"\"sequences\":"<<sequences<<","<<"\"stream_bytes\":"<<stream_bytes<<","<<"\"hot_set_policy\":\""<<tensortransit::to_string(hot_set_policy)<<"\","<<"\"set_aside_policy\":\""<<tensortransit::to_string(set_aside_policy)<<"\","<<"\"hot_set_model\":\""<<tensortransit::to_string(hot_set_model)<<"\","<<"\"prefetch_schedule\":\""<<tensortransit::to_string(schedule)<<"\","<<"\"prefetch_impl\":\""<<(fused?"fused":"stream")<<"\","<<"\"state_layout\":\""<<(layout==kLinear?"linear":layout==kHeadInterleaved?"head_interleaved":"tile_swapped")<<"\","<<"\"qos\":"<<(qos?"true":"false")<<","<<"\"stream_mode\":\""<<(stream_distinct?"distinct":"reuse")<<"\","<<"\"pre_touch_strategy\":\""<<tensortransit::to_string(pre_touch)<<"\","<<"\"engine\":\""<<(engine_transit?"transit":"v0")<<"\","<<"\"planner\":\""<<(engine_transit?planner:std::string("recurlocal_v0"))<<"\","<<"\"admission\":\""<<tensortransit::to_string(admission)<<"\","<<"\"reuse_metric\":\""<<tensortransit::to_string(reuse_metric)<<"\","<<"\"window_binding\":\""<<tensortransit::to_string(window_binding)<<"\","<<"\"window_preference\":\""<<tensortransit::to_string(window_preference)<<"\","<<"\"max_windows_per_kernel\":"<<max_windows_per_kernel<<","<<"\"budget_fraction\":"<<budget_fraction<<","<<"\"elapsed_ms\":"<<ms<<","<<"\"ms_per_token\":"<<(ms/tokens)<<","<<"\"layer_updates_per_s\":"<<(ms>0.0f?layer_updates/((double)ms/1000.0):0.0)<<","<<"\"l2_bytes\":"<<prop.l2CacheSize<<","<<"\"persisting_l2_max_bytes\":"<<prop.persistingL2CacheMaxSize<<","<<"\"access_policy_max_window_bytes\":"<<prop.accessPolicyMaxWindowSize<<","<<"\"actual_l2_set_aside_bytes\":"<<set_aside<<","<<"\"windows_applied\":"<<stats.windows_applied<<","<<"\"windows_deferred_to_caller\":"<<stats.windows_deferred_to_caller<<","<<"\"hot_set_oversubscribed\":"<<stats.hot_set_oversubscribed<<","<<"\"pre_touch_launches\":"<<stats.pre_touch_launches<<","<<"\"pre_touch_bytes\":"<<stats.pre_touch_bytes<<","<<"\"plan_digest\":\""<<std::hex<<plan_digest<<std::dec<<"\","<<"\"plan_actions\":"<<plan_actions<<","<<"\"plan_declines\":"<<plan_declines<<","<<"\"predicted_saved_bytes\":"<<predicted_saved<<","<<"\"committed_bytes\":"<<committed<<","<<"\"step_traffic_bytes\":"<<step_traffic<<","<<"\"persist_applied\":"<<xstats.persist_applied<<","<<"\"prefetch_applied\":"<<xstats.prefetch_applied<<","<<"\"stream_applied\":"<<xstats.stream_applied<<","<<"\"clear_applied\":"<<xstats.clear_applied<<","<<"\"executor_host_ns\":"<<xstats.host_ns<<","<<"\"planner_compile_ns\":"<<rstats.compile_ns<<","<<"\"plan_reuse_rate\":"<<rstats.reuse_rate()<<","<<"\"checksum\":"<<sum<<"}\n";
     cudaEventDestroy(st); cudaEventDestroy(sp); cudaEventDestroy(pf); cudaStreamDestroy(prefetch); cudaStreamDestroy(compute);
     if(weights) cudaFree(weights); if(sink) cudaFree(sink); cudaFree(state); return 0;
  }catch(const std::exception& e){std::cerr<<"error: "<<e.what()<<"\n";return 2;}

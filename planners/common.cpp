@@ -1,6 +1,7 @@
 #include "planners/common.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "tensortransit/ceiling.h"
 
@@ -289,9 +290,117 @@ void emit_stream_hints(TransitPlan* plan, const PlanInput& input,
     }
 }
 
+namespace {
+
+// Score used to break the tie when several tensors want the one window a kernel can carry.
+double window_score(const TransitAction& action, const PlanInput& input,
+                    WindowPreference preference) noexcept {
+    switch (preference) {
+        case WindowPreference::Widest:
+            return static_cast<double>(action.bytes);
+        case WindowPreference::Narrowest:
+            return action.bytes ? -static_cast<double>(action.bytes) : 0.0;
+        case WindowPreference::SoonestReuse: {
+            const TensorProfile* profile = input.graph->profile(action.tensor);
+            if (!profile || profile->min_reuse_bytes == static_cast<std::size_t>(-1)) return -1e300;
+            // Nearest first, so negate: a small intervening-traffic figure is the urgent one.
+            return -static_cast<double>(profile->min_reuse_bytes);
+        }
+        case WindowPreference::Densest:
+        default:
+            return action.bytes ? static_cast<double>(action.expected_saved_bytes) /
+                                      static_cast<double>(action.bytes)
+                                : 0.0;
+    }
+}
+
+// Enforce TransitPlannerConfig::max_windows_per_kernel.
+//
+// CUDA binds ONE access-policy window to a stream, a launch, or a graph node at a time. A
+// plan that marks two regions before one kernel is not describing something the hardware can
+// do -- the second replaces the first, the first is silently absent, and the executor's
+// telemetry counts two applied windows for one delivered policy. So the plan says which one
+// it meant, here, where a CPU test can read it, rather than letting the driver pick by
+// overwrite order.
+//
+// Dropped bindings become NotSupported declines, with the forgone saving attributed, so
+// `tensortransit plan` shows the cost of the constraint instead of hiding it.
+void cap_windows_per_kernel(TransitPlan* plan, const TransitPlannerConfig& config,
+                            const PlanInput& input) {
+    const int cap = config.max_windows_per_kernel;
+    if (cap <= 0) return;
+
+    std::vector<TransitAction>& actions = plan->actions();
+    // Kernels that carry more Persist bindings than the hardware can deliver.
+    std::vector<KernelId> kernels;
+    for (const TransitAction& a : actions)
+        if (a.kind == TransitActionKind::Persist &&
+            std::find(kernels.begin(), kernels.end(), a.before_kernel) == kernels.end())
+            kernels.push_back(a.before_kernel);
+
+    // (tensor, kernel) pairs whose binding loses.
+    std::vector<std::pair<TensorId, KernelId>> dropped;
+    for (const KernelId kernel : kernels) {
+        std::vector<std::size_t> here;
+        for (std::size_t i = 0; i < actions.size(); ++i)
+            if (actions[i].kind == TransitActionKind::Persist && actions[i].before_kernel == kernel)
+                here.push_back(i);
+        if (static_cast<int>(here.size()) <= cap) continue;
+
+        std::stable_sort(here.begin(), here.end(), [&](std::size_t l, std::size_t r) {
+            return window_score(actions[l], input, config.window_preference) >
+                   window_score(actions[r], input, config.window_preference);
+        });
+        for (std::size_t rank = static_cast<std::size_t>(cap); rank < here.size(); ++rank)
+            dropped.push_back({actions[here[rank]].tensor, kernel});
+    }
+    if (dropped.empty()) return;
+
+    // Tensors that kept at least one binding somewhere: those are admitted, just not here.
+    std::vector<TensorId> survivors;
+    for (const TransitAction& a : actions) {
+        if (a.kind != TransitActionKind::Persist) continue;
+        const bool lost = std::find(dropped.begin(), dropped.end(),
+                                    std::make_pair(a.tensor, a.before_kernel)) != dropped.end();
+        if (lost) continue;
+        if (std::find(survivors.begin(), survivors.end(), a.tensor) == survivors.end())
+            survivors.push_back(a.tensor);
+    }
+
+    std::vector<TransitAction> kept;
+    kept.reserve(actions.size());
+    std::vector<TensorId> declined_now;
+    for (const TransitAction& a : actions) {
+        const bool is_persist = a.kind == TransitActionKind::Persist;
+        const bool is_clear = a.kind == TransitActionKind::ClearPolicy;
+        const KernelId kernel = is_persist ? a.before_kernel : a.after_kernel;
+        if ((is_persist || is_clear) &&
+            std::find(dropped.begin(), dropped.end(), std::make_pair(a.tensor, kernel)) !=
+                dropped.end()) {
+            if (is_persist &&
+                std::find(survivors.begin(), survivors.end(), a.tensor) == survivors.end() &&
+                std::find(declined_now.begin(), declined_now.end(), a.tensor) ==
+                    declined_now.end()) {
+                declined_now.push_back(a.tensor);
+                plan->decline(TransitDecline{a.tensor, a.role, DeclineReason::NotSupported,
+                                             a.bytes, a.expected_saved_bytes});
+            }
+            continue;
+        }
+        kept.push_back(a);
+    }
+    actions.swap(kept);
+}
+
+}  // namespace
+
 void finish_plan(TransitPlan* plan, const PlanInput& input, std::size_t budget,
-                 const std::vector<TransitDecline>& declined, RoleMask scope) {
+                 const std::vector<TransitDecline>& declined, RoleMask scope,
+                 const TransitPlannerConfig& config) {
     for (const TransitDecline& d : declined) plan->decline(d);
+    // Before anything is costed: a binding the hardware cannot deliver must not be counted
+    // as budget spent or as saving predicted.
+    cap_windows_per_kernel(plan, config, input);
 
     PlanCostModel& cost = plan->cost();
     cost.step_traffic_bytes = input.graph->step_traffic_bytes();
