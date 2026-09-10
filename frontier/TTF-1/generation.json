@@ -1,6 +1,6 @@
 {
  "name": "TTF-1",
- "description": "Qwen3.8-27B on one RTX 5090, pinned SparkInfer, 12 serving cells scored on goodput and p99 inter-token latency.",
+ "description": "Qwen3.8-27B on one RTX 5090, pinned SparkInfer, ten serving cells scored on goodput and p99 inter-token latency.",
  "_what_a_generation_is": "Everything below is FROZEN for the lifetime of TTF-1. A receipt stays attached to the generation that produced it, so if the meaning of the evaluation changes materially the answer is TTF-2, never an edit here. The generation's SHA-256 is recorded in every receipt and `tt-frontier receipt verify` refuses one whose generation has moved.",
  "objectives": [
   {
@@ -136,6 +136,7 @@
   "_note": "Planner plus executor host time under 0.5% of token latency. Measured by RuntimeStats::compile_ns and ExecutorStats::host_ns, asserted by tests/test_overhead_budget, and reported in every adapter stats line. A budget nobody gates on is a wish."
  },
  "hidden": {
+  "mode": "public_only",
   "public": [
    "workload families",
    "parameter ranges",
@@ -144,15 +145,11 @@
    "normalization bounds",
    "hypervolume math",
    "statistics",
-   "aggregation"
+   "aggregation",
+   "the workload instances themselves"
   ],
-  "hidden": [
-   "exact prompt token subset",
-   "exact request ordering",
-   "exact arrival timings",
-   "seed"
-  ],
-  "_note": "Hidden instances come from the SAME published distribution as the public ones. A hidden seed may select the prompt subset, the context instance, the arrival timing and the generation length. It may NOT change the model, the runtime, an objective, the normalization, the correctness standard or the scoring method -- a seed that could do any of those would be a second, secret generation."
+  "hidden": [],
+  "_note": "TTF-1 has NO hidden workload instances, and saying so is better than pretending. The pinned bench synthesizes its own prompts deterministically from a length parameter -- `short_prompt[i] = 100 + (i % 50)` -- so there is no corpus to draw a hidden subset from, no arrival distribution to sample, and a seed that selected nothing would be theatre. Every receipt records `mode: public` for that reason. What a generation WITH hidden instances needs, so that TTF-2 can have them: a bench that accepts a prompt file and an arrival schedule, and a runner that draws both from a published distribution using a seed the evaluator holds. A hidden seed may then select the prompt subset, the context instance, the arrival timing and the generation length; it may NOT alter the model, the runtime, an objective, the normalization, the correctness standard or the scoring method, because a seed that could do any of those would be a second, secret generation. The anti-gaming property TTF-1 does have is different and it is enforced rather than described: the instrument -- eval/, tools/tt-frontier, the frozen generation, the workload definitions and the runtime pin -- is overlaid from the BASE commit into both trees before anything is measured, so a submission cannot win by editing the ruler. CI proves it."
  },
  "correctness": {
   "gate": "greedy replay, token-exact",

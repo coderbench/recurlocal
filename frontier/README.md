@@ -117,7 +117,13 @@ rule, the repeat policy, the confidence method, the regression guard and the hid
 distribution.
 
 Its SHA-256 is recorded in every receipt, and `tt-frontier receipt verify` refuses a receipt
-whose generation no longer hashes to what it was scored under. If the meaning of the
+whose generation no longer hashes to what it was scored under. `ledger append` runs that
+verification, so a receipt scored under a stale definition cannot enter the history at all.
+
+**A generation is frozen once it has receipts, not before.** Fixing a typo in the description of
+a generation nobody has scored against is correct and moves the checksum harmlessly;
+`tt-frontier calibrate --write` refuses outright once `receipts/` is non-empty, and the append
+verification catches everything else. If the meaning of the
 evaluation changes materially, the answer is a new `TTF-N` — never an edit. Historical results
 stay attached to the generation that produced them and stay auditable exactly as they were
 earned.

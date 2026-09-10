@@ -1,6 +1,6 @@
 {
  "name": "TTF-1",
- "description": "Qwen3.8-27B on one RTX 5090, pinned SparkInfer, 12 serving cells scored on goodput and p99 inter-token latency.",
+ "description": "Qwen3.8-27B on one RTX 5090, pinned SparkInfer, ten serving cells scored on goodput and p99 inter-token latency.",
  "_what_a_generation_is": "Everything below is FROZEN for the lifetime of TTF-1. A receipt stays attached to the generation that produced it, so if the meaning of the evaluation changes materially the answer is TTF-2, never an edit here. The generation's SHA-256 is recorded in every receipt and `tt-frontier receipt verify` refuses one whose generation has moved.",
  "objectives": [
   {
