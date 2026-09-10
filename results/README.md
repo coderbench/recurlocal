@@ -19,6 +19,7 @@ The rule the whole repository turns on:
 | `rtx5090-0.2.1-arms.json` | **The five arms and the admission axis, measured.** The first evidence in this repository that a change a contributor can make moves the end-to-end number outside its own noise — and three findings that are not good news, recorded with the same weight. |
 | `rtx5090-cost-model-fit.json` | The residency cost model fitted to every paired hardware measurement of the `persist` arm, with its residuals and the linear model it has to beat. |
 | `rtx5090-second-proof-track-model.json` | The coordination claim, at **model** level, with the control that would falsify it. `"basis": "model"`. |
+| `rtx5090-ttf1-first-matrix.json` | **The first run of the whole generation**, and as much a finding about the instrument as about the policy: the receipt read −99.5%, four of ten cells turned out not to be servable as concurrency cells by this runtime at all, and one more was decided at the floor on an axis whose calibrated control spread is 481%. Contains the receipt verbatim. |
 
 Frontier Receipts are not here. They live in [`frontier/`](../frontier), which is append-only
 and where a receipt stays attached to the generation that produced it.

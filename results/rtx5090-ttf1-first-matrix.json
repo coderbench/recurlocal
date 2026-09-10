@@ -1,0 +1,1142 @@
+{
+ "schema_version": 1,
+ "what_this_is": "The first run of the WHOLE TTF-1 generation: ten cells, control against the shipped default `persist` policy, three paired interleaved repeats, token-exact against three reproducible control replays. Every earlier measurement in this repository used three cells. It is recorded because of what it found, which is as much about the instrument as about the policy: the receipt read -99.5% and neither of the two things that produced that number was the submission.",
+ "provenance": {
+  "baseline_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "candidate_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "cells_requested": [
+   "ctx128-c1",
+   "ctx4096-c1",
+   "ctx16384-c1",
+   "ctx128-c4",
+   "ctx4096-c4",
+   "ctx16384-c4",
+   "ctx128-c16",
+   "ctx4096-c16",
+   "ctx128-c32",
+   "ctx4096-c32"
+  ],
+  "correctness": {
+   "control_replays": 3,
+   "correctness": "PASS",
+   "method": "greedy replay, token-exact",
+   "runtime_reproducible": true,
+   "tokens_compared": 64
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "hardware": {
+   "count": 1,
+   "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "instances": "public_only",
+  "long_prefill": 4096,
+  "max_new": 64,
+  "mode": "authoritative",
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "repeats": 3,
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  }
+ },
+ "receipt": {
+  "aggregation": {
+   "cell_floor": 1e-06,
+   "cells_at_floor": {
+    "candidate": [
+     "ctx128-c32",
+     "ctx16384-c4",
+     "ctx4096-c16",
+     "ctx4096-c32",
+     "ctx4096-c4"
+    ],
+    "main": []
+   },
+   "floor_decided": true,
+   "floor_decided_inside_published_noise": [
+    {
+     "cell": "ctx128-c32",
+     "objective": "goodput_tps",
+     "observed_change_pct": 1.1279442662833057,
+     "published_control_spread_pct": 1.7378
+    },
+    {
+     "cell": "ctx128-c32",
+     "objective": "p99_itl_ms",
+     "observed_change_pct": 183.23643205987437,
+     "published_control_spread_pct": 481.0431
+    }
+   ],
+   "method": "geometric_mean",
+   "weights": {
+    "ctx128-c1": 1.0,
+    "ctx128-c16": 1.0,
+    "ctx128-c32": 1.0,
+    "ctx128-c4": 1.0,
+    "ctx16384-c1": 1.0,
+    "ctx16384-c4": 1.0,
+    "ctx4096-c1": 1.0,
+    "ctx4096-c16": 1.0,
+    "ctx4096-c32": 1.0,
+    "ctx4096-c4": 1.0
+   }
+  },
+  "baseline_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "benchmark_generation": "TTF-1",
+  "candidate_commit": "f89b1291142cab50757516d6115109724d6aa136",
+  "cell_objectives": {
+   "ctx128-c1": [
+    {
+     "direction": "max",
+     "hi": 278.4,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 48.546,
+     "unit": "ms"
+    }
+   ],
+   "ctx128-c16": [
+    {
+     "direction": "max",
+     "hi": 2265.2,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 135.729,
+     "unit": "ms"
+    }
+   ],
+   "ctx128-c32": [
+    {
+     "direction": "max",
+     "hi": 3636.8,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 136.494,
+     "unit": "ms"
+    }
+   ],
+   "ctx128-c4": [
+    {
+     "direction": "max",
+     "hi": 888.4,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 112.92,
+     "unit": "ms"
+    }
+   ],
+   "ctx16384-c1": [
+    {
+     "direction": "max",
+     "hi": 90.4,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 50.988,
+     "unit": "ms"
+    }
+   ],
+   "ctx16384-c4": [
+    {
+     "direction": "max",
+     "hi": 119.2,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 50.982,
+     "unit": "ms"
+    }
+   ],
+   "ctx4096-c1": [
+    {
+     "direction": "max",
+     "hi": 224.0,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 48.882,
+     "unit": "ms"
+    }
+   ],
+   "ctx4096-c16": [
+    {
+     "direction": "max",
+     "hi": 588.0,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 141.822,
+     "unit": "ms"
+    }
+   ],
+   "ctx4096-c32": [
+    {
+     "direction": "max",
+     "hi": 726.0,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 167.94,
+     "unit": "ms"
+    }
+   ],
+   "ctx4096-c4": [
+    {
+     "direction": "max",
+     "hi": 256.4,
+     "key": "goodput_tps",
+     "lo": 0.0,
+     "unit": "tok/s"
+    },
+    {
+     "direction": "min",
+     "hi": 0.0,
+     "key": "p99_itl_ms",
+     "lo": 49.323,
+     "unit": "ms"
+    }
+   ]
+  },
+  "cell_resolution": {
+   "ctx128-c1": {
+    "goodput_tps": {
+     "candidate_median": 69.1,
+     "main_median": 69.3,
+     "observed_change_pct": 0.28860028860029274,
+     "published_control_spread_pct": 0.1437,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 16.332,
+     "main_median": 16.131,
+     "observed_change_pct": 1.2460479821461814,
+     "published_control_spread_pct": 0.9393,
+     "resolves": true
+    }
+   },
+   "ctx128-c16": {
+    "goodput_tps": {
+     "candidate_median": 564.2,
+     "main_median": 566.4,
+     "observed_change_pct": 0.38841807909603315,
+     "published_control_spread_pct": 0.4238,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 44.047,
+     "main_median": 45.257,
+     "observed_change_pct": 2.673619550566765,
+     "published_control_spread_pct": 6.6927,
+     "resolves": false
+    }
+   },
+   "ctx128-c32": {
+    "goodput_tps": {
+     "candidate_median": 894.1,
+     "main_median": 904.3,
+     "observed_change_pct": 1.1279442662833057,
+     "published_control_spread_pct": 1.7378,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 133.968,
+     "main_median": 47.299,
+     "observed_change_pct": 183.23643205987437,
+     "published_control_spread_pct": 481.0431,
+     "resolves": false
+    }
+   },
+   "ctx128-c4": {
+    "goodput_tps": {
+     "candidate_median": 220.9,
+     "main_median": 221.7,
+     "observed_change_pct": 0.3608479927830325,
+     "published_control_spread_pct": 0.09,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 37.931,
+     "main_median": 37.76,
+     "observed_change_pct": 0.45286016949152375,
+     "published_control_spread_pct": 0.7784,
+     "resolves": false
+    }
+   },
+   "ctx16384-c1": {
+    "goodput_tps": {
+     "candidate_median": 22.5,
+     "main_median": 22.5,
+     "observed_change_pct": 0.0,
+     "published_control_spread_pct": 0.0,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.38,
+     "main_median": 17.018,
+     "observed_change_pct": 2.1271594781995433,
+     "published_control_spread_pct": 1.871,
+     "resolves": true
+    }
+   },
+   "ctx16384-c4": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 0.0,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 4.3662,
+     "resolves": null
+    }
+   },
+   "ctx4096-c1": {
+    "goodput_tps": {
+     "candidate_median": 55.7,
+     "main_median": 55.8,
+     "observed_change_pct": 0.17921146953404002,
+     "published_control_spread_pct": 0.1786,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 16.572,
+     "main_median": 16.342,
+     "observed_change_pct": 1.4074164728919376,
+     "published_control_spread_pct": 1.2888,
+     "resolves": true
+    }
+   },
+   "ctx4096-c16": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 0.2041,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 4.8462,
+     "resolves": null
+    }
+   },
+   "ctx4096-c32": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 39.0083,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 41.6631,
+     "resolves": null
+    }
+   },
+   "ctx4096-c4": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 0.156,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 4.6591,
+     "resolves": null
+    }
+   }
+  },
+  "cells": {
+   "ctx128-c1": {
+    "gain": -0.007636958911658165,
+    "hypervolume": {
+     "candidate": 0.1647024347330722,
+     "main": 0.16596994034808085
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": true,
+    "weight": 1.0
+   },
+   "ctx128-c16": {
+    "gain": 0.010685357153678243,
+    "hypervolume": {
+     "candidate": 0.1681240904611465,
+     "main": 0.16634661744246745
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": true,
+    "weight": 1.0
+   },
+   "ctx128-c32": {
+    "gain": -0.9720797354260124,
+    "hypervolume": {
+     "candidate": 0.004549738769138395,
+     "main": 0.16295471545700327
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx128-c4": {
+    "gain": -0.004867889113658652,
+    "hypervolume": {
+     "candidate": 0.16529274250412646,
+     "main": 0.16610130523966712
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx16384-c1": {
+    "gain": -0.01065646158375022,
+    "hypervolume": {
+     "candidate": 0.16405473854337407,
+     "main": 0.1658218123160681
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx16384-c4": {
+    "gain": -0.9999939900538606,
+    "hypervolume": {
+     "candidate": 0.0,
+     "main": 0.16639084224752043
+    },
+    "on_frontier": {
+     "candidate": [],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx4096-c1": {
+    "gain": -0.00946119801820966,
+    "hypervolume": {
+     "candidate": 0.16425789583662112,
+     "main": 0.1658268161812411
+    },
+    "on_frontier": {
+     "candidate": [
+      "persist"
+     ],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx4096-c16": {
+    "gain": -0.9999939191976474,
+    "hypervolume": {
+     "candidate": 0.0,
+     "main": 0.16445198215795465
+    },
+    "on_frontier": {
+     "candidate": [],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx4096-c32": {
+    "gain": -0.9999939624911435,
+    "hypervolume": {
+     "candidate": 0.0,
+     "main": 0.1656312270124021
+    },
+    "on_frontier": {
+     "candidate": [],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   },
+   "ctx4096-c4": {
+    "gain": -0.9999939909062594,
+    "hypervolume": {
+     "candidate": 0.0,
+     "main": 0.1664144450334914
+    },
+    "on_frontier": {
+     "candidate": [],
+     "main": [
+      "control"
+     ]
+    },
+    "protected": false,
+    "weight": 1.0
+   }
+  },
+  "configurations": {
+   "candidate": [
+    "persist"
+   ],
+   "main": [
+    "control"
+   ]
+  },
+  "content_digest": "sha256:9726884d99556d9430f1a34f5a94b50b9300910909979682fb34129871aafafe",
+  "correctness": "PASS",
+  "correctness_compared_against": "unspecified",
+  "correctness_method": "greedy replay, token-exact",
+  "coverage": {
+   "improved_cells": 1,
+   "missing_cells": [],
+   "neutral_cells": 0,
+   "partial": false,
+   "regressed_cells": 9,
+   "scored_cells": 10,
+   "total_cells": 10,
+   "unservable_cells": [],
+   "unservable_evidence": {}
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "failures": {
+   "candidate:UNBATCHED": 12
+  },
+  "frontier": {
+   "after": 0.0008030059490667062,
+   "before": 0.16565541510261111,
+   "credit_withheld": null,
+   "gain_percent": -99.51525523716245,
+   "verified_gain_percent": 0.0
+  },
+  "generation_checksum": "sha256:0aa32b091ad0830e7e6c2d45af527286064fcdd8e33c26ac20d9ac414f0a1817",
+  "hardware": {
+   "count": 1,
+   "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "instances": "public_only",
+  "mode": "authoritative",
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "objectives": [
+   {
+    "direction": "max",
+    "hi": 4000.0,
+    "key": "goodput_tps",
+    "lo": 0.0,
+    "unit": "tok/s"
+   },
+   {
+    "direction": "min",
+    "hi": 0.0,
+    "key": "p99_itl_ms",
+    "lo": 200.0,
+    "unit": "ms"
+   }
+  ],
+  "pr": null,
+  "receipt_schema_version": 1,
+  "reference_point": [
+   0.0,
+   0.0
+  ],
+  "regression_guard": {
+   "max_regression": 0.05,
+   "protected_cells": [
+    "ctx128-c1",
+    "ctx128-c16"
+   ],
+   "violations": []
+  },
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  },
+  "statistics": {
+   "candidate_spread_pct": 100.1769108903908,
+   "confidence_level": 0.99,
+   "confidence_qualifies": false,
+   "lower_gain_percent": -99.75489261225026,
+   "main_spread_pct": 0.6472531466907347,
+   "method": "paired_bootstrap_percentile",
+   "noise_floor_pct": 100.1769108903908,
+   "paired_repeats": 3,
+   "per_repeat_frontier": {
+    "candidate": [
+     0.00040638972490424574,
+     0.0009430356336913879,
+     0.0013510936913318998
+    ],
+    "main": [
+     0.1658006837881084,
+     0.16612027295791168,
+     0.1650471228148584
+    ]
+   },
+   "resamples": 20000,
+   "resolved": false,
+   "seed": 20260910,
+   "unpaired_repeats": [],
+   "upper_gain_percent": -99.18138912797197
+  },
+  "status": "NO_FRONTIER_GAIN",
+  "timestamp_utc": "2026-09-10T08:29:04+00:00"
+ },
+ "cells": {
+  "ctx128-c1": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 69.3,
+    "p50_itl_ms": 10.408,
+    "p95_itl_ms": 10.445,
+    "p99_itl_ms": 16.131,
+    "max_itl_ms": 16.13
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 69.1,
+    "p50_itl_ms": 10.407,
+    "p95_itl_ms": 10.528,
+    "p99_itl_ms": 16.332,
+    "max_itl_ms": 16.33
+   },
+   "goodput_delta_pct": -0.2886,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 69.1,
+     "main_median": 69.3,
+     "observed_change_pct": 0.28860028860029274,
+     "published_control_spread_pct": 0.1437,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 16.332,
+     "main_median": 16.131,
+     "observed_change_pct": 1.2460479821461814,
+     "published_control_spread_pct": 0.9393,
+     "resolves": true
+    }
+   }
+  },
+  "ctx4096-c1": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 55.8,
+    "p50_itl_ms": 10.603,
+    "p95_itl_ms": 10.616,
+    "p99_itl_ms": 16.342,
+    "max_itl_ms": 16.34
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 55.7,
+    "p50_itl_ms": 10.581,
+    "p95_itl_ms": 10.714,
+    "p99_itl_ms": 16.572,
+    "max_itl_ms": 16.57
+   },
+   "goodput_delta_pct": -0.1792,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 55.7,
+     "main_median": 55.8,
+     "observed_change_pct": 0.17921146953404002,
+     "published_control_spread_pct": 0.1786,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 16.572,
+     "main_median": 16.342,
+     "observed_change_pct": 1.4074164728919376,
+     "published_control_spread_pct": 1.2888,
+     "resolves": true
+    }
+   }
+  },
+  "ctx16384-c1": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 22.5,
+    "p50_itl_ms": 10.615,
+    "p95_itl_ms": 10.621,
+    "p99_itl_ms": 17.018,
+    "max_itl_ms": 17.02
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 22.5,
+    "p50_itl_ms": 10.591,
+    "p95_itl_ms": 10.716,
+    "p99_itl_ms": 17.38,
+    "max_itl_ms": 17.38
+   },
+   "goodput_delta_pct": 0.0,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 22.5,
+     "main_median": 22.5,
+     "observed_change_pct": 0.0,
+     "published_control_spread_pct": 0.0,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 17.38,
+     "main_median": 17.018,
+     "observed_change_pct": 2.1271594781995433,
+     "published_control_spread_pct": 1.871,
+     "resolves": true
+    }
+   }
+  },
+  "ctx128-c4": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 221.7,
+    "p50_itl_ms": 10.837,
+    "p95_itl_ms": 12.505,
+    "p99_itl_ms": 37.76,
+    "max_itl_ms": 52.7
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 220.9,
+    "p50_itl_ms": 10.838,
+    "p95_itl_ms": 12.736,
+    "p99_itl_ms": 37.931,
+    "max_itl_ms": 52.52
+   },
+   "goodput_delta_pct": -0.3608,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 220.9,
+     "main_median": 221.7,
+     "observed_change_pct": 0.3608479927830325,
+     "published_control_spread_pct": 0.09,
+     "resolves": true
+    },
+    "p99_itl_ms": {
+     "candidate_median": 37.931,
+     "main_median": 37.76,
+     "observed_change_pct": 0.45286016949152375,
+     "published_control_spread_pct": 0.7784,
+     "resolves": false
+    }
+   }
+  },
+  "ctx4096-c4": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 63.9,
+    "p50_itl_ms": 10.607,
+    "p95_itl_ms": 10.628,
+    "p99_itl_ms": 16.388,
+    "max_itl_ms": 17.26
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 0,
+    "statuses": [
+     "UNBATCHED"
+    ],
+    "guard": "candidate/persist/ctx4096-c4/r1: RUNTIME FELL OFF THE BATCHED DECODE PATH. Asked for 4 concurrent sequences; the runtime packed 0 of 266 tokens (0.0%), max_rows_seen=0. Aggregate throughput from a run that decoded one row at a time is not this workload's number, and averaging it with runs that did batch produces a gain for a measurement that never happened. Re-run the arm."
+   },
+   "resolution": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 0.156,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 4.6591,
+     "resolves": null
+    }
+   }
+  },
+  "ctx16384-c4": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 29.7,
+    "p50_itl_ms": 10.606,
+    "p95_itl_ms": 10.62,
+    "p99_itl_ms": 16.936,
+    "max_itl_ms": 17.87
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 0,
+    "statuses": [
+     "UNBATCHED"
+    ],
+    "guard": "candidate/persist/ctx16384-c4/r1: RUNTIME FELL OFF THE BATCHED DECODE PATH. Asked for 4 concurrent sequences; the runtime packed 0 of 266 tokens (0.0%), max_rows_seen=0. Aggregate throughput from a run that decoded one row at a time is not this workload's number, and averaging it with runs that did batch produces a gain for a measurement that never happened. Re-run the arm."
+   },
+   "resolution": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 0.0,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 4.3662,
+     "resolves": null
+    }
+   }
+  },
+  "ctx128-c16": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 566.4,
+    "p50_itl_ms": 17.023,
+    "p95_itl_ms": 17.069,
+    "p99_itl_ms": 45.257,
+    "max_itl_ms": 332.89
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 564.2,
+    "p50_itl_ms": 17.047,
+    "p95_itl_ms": 17.093,
+    "p99_itl_ms": 44.047,
+    "max_itl_ms": 334.04
+   },
+   "goodput_delta_pct": -0.3884,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 564.2,
+     "main_median": 566.4,
+     "observed_change_pct": 0.38841807909603315,
+     "published_control_spread_pct": 0.4238,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 44.047,
+     "main_median": 45.257,
+     "observed_change_pct": 2.673619550566765,
+     "published_control_spread_pct": 6.6927,
+     "resolves": false
+    }
+   }
+  },
+  "ctx4096-c16": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 145.9,
+    "p50_itl_ms": 28.853,
+    "p95_itl_ms": 28.902,
+    "p99_itl_ms": 47.881,
+    "max_itl_ms": 47.88
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 0,
+    "statuses": [
+     "UNBATCHED"
+    ],
+    "guard": "candidate/persist/ctx4096-c16/r1: RUNTIME FELL OFF THE BATCHED DECODE PATH. Asked for 16 concurrent sequences; the runtime packed 63 of 133 tokens (47.4%), max_rows_seen=16. Aggregate throughput from a run that decoded one row at a time is not this workload's number, and averaging it with runs that did batch produces a gain for a measurement that never happened. Re-run the arm."
+   },
+   "resolution": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 0.2041,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 4.8462,
+     "resolves": null
+    }
+   }
+  },
+  "ctx128-c32": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 904.3,
+    "p50_itl_ms": 18.563,
+    "p95_itl_ms": 18.672,
+    "p99_itl_ms": 47.299,
+    "max_itl_ms": 670.97
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 894.1,
+    "p50_itl_ms": 18.756,
+    "p95_itl_ms": 18.867,
+    "p99_itl_ms": 133.968,
+    "max_itl_ms": 239.3
+   },
+   "goodput_delta_pct": -1.1279,
+   "resolution": {
+    "goodput_tps": {
+     "candidate_median": 894.1,
+     "main_median": 904.3,
+     "observed_change_pct": 1.1279442662833057,
+     "published_control_spread_pct": 1.7378,
+     "resolves": false
+    },
+    "p99_itl_ms": {
+     "candidate_median": 133.968,
+     "main_median": 47.299,
+     "observed_change_pct": 183.23643205987437,
+     "published_control_spread_pct": 481.0431,
+     "resolves": false
+    }
+   }
+  },
+  "ctx4096-c32": {
+   "main": {
+    "repeats": 3,
+    "usable": 3,
+    "statuses": [
+     "OK"
+    ],
+    "goodput_tps": 180.5,
+    "p50_itl_ms": 27.739,
+    "p95_itl_ms": 28.29,
+    "p99_itl_ms": 55.763,
+    "max_itl_ms": 55.77
+   },
+   "candidate": {
+    "repeats": 3,
+    "usable": 0,
+    "statuses": [
+     "UNBATCHED"
+    ],
+    "guard": "candidate/persist/ctx4096-c32/r1: RUNTIME FELL OFF THE BATCHED DECODE PATH. Asked for 32 concurrent sequences; the runtime packed 63 of 644 tokens (9.8%), max_rows_seen=23. Aggregate throughput from a run that decoded one row at a time is not this workload's number, and averaging it with runs that did batch produces a gain for a measurement that never happened. Re-run the arm."
+   },
+   "resolution": {
+    "goodput_tps": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 39.0083,
+     "resolves": null
+    },
+    "p99_itl_ms": {
+     "observed_change_pct": null,
+     "published_control_spread_pct": 41.6631,
+     "resolves": null
+    }
+   }
+  }
+ },
+ "main_concurrency_scaling": {
+  "what_this_is": "How much throughput the CONTROL got for the concurrency it asked for, against the same-context c=1 cell of the same matrix. Computed from the control alone, which is the point: the packed-path guard reads the adapter's counters and the control is unhooked, so only a hooked arm can be SEEN to fall off the batched path.",
+  "cells": {
+   "ctx128-c4": {
+    "scale": 3.199,
+    "concurrency": 4,
+    "share_of_ideal": 0.8,
+    "baseline_cell": "ctx128-c1"
+   },
+   "ctx4096-c4": {
+    "scale": 1.145,
+    "concurrency": 4,
+    "share_of_ideal": 0.286,
+    "baseline_cell": "ctx4096-c1"
+   },
+   "ctx16384-c4": {
+    "scale": 1.32,
+    "concurrency": 4,
+    "share_of_ideal": 0.33,
+    "baseline_cell": "ctx16384-c1"
+   },
+   "ctx128-c16": {
+    "scale": 8.173,
+    "concurrency": 16,
+    "share_of_ideal": 0.511,
+    "baseline_cell": "ctx128-c1"
+   },
+   "ctx4096-c16": {
+    "scale": 2.615,
+    "concurrency": 16,
+    "share_of_ideal": 0.163,
+    "baseline_cell": "ctx4096-c1"
+   },
+   "ctx128-c32": {
+    "scale": 13.049,
+    "concurrency": 32,
+    "share_of_ideal": 0.408,
+    "baseline_cell": "ctx128-c1"
+   },
+   "ctx4096-c32": {
+    "scale": 3.235,
+    "concurrency": 32,
+    "share_of_ideal": 0.101,
+    "baseline_cell": "ctx4096-c1"
+   }
+  }
+ },
+ "findings": [
+  {
+   "finding": "Four of ten cells cannot be measured as concurrency cells on this runtime.",
+   "detail": "`ctx4096-c4`, `ctx4096-c16`, `ctx4096-c32` and `ctx16384-c4` lost every candidate repeat to RUNTIME FELL OFF THE BATCHED DECODE PATH -- 0 of 266 tokens packed, max_rows_seen 0. The control looked fine at all four because the control is unhooked and emits no packing telemetry. Its own scaling settles it: 1.15x for four concurrent sequences at ctx4096-c4 against 3.20x at ctx128-c4, 2.61x for sixteen against 8.17x, 3.23x for thirty-two against 13.05x. A cell that returns 1.15x for four sequences was not serving four sequences in either arm."
+  },
+  {
+   "finding": "Charged to the candidate, those four cells cost -99.5%.",
+   "detail": "A cell with no operating point is scored at the generation's cell_floor, and five floored cells carry the whole matrix through a geometric mean. The evaluator now probes such a cell on the BASELINE binary with the hook installed and no window before charging it, and a failure that reproduces there leaves the cell unscored and the receipt PARTIAL -- which credits nothing, so a drop cannot pay."
+  },
+  {
+   "finding": "One more cell was decided at the floor on an axis the generation says is unmeasurable.",
+   "detail": "`ctx128-c32` reached the floor on a p99 change of 183% against a control spread that reference.json froze at 481% at calibration. Its p50 and p95 are identical to the control's in every repeat (18.7 / 18.9 ms against 18.5 / 18.7); what differs is the extreme tail, where the candidate's maximum was three to five times LOWER (134-239 ms against 670) and its 99th percentile three to five times higher. Both readings are true and neither resolves."
+  },
+  {
+   "finding": "On the six cells that do batch, the shipped default policy is a regression.",
+   "detail": "goodput: -0.289% at ctx128-c1, -0.361% at ctx128-c4, -0.179% at ctx4096-c1, -0.388% at ctx128-c16, -1.128% at ctx128-c32, 0.000% at ctx16384-c1. The first three resolve against those cells' published control spreads; the last three do not."
+  },
+  {
+   "finding": "The same arm measured twice on the same box, two hours apart, changed sign.",
+   "detail": "At ctx128-c16 the arms sweep measured `recurrent_v0` at +0.071% and this matrix measures the same policy under the name `persist` at -0.388%. The gap is 0.46% and the cell's published control spread is 0.42%. Whatever either run's own within-session floor says, an effect of that size at that cell is not resolved between sessions -- which is why docs/VERDICT.md no longer reports the +0.389% per-cell figure as resolved."
+  }
+ ],
+ "how_to_reproduce": {
+  "command": "tools/tt-frontier run --generation TTF-1 --model <checkpoint> --cb-binary <qwen3_gguf_cb_bench> --generate <qwen3_gguf_generate> --repeats 3 --main-config 'control=' --candidate-config 'persist=TENSORTRANSIT=persist,TENSORTRANSIT_WINDOW_ATTACH=capture_node' --output raw.json && tools/tt-frontier compute --generation TTF-1 --results raw.json --output receipt.json",
+  "note": "Every figure in this file is computed from the raw results by the tool, not typed. The receipt embedded above is the tool's output verbatim."
+ }
+}
