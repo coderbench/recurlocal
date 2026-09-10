@@ -196,6 +196,17 @@ def main():
               "and names the cells whose control moves further than that ceiling")
         check("loose upper bound" in out,
               "and says when the traffic ceiling rests on a step that was not bandwidth-bound")
+        check("what the bench can" in out and "RESOLVE" in out,
+              "and does not read a 0.000% spread as a silent cell: three repeats that printed "
+              "the same number are bounded by the printer, not by the box")
+        import re as _re
+        floors = {c: (float(a), float(b)) for c, a, b in _re.findall(
+            r"^\s+(ctx\d+-c\d+)\s+[\d.]+%\s+[\d.]+%\s+\S+\s+([\d.]+)%\s+([\d.]+)%", out, _re.M)}
+        check(floors, "the reachability table parses")
+        check(all(floor >= spread - 1e-9 for spread, floor in floors.values()),
+              "the floor is never below the published spread")
+        check(any(floor > spread + 1e-9 for spread, floor in floors.values()),
+              "and is above it where the printer, not the box, is the limit")
         plain = run(["generation", "show", GENERATION]).stdout
         check("what is reachable" not in plain,
               "and it stays behind a flag, so `show` keeps its one-screen shape")
