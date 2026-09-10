@@ -227,3 +227,56 @@ device could ever have reached them.
 **What would change the answer.** A model whose decode step moves under 6.42 GB *and* is
 reproducible against itself. Four were screened and none is. If one appears, the persist family
 goes from 0.52% to 3.67% and this document is rewritten.
+
+## 8. The first full TTF-1 matrix, and what it says about the matrix
+
+Every earlier measurement here used three cells. This is the whole generation: ten cells,
+`control` against `persist`, three paired repeats, interleaved, token-exact with three
+reproducible control replays.
+
+**Six of ten cells produced a paired operating point. Four did not**, and they are exactly the
+long-context concurrency cells:
+
+| cell | control tok/s | control's scaling vs its own c=1 | candidate |
+|---|--:|--:|---|
+| `ctx128-c4` | 221.7 | 3.20x for 4 sequences | measured |
+| `ctx128-c16` | 566.4 | 8.17x for 16 | measured |
+| `ctx128-c32` | 904.3 | 13.05x for 32 | measured |
+| `ctx4096-c4` | 63.9 | **1.15x for 4** | fell off the batched path |
+| `ctx4096-c16` | 145.9 | **2.61x for 16** | fell off the batched path |
+| `ctx4096-c32` | 180.5 | **3.23x for 32** | fell off the batched path |
+| `ctx16384-c4` | 29.7 | **1.32x for 4** | fell off the batched path |
+
+The guard that refused those four reads the *adapter's* packing counters, and the control is
+unhooked and emits none — so only the candidate could be seen to fail. The control's own
+arithmetic settles it: a cell that returns 1.15x for four concurrent sequences was not serving
+four concurrent sequences either. **On this runtime and this device, TTF-1 declares four
+concurrency cells that cannot be measured as concurrency cells at all.**
+
+**On the six cells that did batch, the shipped default policy is a regression**, and five of
+the six are negative:
+
+| cell | goodput | resolves against the cell's published spread |
+|---|--:|:--:|
+| `ctx128-c1` | −0.289% | yes (0.14%) |
+| `ctx128-c4` | −0.361% | yes (0.09%) |
+| `ctx4096-c1` | −0.179% | yes (0.18%) |
+| `ctx128-c16` | −0.388% | no (0.42%) |
+| `ctx128-c32` | −1.128% | no (1.74%) |
+| `ctx16384-c1` | ±0.000% | no (0.00%) |
+
+**And the receipt read −99.5%**, which is the instrument rather than the submission. Two
+defects produced it, both now fixed and both now named on the receipt's own face:
+
+1. Four cells the runtime cannot batch were charged to the candidate at the generation's cell
+   floor. A serving loss is now a question before it is a verdict — `tt-frontier run` re-runs
+   such a cell on the **baseline** binary with the hook installed and no window, and a failure
+   that reproduces there is the runtime's.
+2. `ctx128-c32` was driven to the floor by a p99 change of 183% against a control spread that
+   `reference.json` **froze at 481%** when the generation was calibrated. Every receipt now
+   reports, per cell and per objective, what moved against what the generation published, and
+   names a floor decision taken inside that spread.
+
+Neither fix moves a score by itself. What they change is whether a number can be published
+without saying what it rests on — and the first full run of this generation could not have
+been.
