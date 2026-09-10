@@ -350,6 +350,46 @@ only `RECURLOCAL*` from the control environment would let an operator with
 rather than only through an end-to-end run — nothing about a contaminated control looks wrong
 in the output.
 
+## 6b. What 0.2.1 added, and why none of it breaks 0.2.0
+
+Everything below is an APPEND. No enumerator moved, no struct field was inserted, no name was
+removed, and `tests/test_compat.cpp` still includes only the deprecated headers.
+
+| addition | where | rule it follows |
+|---|---|---|
+| `AdmissionRule::Survival` = 5 | `planner.h` | appended after `RoleFloor` = 4 |
+| `CostModel` | `plan.h` | a new enum, defaulting to `Residency` |
+| `WindowPreference` | `planner.h` | a new enum |
+| `StateKernel::Attention` = 2 | `sparkinfer.h` | appended after `Gdn` = 1 |
+| `TransitPlannerConfig::{cost_model, residency_beta, reservation_cost, stream_relief, cache_line_bytes, max_windows_per_kernel, window_preference}` | `planner.h` | appended at the END of the struct, in the section they belong to |
+| `PlanCostModel::{resident_bytes, stream_relieved_bytes, predicted_gross_saved_bytes, reservation_cost_bytes, cost_model}` | `plan.h` | appended |
+| `ExecutorStats::{capture_invalidations, released_during_capture, prefetch_skipped, stream_deferred}` | `executor.h` | appended, which that struct's own comment requires |
+| `TransitPlan::rebind`, `read_plan`, `read_plan_file`, `parse_decline_reason` | `plan.h`, `trace.h` | new functions |
+| `declare_kv_cache`, `before_attention_layer`, `after_attention_layer`, `KvCacheLayout` | `sparkinfer.h` | new functions and a new struct, mirrored in the no-CUDA branch so both branches still declare identical types |
+
+**Two behaviour changes that are not ABI and are worth naming**, because a caller who relied on
+the old behaviour will see a different number rather than a different signature:
+
+1. **The default cost model is `Residency`, not `Linear`.** Plan *digests* are unaffected — the
+   digest covers actions, not predictions — so every golden plan is unchanged. What changes is
+   what a plan is predicted to be *worth*, and by design: the linear model made the admission
+   axis unmeasurable. `--cost-model linear` restores the old arithmetic exactly, and a test
+   asserts that `AdmissionRule::Survival` reduces to `Density` under it.
+2. **`Stream` actions now reach a captured graph node**, and `emit_stream_hints` now marks a
+   tensor whose reuse distance exceeds the whole budget rather than only one with no reuse at
+   all. Under a cyclic decode window nothing has "no reuse", so the old rule made `Stream`
+   unreachable in the only regime this project is about. Under `CostModel::Linear` the old rule
+   is what remains, so no plan the linear model ever produced has changed.
+
+**One name that did NOT move, for the third time and the same reason.** The adapter's stats
+line is still `RECURLOCAL_STATS` and the transit engine's counters are mapped onto the 0.1
+field names — `windows_applied`, `windows_attached_to_node`, `pre_touch_launches` and the rest
+— rather than given a vocabulary of their own. `eval/real_eval.py` refuses a candidate whose
+telemetry reads all-zero there, and `eval/run_from_base.sh` runs that evaluator from the BASE
+commit. An engine that emitted its own field names would be reported as unhooked by every
+base-commit evaluator against a perfectly good build. What has no 0.1 counterpart goes in a
+`"transit"` object appended to the same line, which an older reader ignores.
+
 ## 7. Explicitly not stable
 
 None of the following is part of the contract. All of it may change in a patch release,

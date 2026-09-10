@@ -8,10 +8,18 @@
 // policy is unchanged and every number measured under 0.1.0 still reproduces; what is
 // new is that the policy is now one planner among several behind a tensor-role-agnostic
 // core. See docs/roadmap.md and docs/STABILITY.md section 8.
+//
+// 0.2.1 puts that core into the measured path. The SparkInfer adapter and the synthetic
+// benchmark drove the 0.1 controller directly until now, so a planner a contributor wrote
+// moved no measured number; both route through Registry -> Graph -> Planner -> Executor,
+// with the 0.1 controller kept as TENSORTRANSIT_ENGINE=v0 so the migration is an A/B rather
+// than an assertion. It also registers KV, replaces the linear cost model, and replaces the
+// impact bands with the continuous Frontier Gain. Nothing removed; every 0.1 name still
+// resolves and every 0.2.0 API is source-compatible.
 #define TENSORTRANSIT_VERSION_MAJOR 0
 #define TENSORTRANSIT_VERSION_MINOR 2
-#define TENSORTRANSIT_VERSION_PATCH 0
-#define TENSORTRANSIT_VERSION_STRING "0.2.0"
+#define TENSORTRANSIT_VERSION_PATCH 1
+#define TENSORTRANSIT_VERSION_STRING "0.2.1"
 
 // Comparable as one integer, which requires MINOR and PATCH to stay under 100. If either
 // ever needs three digits the multipliers must change together with every comparison.

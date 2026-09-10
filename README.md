@@ -36,17 +36,56 @@ ceiling = 2 x min(persisting capacity, footprint) / decode step traffic
 
 The numerator is pinned at 60 MiB by the hardware. Weighted across the full workload matrix on
 the best model found — a sparse-MoE hybrid whose decode step moves 3.56 GB instead of a dense
-hybrid's 18.5 — that ceiling is **1.94% against this project's own 2.0% significance floor**,
-with both persistence dials at maximum and a bound that already assumes every resident byte
-hits. The best measured real gain is **+1.74% at batch 1**, on a checkpoint that **cannot be
-scored** because the runtime is not reproducible on it.
+hybrid's 18.5 — that ceiling is **1.94%**, with both persistence dials at maximum and a bound
+that already assumes every resident byte hits. On the scored dense model it is **0.52%**. The
+best measured real gain is **+1.74% at batch 1**, on a checkpoint that **cannot be scored**
+because the runtime is not reproducible on it.
 
-**The 0.2 generalization does not repeal that bound.** It relocates it: the bound now applies
-to one planner (`recurrent_v0`) over one tensor class, rather than to the project. What is new
-is a frontier wide enough for the bound to be a fact about a policy instead of a verdict on
-the repository.
+**The 0.2 generalization does not repeal that bound.** It relocates it: the bound applies to one
+planner (`recurrent_v0`) over one tensor class, rather than to the project.
 
-Read [`docs/MINING.md`](docs/MINING.md) before spending a week here.
+**0.2.1 draws the consequence for how work here is scored.** Until 0.2.1 a submission was
+sorted into `XS`/`S`/`M`/`L`/`XL` with the lowest paying step at 2% weighted throughput gain —
+*above* the 0.52% physical ceiling. A contributor could remove every recoverable byte of
+recurrent traffic and score `none`. A band structure whose lowest step sits above what the
+hardware can deliver is not a strict regime; it is a broken instrument telling contributors
+something false about where the room is.
+
+The bands are gone. What replaces them is a continuous **Frontier Gain**:
+
+```text
+dF = F(candidate) / F(main) - 1
+```
+
+`F` is the normalized Pareto hypervolume of the serving frontier — **goodput against p99
+inter-token latency** — over a frozen matrix of workload cells whose bounds and noise floors
+were calibrated on the target hardware and are published per cell. The second objective is not
+decoration: the 0.52% ceiling above bounds *throughput*, and nothing in this repository has
+ever measured what a resident state does to a tail. See
+[`frontier/README.md`](frontier/README.md) and [`docs/MINING.md`](docs/MINING.md) before
+spending a week here.
+
+## What 0.2.1 adds
+
+0.2.0 built the core and left it in no measured path: the adapter and the synthetic benchmark
+both drove the 0.1 controller directly, so **writing a planner changed nothing about the
+number the evaluator prints**. 0.2.1 connects it and checks the connection rather than
+asserting it.
+
+| | |
+|---|---|
+| the adapter drives Registry -> Graph -> Planner -> Executor | with the 0.1 controller kept as `TENSORTRANSIT_ENGINE=v0`, so the migration is an A/B in one binary. Token-exact, 96 windows on captured graph nodes, 0 capture invalidations, gains overlapping inside their own noise floors |
+| KV is registered | `recurrent_tensors: 48, kv_tensors: 16` on a live run. The second proof track could not be measured before — not "had not been" |
+| a cost model that can express coordination | fitted to the hardware arms in `results/`; superlinear in residency, so concentrating beats spreading and the admission axis measures something |
+| Frontier Gain and its ledger | continuous `dF`, frozen generations, paired bootstrap, protected-workload guard, append-only receipts |
+| a trusted, keyless, ephemeral GPU runner | plus the anti-gaming overlay, both proven by CI rather than described |
+| plan replay, a gated overhead budget, live trace recording | the offline loop closes; the 0.5%-of-token budget is asserted on the real 64-layer shape |
+
+```console
+$ tools/tt-frontier generation show TTF-1
+$ scripts/trusted_eval.sh --candidate <ref> --model <path> --pr 184
+$ tools/tt-frontier ledger show TTF-1
+```
 
 ## What 0.2 adds, and what it found
 
