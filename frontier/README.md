@@ -151,6 +151,21 @@ To check the staging without a GPU, a model or a ten-minute build:
 scripts/trusted_eval.sh --baseline main --candidate <ref> --stage-only
 ```
 
+**Repeats.** The runner defaults to five, not the generation's minimum of three. Three is a
+floor: the same arm measured +0.07% and −0.39% at `ctx128-c16` in two sessions two hours apart
+on the reference box, against a control spread that generation published as 0.42% for that
+cell. `--repeats` spends more of the nine the generation allows, and it is the only remedy for
+a small effect that exists.
+
+**A cell the candidate lost.** `tt-frontier run` probes it automatically. For a matrix measured
+before that existed, or one run with `--no-attribution`, the same operation is available on its
+own — and it must be given the BASELINE build's bench, for the reason in the section above:
+
+```bash
+tools/tt-frontier probe --generation TTF-1 --results raw.json \
+    --model <checkpoint> --cb-binary <baseline qwen3_gguf_cb_bench>
+```
+
 ## Generations
 
 A generation freezes everything that decides what a number *means*: the model and its digest,
