@@ -342,7 +342,7 @@ def attribute_serving_losses(*, cells, model, baseline_cb_binary, max_new, long_
         label = f"attribution/baseline/{cell}"
         if verbose:
             print(f">> {label}", flush=True)
-        _, status, detail = measure_cell(
+        metrics, status, detail = measure_cell(
             baseline_cb_binary, model, cell, dict(ATTRIBUTION_ENV), label,
             max_new=max_new, long_prefill=long_prefill, expect_policy=False, verbose=verbose)
         verdict = "runtime" if status in SERVING_GUARDS else "candidate"
@@ -353,6 +353,19 @@ def attribute_serving_losses(*, cells, model, baseline_cb_binary, max_new, long_
             "probe_binary": str(baseline_cb_binary),
             "guard": detail.get("guard", ""),
         }
+        if verdict == "candidate":
+            # A verdict of "candidate" costs the submission a cell, so the evidence for it
+            # travels with it: what the probe measured, and the packing counters that say the
+            # probe served the workload the candidate could not.
+            packing = ((detail.get("adapter") or {}).get("stats") or {})
+            verdicts[cell]["probe_measured"] = {
+                "goodput_tps": metrics.get("goodput_tps"),
+                "p99_itl_ms": metrics.get("p99_itl_ms"),
+                "max_rows_seen": packing.get("max_rows_seen"),
+                "tokens_packed": packing.get("tokens_packed"),
+                "tokens": packing.get("tokens"),
+                "decode_steps_expected": max_new,
+            }
         if scaling and cell in scaling:
             # The arithmetic beside the probe. A cell whose control got 1.15x out of 4
             # sequences was not serving that workload either, whatever any telemetry says.
