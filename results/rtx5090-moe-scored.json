@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "what_this_is": "The complete section 44 matrix on the sparse-MoE hybrid Qwen3.6-35B-A3B, and it is NOT A SCORABLE RESULT. It is kept because it is the reason a guard exists. The exact-locality gate requires bit-identical greedy replay; on this checkpoint two UNHOOKED control runs diverge at token 1, so the gate cannot attribute a candidate/control difference to the candidate. correctness.runtime_reproducible records that, output_identical is null (inconclusive) rather than false (an accusation), and decide.py refuses it while saying it is not the candidate's fault. RecurLocal is not the cause: on the dense checkpoint the same binary with the same policy gives control, control and candidate bit-identical.",
+  "provenance": {
+    "timestamp_utc": "2026-09-10T00:19:26+00:00",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "driver": "595.84",
+    "model": "/root/models/qwen36-moe/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "binary": "/root/rl/hook/sparkinfer/build/runtime/qwen3_gguf_bench",
+    "candidate_env": {
+      "RECURLOCAL": "persist",
+      "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+      "RECURLOCAL_BUDGET_FRACTION": "1.00",
+      "RECURLOCAL_HIT_RATIO": "1.00",
+      "RECURLOCAL_STATS": "1"
+    },
+    "control_env": {},
+    "tokens_per_measurement": 128,
+    "contexts": [
+      128,
+      4096,
+      16384
+    ],
+    "repeats": 3,
+    "warmup_runs_discarded": 1,
+    "label": "moe-persist+capture_node+budget1.0+hit1.0",
+    "note": "sparse-MoE hybrid Qwen3.6-35B-A3B on the same pinned SparkInfer commit, hook and box as the dense matrix. SPARKINFER_PACKED_MAX_ROWS=8 on BOTH arms so the runtime actually batches. NOTE the exact-locality gate is INCONCLUSIVE on this checkpoint: two unhooked control runs diverge at token 2 and SPARKINFER_DETERMINISTIC=1 does not fix it, so a candidate/control difference cannot be attributed to the candidate. On the dense checkpoint the same binary and policy are bit-identical across control, control and candidate.",
+    "runtime_repository": "https://github.com/gittensor-ai-lab/sparkinfer",
+    "runtime_commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+    "model_pin": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+    "recurlocal_commit": null
+  },
+  "correctness": {
+    "output_identical": null,
+    "method": "greedy replay, token-exact -- INCONCLUSIVE: two control runs of this runtime on this model disagree with each other, so a candidate/control difference cannot be attributed to the candidate. Not a candidate defect and not scorable; the exact-locality gate needs a runtime and checkpoint that are reproducible.",
+    "tokens_compared": 64,
+    "prompt_ids": [
+      9707,
+      3837,
+      1879,
+      13,
+      25001,
+      752,
+      911
+    ],
+    "runtime_reproducible": false,
+    "candidate_matches_control": false,
+    "first_divergence": 1,
+    "control_first_divergence": 1,
+    "candidate_hook_active": true
+  },
+  "workloads": {
+    "batch1": {
+      "weight": 0.4,
+      "baseline_tps": 489.89447083482656,
+      "candidate_tps": 498.4217259903968
+    },
+    "concurrency4": {
+      "weight": 0.2,
+      "baseline_tps": 916.5,
+      "candidate_tps": 904.7
+    },
+    "concurrency16": {
+      "weight": 0.2,
+      "baseline_tps": 1206.2,
+      "candidate_tps": 1196.7
+    },
+    "concurrency32": {
+      "weight": 0.2,
+      "baseline_tps": 1230.7,
+      "candidate_tps": 1221.5
+    }
+  },
+  "workload_coverage": {
+    "measured": [
+      "batch1",
+      "concurrency4",
+      "concurrency16",
+      "concurrency32"
+    ],
+    "unmeasured": [],
+    "why": "Section 44 weights batch 1 at 0.40 and concurrency at 0.60. An arm that was not run is left out of the matrix rather than filled in, and the weights that remain are renormalised by decide.py - so a partial run is reported as a partial verdict instead of a full one with invented halves."
+  },
+  "per_context": {
+    "128": {
+      "baseline_tps": 506.3018,
+      "candidate_tps": 515.2889,
+      "baseline_runs": [
+        506.0731,
+        506.3018,
+        506.3889
+      ],
+      "candidate_runs": [
+        515.6939,
+        515.2889,
+        515.2858
+      ],
+      "paired_ratios": [
+        1.0190106923288353,
+        1.0177504800496462,
+        1.0175693029606296
+      ],
+      "gain_pct": 1.775048004964619,
+      "baseline_spread_pct": 0.06237386475812795,
+      "candidate_spread_pct": 0.07919829051236896,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.1416250246460598,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      }
+    },
+    "4096": {
+      "baseline_tps": 480.6069,
+      "candidate_tps": 489.0808,
+      "baseline_runs": [
+        480.2988,
+        480.6069,
+        480.853
+      ],
+      "candidate_runs": [
+        489.1808,
+        489.0808,
+        489.044
+      ],
+      "paired_ratios": [
+        1.018492654988936,
+        1.017631665296524,
+        1.0170343119414873
+      ],
+      "gain_pct": 1.7631665296524046,
+      "baseline_spread_pct": 0.11531253504682938,
+      "candidate_spread_pct": 0.0279708383563603,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.1433075539196874,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      }
+    },
+    "16384": {
+      "baseline_tps": 483.1791,
+      "candidate_tps": 491.3144,
+      "baseline_runs": [
+        483.1791,
+        483.0882,
+        483.1847
+      ],
+      "candidate_runs": [
+        491.3144,
+        491.6215,
+        491.1975
+      ],
+      "paired_ratios": [
+        1.0168370279260837,
+        1.0176640621733257,
+        1.0165833065492347
+      ],
+      "gain_pct": 1.6837027926083659,
+      "baseline_spread_pct": 0.01997189034046561,
+      "candidate_spread_pct": 0.0862991192605051,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.10628602169369546,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      }
+    }
+  },
+  "per_concurrency": {
+    "concurrency4": {
+      "baseline_runs": [
+        915.9,
+        916.5,
+        919.2
+      ],
+      "candidate_runs": [
+        908.6,
+        904.7,
+        899.0
+      ],
+      "paired_ratios": [
+        0.9920296975652364,
+        0.9871249318057829,
+        0.9780243690165361
+      ],
+      "gain_pct": -1.2875068194217132,
+      "baseline_spread_pct": 0.3600654664484526,
+      "candidate_spread_pct": 1.0611252348844946,
+      "resolution": {
+        "resolved": false,
+        "floor_pct": 1.418800001645166,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      },
+      "sequences_seen_by_adapter": 1,
+      "tokens_packed": 129,
+      "tokens_total": 138,
+      "max_rows_seen": 5,
+      "packing": {
+        "tokens": 138,
+        "tokens_packed": 129,
+        "packed_share": 0.9347826086956522,
+        "max_rows_seen": 5,
+        "layers_packed": 120,
+        "concurrency_asked": 4,
+        "used_packed_path": true
+      }
+    },
+    "concurrency16": {
+      "baseline_runs": [
+        1208.6,
+        1206.2,
+        1204.7
+      ],
+      "candidate_runs": [
+        1197.4,
+        1196.7,
+        1195.9
+      ],
+      "paired_ratios": [
+        0.9907330795962271,
+        0.9921240258663572,
+        0.9926952768324064
+      ],
+      "gain_pct": -0.7875974133642827,
+      "baseline_spread_pct": 0.3233294644337476,
+      "candidate_spread_pct": 0.12534469791927802,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.3233294644337476,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      },
+      "sequences_seen_by_adapter": 7,
+      "tokens_packed": 254,
+      "tokens_total": 269,
+      "max_rows_seen": 8,
+      "packing": {
+        "tokens": 269,
+        "tokens_packed": 254,
+        "packed_share": 0.9442379182156134,
+        "max_rows_seen": 8,
+        "layers_packed": 60,
+        "concurrency_asked": 16,
+        "used_packed_path": true
+      }
+    },
+    "concurrency32": {
+      "baseline_runs": [
+        1230.4,
+        1233.8,
+        1230.7
+      ],
+      "candidate_runs": [
+        1222.7,
+        1220.4,
+        1221.5
+      ],
+      "paired_ratios": [
+        0.9937418725617685,
+        0.9891392446101476,
+        0.9925245795075973
+      ],
+      "gain_pct": -0.7475420492402685,
+      "baseline_spread_pct": 0.27626553993661035,
+      "candidate_spread_pct": 0.18829308227588656,
+      "resolution": {
+        "resolved": true,
+        "floor_pct": 0.4637293671764114,
+        "note": "resolved=false means the difference is inside the run-to-run spread of the runs that produced it, whichever way it points"
+      },
+      "sequences_seen_by_adapter": 7,
+      "tokens_packed": 508,
+      "tokens_total": 523,
+      "max_rows_seen": 8,
+      "packing": {
+        "tokens": 523,
+        "tokens_packed": 508,
+        "packed_share": 0.97131931166348,
+        "max_rows_seen": 8,
+        "layers_packed": 60,
+        "concurrency_asked": 32,
+        "used_packed_path": true
+      }
+    }
+  },
+  "measurement": {
+    "noise_floor_pct": 0.11531253504682938,
+    "gain_pct": 1.7406310263185842,
+    "resolved": true,
+    "note": "resolved=false means the difference is inside the control arm's own run-to-run spread on this box; the axis is open, not settled.",
+    "unresolved_workloads": [
+      "concurrency4"
+    ]
+  },
+  "adapter": {
+    "adapter": "recurlocal-sparkinfer",
+    "mode": "persist",
+    "initialised": false,
+    "ever_initialised": true,
+    "broken": false,
+    "config_error": null,
+    "config": {
+      "pre_touch": "vec4",
+      "pre_touch_coverage": "both",
+      "prefetch_distance": 1,
+      "prefetch_schedule": "uniform",
+      "prefetch_join": "per_layer",
+      "window_attach": "capture_node",
+      "hot_set_model": "token_footprint",
+      "hot_set_policy": "proportional",
+      "window_scope": "layer",
+      "window_target": "matrix",
+      "hit_ratio": 1.0,
+      "budget_fraction": 1.0
+    },
+    "geometry": {
+      "recurrent_layers": 30,
+      "bytes_per_layer": 2146304,
+      "sequences": 1,
+      "streamed_bytes_per_token": 0
+    },
+    "l2_set_aside_bytes": 62914560,
+    "stats": {
+      "tokens": 32,
+      "tokens_packed": 0,
+      "layers": 120,
+      "layers_packed": 0,
+      "max_rows_seen": 0,
+      "windows_applied": 0,
+      "windows_deferred_to_caller": 120,
+      "windows_attached_to_node": 120,
+      "window_attach_failures": 0,
+      "capture_invalidations": 0,
+      "released_during_capture": 0,
+      "hit_ratio_reduced": 120,
+      "hot_set_oversubscribed": 120,
+      "pre_touch_launches": 0,
+      "pre_touch_segments": 0,
+      "pre_touch_bytes": 0,
+      "pre_touch_skipped": 0,
+      "compute_stream_priority": 0,
+      "prefetch_stream_priority": 0
+    }
+  },
+  "the_configuration_trade_off": "The candidate holds budget_fraction 1.00 and hit_ratio 1.00, which the batch-1 axis sweeps resolved as best there (+1.63% against +1.26% at the defaults). At concurrency the same settings are WORSE than the defaults: concurrency 4 reads -1.29% here against -0.46% for the shipped configuration on the mode axis. That is the residency story again - a set-aside sized for a footprint that fits costs the weight stream more once it does not - and it means the best configuration is workload-dependent. A planner that picked the set-aside from the measured footprint-to-capacity ratio rather than from a constant is an open item, and this file is the evidence for it."
+}
