@@ -362,6 +362,34 @@ def test_attribution_of_a_serving_loss():
     check(set(result.cells_scored) <= set(charged.cells_scored),
           "attribution can drop a cell and can never add one")
 
+    # A dropped cell must not PAY. A candidate that gains on the cells it can serve and is
+    # excused the one it cannot has not expanded the frontier of the whole matrix.
+    from frontier.receipt import build_receipt, verify_receipt, ReceiptError
+    winning = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+               "ctx128-c4": {"base": (0.0, 0.0, "UNBATCHED")}}
+    records = matrix(flat, winning)
+    for record in records:
+        if record["variant"] == "candidate" and record["workload_id"] == "ctx128-c1":
+            record["metrics"] = {"goodput_tps": 560.0, "p99_itl_ms": 45.0}
+    runner_mod.apply_attribution(records, {"ctx128-c4": {"verdict": "runtime"}})
+    partial = compute_frontier(generation, records, allow_partial=True)
+    receipt = build_receipt(generation=generation, computation=partial, correctness="PASS",
+                            provenance={})
+    check(receipt["frontier"]["gain_percent"] > 5.0,
+          "the measured figure on the cells that WERE scored is still reported")
+    check(receipt["frontier"]["verified_gain_percent"] == 0.0,
+          "a PARTIAL receipt credits nothing, so dropping a cell cannot pay")
+    check(receipt["frontier"]["credit_withheld"]["unservable_cells"] == ["ctx128-c4"],
+          "and the receipt names what cost it the credit")
+    check(verify_receipt(receipt, generation)["verified"], "and it still verifies")
+    tampered = json.loads(json.dumps(receipt))
+    tampered["frontier"]["verified_gain_percent"] = tampered["frontier"]["gain_percent"]
+    try:
+        verify_receipt(tampered, generation)
+        check(False, "a PARTIAL receipt was allowed to credit a gain")
+    except ReceiptError as exc:
+        check("credits" in str(exc), "a PARTIAL receipt that credits a gain does not verify")
+
 
 def test_compute_cases():
     section("frontier cases (spec section 51)")

@@ -122,6 +122,14 @@
     "verified_gain_percent": {
      "type": "number",
      "description": "What the ledger CREDITS. Zero unless the status is FRONTIER_GAIN."
+    },
+    "credit_withheld": {
+     "type": [
+      "object",
+      "null"
+     ],
+     "additionalProperties": true,
+     "description": "Present and non-null when a measured gain was NOT credited to the ledger, with the reason. Today the only reason is partial coverage: a receipt that did not score every cell the generation declares credits nothing."
     }
    }
   },

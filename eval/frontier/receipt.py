@@ -72,6 +72,29 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
     status = decide_status(computation, correctness)
     verified_gain = computation.gain_percent if status == "FRONTIER_GAIN" else 0.0
 
+    # A PARTIAL matrix credits nothing, whatever it measured, and `frontier/README.md` has
+    # always said so -- "does not qualify as a full-coverage contribution" -- while the code
+    # credited it anyway. It matters more now that a cell can leave the score by being
+    # attributed to the runtime: dropping a cell is the cheapest way to raise a score, and a
+    # rule that stops a drop from PAYING removes the incentive rather than policing it.
+    #
+    # The measured figure is still reported, and the status still says what the statistics say.
+    # What is withheld is the credit, and the receipt names the reason.
+    credit_withheld = None
+    if verified_gain and getattr(computation, "partial", False):
+        missing = list(getattr(computation, "cells_missing", []))
+        unservable = list(getattr(computation, "cells_unservable", []))
+        credit_withheld = {
+            "reason": "partial coverage",
+            "missing_cells": missing,
+            "unservable_cells": unservable,
+            "note": ("A receipt that did not score the whole matrix credits nothing. Omitting "
+                     "the arm with the most room would otherwise be the cheapest way to raise "
+                     "a score, and an attributed serving loss leaves the matrix by the same "
+                     "door. Run the whole matrix to be credited."),
+        }
+        verified_gain = 0.0
+
     receipt = {
         "receipt_schema_version": RECEIPT_SCHEMA_VERSION,
         "benchmark_generation": generation.name,
@@ -115,6 +138,8 @@ def build_receipt(*, generation, computation, correctness, provenance, pr=None,
             "gain_percent": computation.gain_percent,
             # What the ledger credits. Zero unless the status is FRONTIER_GAIN.
             "verified_gain_percent": verified_gain,
+            # Present only when a measured gain was NOT credited, and why.
+            "credit_withheld": credit_withheld,
         },
         "objectives": [o.to_json() for o in generation.objectives],
         # The bounds each cell was actually scored under. Without these a reader cannot
@@ -235,6 +260,10 @@ def verify_receipt(receipt: dict, generation=None) -> dict:
     if status != "FRONTIER_GAIN" and verified not in (0, 0.0):
         problems.append(f"status {status} credits {verified}%; only FRONTIER_GAIN may credit "
                         f"a non-zero gain")
+    if receipt.get("coverage", {}).get("partial") and verified not in (0, 0.0):
+        problems.append(f"a PARTIAL receipt credits {verified}%; a matrix that did not score "
+                        f"every cell credits nothing, because omitting the arm with the most "
+                        f"room would otherwise be the cheapest way to raise a score")
     if status == "FRONTIER_GAIN":
         lower = receipt.get("statistics", {}).get("lower_gain_percent")
         if lower is None or lower <= 0.0:

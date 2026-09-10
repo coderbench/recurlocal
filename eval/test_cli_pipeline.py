@@ -183,6 +183,48 @@ def main():
         check(doc["coverage"]["partial"] and doc["coverage"]["missing_cells"] == ["ctx128-c32"],
               "--allow-partial scores it and marks it PARTIAL on its face")
 
+        print("\n== a serving loss, attributed and not attributed")
+        # `probe` needs a GPU, so what is exercised here is the SCORING half: a raw file
+        # carrying the attribution stamp the probe writes.
+        lost = tmp / "lost.json"
+        whole = json.loads(raw.read_text())
+        for record in whole["results"]:
+            if record["variant"] == "candidate" and record["workload_id"] == "ctx128-c32":
+                record["status"] = "UNBATCHED"
+                record["metrics"] = {}
+        lost.write_text(json.dumps(whole))
+        charged = json.loads(run(["compute", "--generation", GENERATION, "--results",
+                                  str(lost)], expect=None).stdout)
+        check("ctx128-c32" in charged["aggregation"]["cells_at_floor"]["candidate"],
+              "an unattributed serving loss is scored at the floor, against the candidate")
+        check(charged["frontier"]["gain_percent"] < -50.0,
+              "and one such cell costs more through the geometric mean than any policy gains")
+
+        for record in whole["results"]:
+            if record["variant"] == "candidate" and record["workload_id"] == "ctx128-c32":
+                record["attribution"] = "runtime"
+        lost.write_text(json.dumps(whole))
+        # No --allow-partial: the operator did not omit this cell, the evaluator's own probe
+        # removed it, and requiring a flag for the evaluator's decision would be friction
+        # rather than safety. What stops it from PAYING is the credit rule below.
+        dropped = json.loads(run(["compute", "--generation", GENERATION, "--results",
+                                  str(lost)], expect=None).stdout)
+        check(dropped["coverage"]["unservable_cells"] == ["ctx128-c32"],
+              "an attributed loss is named on the receipt rather than scored")
+        check(dropped["coverage"]["partial"], "and forces PARTIAL")
+        check(abs(dropped["frontier"]["gain_percent"]) < abs(charged["frontier"]["gain_percent"]),
+              "and the score is no longer decided by a cell nothing could have served")
+        check(dropped["frontier"]["verified_gain_percent"] == 0.0,
+              "a PARTIAL receipt credits nothing, so dropping a cell cannot pay")
+        check((dropped["frontier"]["credit_withheld"] or {}).get("unservable_cells")
+              == ["ctx128-c32"],
+              "and the receipt names which cells cost it the credit")
+        receipt_path = tmp / "dropped-receipt.json"
+        receipt_path.write_text(json.dumps(dropped))
+        rendered = run(["report", str(receipt_path), "--format", "markdown"]).stdout
+        check("Unservable on this runtime" in rendered,
+              "the markdown report says the cell was dropped and why")
+
     print()
     if failures:
         print(f"{len(failures)} CLI check(s) failed")

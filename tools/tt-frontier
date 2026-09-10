@@ -216,6 +216,44 @@ def cmd_compute(args):
     return 0 if receipt["status"] in ("FRONTIER_GAIN", "NO_FRONTIER_GAIN") else 1
 
 
+# -------------------------------------------------------------------------------- probe ---
+def cmd_probe(args):
+    """Attribute the cells a candidate lost to a serving guard, on an existing raw file.
+
+    `tt-frontier run` does this automatically. This is the same operation for a matrix measured
+    before it existed, or one where the probe was skipped -- and it is the same code, so an
+    attribution produced here and one produced inline are the same thing.
+    """
+    from frontier import runner as runner_mod
+
+    generation = resolve_generation(args.generation)
+    document = json.loads(Path(args.results).read_text())
+    records = document["results"]
+    cells = args.cells.split(",") if args.cells else generation.cells
+
+    needs = runner_mod.cells_needing_attribution(records, cells)
+    if not needs:
+        print("no cell was lost to a serving guard in every repeat; nothing to attribute",
+              file=sys.stderr)
+        return 0
+    print(f">> probing {len(needs)} cell(s): {', '.join(needs)}", file=sys.stderr, flush=True)
+    verdicts = runner_mod.attribute_serving_losses(
+        cells=needs, model=args.model, baseline_cb_binary=args.cb_binary,
+        max_new=args.max_new, long_prefill=args.long_prefill,
+        settle_seconds=args.settle_seconds, verbose=not args.quiet)
+    stamped = runner_mod.apply_attribution(records, verdicts)
+
+    provenance = document.setdefault("provenance", {})
+    provenance["attribution"] = {"probed": sorted(verdicts), "verdicts": verdicts,
+                                 "probe_binary": args.cb_binary, "skipped": False}
+    out = args.output or args.results
+    Path(out).write_text(json.dumps(document, indent=1, sort_keys=True) + "\n")
+    for cell, found in sorted(verdicts.items()):
+        print(f"   {cell}: {found['verdict']} (probe {found['probe_status']})", file=sys.stderr)
+    print(f"stamped {stamped} record(s); wrote {out}", file=sys.stderr)
+    return 0
+
+
 # ------------------------------------------------------------------------------- report ---
 def cmd_report(args):
     receipt = json.loads(Path(args.receipt).read_text())
@@ -459,6 +497,22 @@ def main(argv=None):
                         "measured control: the generation's SLO limit (default 3)")
     p.add_argument("--write", action="store_true")
     p.set_defaults(func=cmd_calibrate)
+
+    p = sub.add_parser("probe", help="attribute cells a candidate lost to a serving guard")
+    p.add_argument("--generation", default="TTF-1")
+    p.add_argument("--results", required=True, help="a raw result file, stamped in place")
+    p.add_argument("--output", help="write here instead of overwriting --results")
+    p.add_argument("--model", required=True)
+    p.add_argument("--cb-binary", required=True,
+                   help="the BASELINE build's cb bench. Not the candidate's: a candidate that "
+                        "could make its own probe fail would get a cell it lost dropped rather "
+                        "than scored, which is strictly to its advantage.")
+    p.add_argument("--cells", help="comma-separated subset to consider")
+    p.add_argument("--max-new", type=int, default=64)
+    p.add_argument("--long-prefill", type=int, default=4096)
+    p.add_argument("--settle-seconds", type=int, default=30)
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(func=cmd_probe)
 
     p = sub.add_parser("compute", help="raw results -> Frontier Receipt")
     p.add_argument("--generation", default="TTF-1")
