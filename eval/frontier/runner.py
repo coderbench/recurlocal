@@ -42,6 +42,7 @@ GUARD_STATUS = (
     (re.compile(r"FELL OFF THE BATCHED DECODE PATH", re.I), "UNBATCHED"),
     (re.compile(r"NULL CANDIDATE", re.I), "NULL_POLICY"),
     (re.compile(r"did not initialise|emitted no RECURLOCAL_STATS", re.I), "UNHOOKED"),
+    (re.compile(r"UNMEASURABLE ARM", re.I), "UNMEASURABLE"),
 )
 
 
@@ -133,7 +134,7 @@ def measure_cell(cb_binary, model, cell_id, env, label, *, max_new, long_prefill
         #                             it would report the hook's overhead as a locality result,
         #                             which is what the first scored run in this repository
         #                             did. That aborts, as `eval/real_eval.py` aborts.
-        if status in ("NULL_POLICY", "UNHOOKED") and expect_policy:
+        if status in ("NULL_POLICY", "UNHOOKED", "UNMEASURABLE") and expect_policy:
             raise RunnerError(
                 f"{label}: the configuration asked for a policy and applied none. This is a "
                 f"configuration failure, not a serving one -- the runtime served fine and the "

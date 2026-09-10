@@ -466,7 +466,7 @@ bool TransitPlan::rebind(const TensorRegistry& registry, std::string* error) {
         const TensorDesc* desc = registry.find(action.tensor);
         if (!desc) {
             if (error) {
-                char buffer[192];
+                char buffer[320];
                 std::snprintf(buffer, sizeof(buffer),
                               "action names tensor %llu, which this registry does not know: "
                               "the plan was compiled against a different tensor set, and "

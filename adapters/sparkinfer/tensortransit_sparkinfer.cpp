@@ -831,6 +831,11 @@ void write_stats_json(std::FILE* out) noexcept {
         s.prefetch_stream_priority = a.controller.stats().prefetch_stream_priority;
     }
     const auto& c = a.config;
+    // The v0 engine has no registry: it drives one hard-wired recurrent policy and knows about
+    // no other tensor family. Reporting zeros for it is the honest answer and it is also the
+    // useful one -- an A/B between the engines then shows exactly what the 0.2 core added.
+    const transit::RegistrySummary reg =
+        a.use_transit ? a.transit_engine.registry() : transit::RegistrySummary{};
     std::fprintf(out,
         "{\"adapter\":\"tensortransit-sparkinfer\","
         "\"mode\":\"%s\",\"initialised\":%s,\"ever_initialised\":%s,"
@@ -844,6 +849,9 @@ void write_stats_json(std::FILE* out) noexcept {
         "\"geometry\":{\"recurrent_layers\":%d,\"bytes_per_layer\":%zu,\"sequences\":%d,"
         "\"max_sequences_declared\":%d,\"bytes_per_layer_at_max\":%zu,"
         "\"streamed_bytes_per_token\":%zu},"
+        "\"registry\":{\"recurrent_tensors\":%llu,\"recurrent_bytes\":%llu,"
+        "\"kv_tensors\":%llu,\"kv_bytes\":%llu,"
+        "\"weight_tensors\":%llu,\"weight_bytes\":%llu},"
         "\"l2_set_aside_bytes\":%zu,\"l2_set_aside_at_init_bytes\":%zu,"
         "\"stats\":{\"tokens\":%llu,\"tokens_packed\":%llu,\"layers\":%llu,"
         "\"layers_packed\":%llu,\"max_rows_seen\":%d,\"windows_applied\":%llu,"
@@ -868,6 +876,13 @@ void write_stats_json(std::FILE* out) noexcept {
         a.geometry.recurrent_layers, a.geometry.bytes_per_layer, a.geometry.sequences,
         a.max_geometry_sequences, a.max_geometry_bytes_per_layer,
         a.geometry.streamed_bytes_per_token,
+        // What the graph in force is MADE OF, by role. Zero KV tensors on an arm whose preset
+        // targets KV is not a weak result, it is an unmeasured one, and the two are
+        // indistinguishable from outside the run unless the run says so. `eval/real_eval.py`
+        // refuses such an arm the way it refuses a null candidate.
+        (unsigned long long)reg.recurrent_tensors, (unsigned long long)reg.recurrent_bytes,
+        (unsigned long long)reg.kv_tensors, (unsigned long long)reg.kv_bytes,
+        (unsigned long long)reg.weight_tensors, (unsigned long long)reg.weight_bytes,
         // The LARGEST set-aside held during the run. Reporting only the init-time value made
         // every resize by a workload-aware policy invisible to every sweep; reporting the
         // value in force at exit reports 0, because shutdown has already given the partition

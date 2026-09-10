@@ -38,7 +38,7 @@ FAILURE_STATUSES = frozenset({"OOM", "TIMEOUT", "CRASH", "SLO_FAIL", "CORRECTNES
                               # than recording them, so they reach here only from a raw file
                               # written by something else; naming them is what keeps such a
                               # file from being scored as if the arm had merely been slow.
-                              "UNHOOKED", "NULL_POLICY", "EVAL_ERROR"})
+                              "UNHOOKED", "NULL_POLICY", "EVAL_ERROR", "UNMEASURABLE"})
 
 
 @dataclass(frozen=True)

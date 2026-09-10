@@ -500,7 +500,7 @@ bool read_plan(const std::string& json, TransitPlan* plan, std::string* error) {
     const Value* version = root.find("plan_schema_version");
     if (!version || version->as_u64() != static_cast<std::uint64_t>(kPlanSchemaVersion)) {
         if (error) {
-            char buffer[160];
+            char buffer[288];
             std::snprintf(buffer, sizeof(buffer),
                           "plan_schema_version %llu, expected %d. A plan from another schema "
                           "is not a plan this build can execute, and guessing which fields "

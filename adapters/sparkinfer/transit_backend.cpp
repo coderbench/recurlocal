@@ -151,6 +151,7 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
     window_reduced_.assign(static_cast<std::size_t>(geometry.n_layers), false);
     recurrent_layers_ = 0;
     kv_layers_ = 0;
+    registry_ = RegistrySummary{};
 
     auto* state_base = static_cast<unsigned char*>(geometry.lin_state);
     auto* conv_base = static_cast<unsigned char*>(geometry.lin_conv_state);
@@ -191,6 +192,8 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
                 d.request_local = true;
                 d.device = device_;
                 t.matrix = runtime_.register_tensor(d).id;
+                ++registry_.recurrent_tensors;
+                registry_.recurrent_bytes += d.bytes;
             }
             if (conv_base && geometry.lin_conv_stride) {
                 TensorDesc d{};
@@ -203,6 +206,8 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
                 d.request_local = true;
                 d.device = device_;
                 t.conv = runtime_.register_tensor(d).id;
+                ++registry_.recurrent_tensors;
+                registry_.recurrent_bytes += d.bytes;
             }
         } else if (settings_.register_kv && kv.valid()) {
             // Paged KV lives on the FULL-ATTENTION layers only; the recurrent layers carry
@@ -220,10 +225,14 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
                 d.ptr = static_cast<const unsigned char*>(kv.k_pool) + offset;
                 d.base = kv.k_pool;
                 t.k = runtime_.register_tensor(d).id;
+                ++registry_.kv_tensors;
+                registry_.kv_bytes += d.bytes;
                 if (kv.v_pool) {
                     d.ptr = static_cast<const unsigned char*>(kv.v_pool) + offset;
                     d.base = kv.v_pool;
                     t.v = runtime_.register_tensor(d).id;
+                    ++registry_.kv_tensors;
+                    registry_.kv_bytes += d.bytes;
                 }
                 ++kv_layers_;
             }
@@ -241,6 +250,8 @@ void Engine::rebuild(const StepGeometry& geometry, const KvGeometry& kv) noexcep
             d.model_global = true;
             d.device = -1;
             t.weight = runtime_.register_tensor(d).id;
+            ++registry_.weight_tensors;
+            registry_.weight_bytes += d.bytes;
         }
     }
 

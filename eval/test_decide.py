@@ -324,6 +324,40 @@ class HarnessIntegrity(unittest.TestCase):
                                            {"TENSORTRANSIT": "persist"}, "arm")
         self.assertIn("persist", str(caught.exception))
 
+    def test_an_arm_scoped_to_a_family_the_registry_never_saw_is_unmeasurable(self):
+        # Through 0.2.0 no adapter exposed KV to the registry, so a KV-scoped arm would have
+        # reported the recurrent policy's number under a KV label. "Weak" and "absent" are
+        # indistinguishable from outside a run unless the run says which tensors it knew about.
+        empty = {"registry": {"kv_tensors": 0, "recurrent_tensors": 96, "weight_tensors": 0}}
+        for preset in ("kv_only", "naive_both", "global"):
+            with self.assertRaises(SystemExit) as caught:
+                real_eval.require_registered_families(empty, {"TENSORTRANSIT_PRESET": preset},
+                                                      "arm")
+            self.assertIn("UNMEASURABLE ARM", str(caught.exception))
+        # recurrent_only is about the family that IS there, so it runs.
+        self.assertIsNotNone(real_eval.require_registered_families(
+            empty, {"TENSORTRANSIT_PRESET": "recurrent_only"}, "arm"))
+
+    def test_a_global_arm_without_weights_says_stream_was_untested(self):
+        # The 0.2.1 arms sweep measured stream_applied=0 on every arm because no ModelWeight
+        # tensor was registered, and the result was read as evidence about coordination until
+        # the counters said otherwise. Not a failure -- but it must travel with the result.
+        both = {"registry": {"kv_tensors": 24, "recurrent_tensors": 96, "weight_tensors": 0}}
+        record = real_eval.require_registered_families(both, {"TENSORTRANSIT_PRESET": "global"},
+                                                       "arm")
+        self.assertEqual(record["untested_mechanisms"], ["stream"])
+        self.assertIn("STREAMED_BYTES_PER_TOKEN", record["note"])
+        with_weights = {"registry": dict(both["registry"], weight_tensors=48)}
+        self.assertEqual(real_eval.require_registered_families(
+            with_weights, {"TENSORTRANSIT_PRESET": "global"}, "arm")["untested_mechanisms"], [])
+
+    def test_a_build_without_the_registry_counter_is_not_accused(self):
+        # eval/run_from_base.sh runs the evaluator from the BASE commit against a candidate
+        # build, and a base evaluator that refused every build older than its own newest
+        # counter would be a false accusation aimed at the contributor.
+        self.assertIsNone(real_eval.require_registered_families(
+            {"stats": {}}, {"TENSORTRANSIT_PRESET": "kv_only"}, "arm"))
+
     def test_control_arm_scrubs_an_ambient_adapter_env(self):
         # An operator with RECURLOCAL exported in their shell would otherwise run a hooked
         # "control" and the harness would report ~0% for the candidate against itself.

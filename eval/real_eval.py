@@ -234,6 +234,64 @@ def require_hook_engaged(text, env_extra, label):
     return stats
 
 
+# Which tensor families a preset is ABOUT. An arm that names one and registered none of it did
+# not measure a weak mechanism; it measured the absence of one, and the two are
+# indistinguishable from outside the run. This is the same class of guard as NULL CANDIDATE and
+# it exists for the same reason: through 0.2.0 no adapter exposed KV to the registry at all, so
+# every KV-scoped arm would have reported the recurrent policy's number under a KV label.
+PRESET_TENSOR_FAMILIES = {
+    "kv_only": ("kv_tensors",),
+    "recurrent_only": ("recurrent_tensors",),
+    "naive_both": ("kv_tensors", "recurrent_tensors"),
+    "global": ("kv_tensors", "recurrent_tensors"),
+}
+FAMILY_ENGLISH = {"kv_tensors": "KV cache", "recurrent_tensors": "recurrent state",
+                  "weight_tensors": "model weights"}
+
+
+def declared_preset(env_extra):
+    return ((env_extra or {}).get("TENSORTRANSIT_PRESET")
+            or (env_extra or {}).get("RECURLOCAL_PRESET")
+            or (env_extra or {}).get("TENSORTRANSIT_PLANNER")
+            or (env_extra or {}).get("RECURLOCAL_PLANNER") or "")
+
+
+def require_registered_families(stats, env_extra, label):
+    """An arm scoped to a tensor family the registry never saw is unmeasurable, not weak.
+
+    Returns a record for the artifact -- including the mechanisms this configuration could NOT
+    have exercised, which is not a failure but must not be silently forgotten. The `Stream`
+    action needs a ModelWeight tensor, and the adapter registers one only when the operator
+    declares TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN. A `global` sweep run without it measures
+    role-floor arbitration alone -- which is exactly what the 0.2.1 arms sweep did, and the
+    result was read as evidence about coordination until the counters said otherwise.
+    """
+    registry = (stats or {}).get("registry")
+    if registry is None:
+        return None                      # the v0 engine, or a build older than this counter
+    preset = declared_preset(env_extra)
+    required = PRESET_TENSOR_FAMILIES.get(preset, ())
+    absent = [family for family in required if not registry.get(family)]
+    if absent:
+        raise SystemExit(
+            f"{label}: UNMEASURABLE ARM. The configuration asks for preset {preset!r}, which "
+            f"is about {' and '.join(FAMILY_ENGLISH[f] for f in required)}, and the graph it "
+            f"planned over registered no "
+            f"{' and no '.join(FAMILY_ENGLISH[f] for f in absent)} at all "
+            f"({', '.join(f'{k}={v}' for k, v in sorted(registry.items()))}). Whatever this "
+            f"run measured, it is not that preset. A runtime that does not declare its KV "
+            f"pools cannot be used to score a KV-scoped planner.")
+    untested = []
+    if preset in ("global", "naive_both") and not registry.get("weight_tensors"):
+        untested.append("stream")
+    return {"registry": registry, "preset": preset,
+            "untested_mechanisms": untested,
+            # Said in English because a zero in a counter is easy to read past.
+            "note": ("no ModelWeight tensor was registered, so no Stream action could be "
+                     "taken; set TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN to test it"
+                     if untested else "")}
+
+
 # Below this share of a concurrency arm's tokens going through the runtime's packed decode
 # path, the run did not measure concurrent decode at all -- it measured the single-sequence
 # path executed once per row. A tail chunk of one row always falls through, so the normal
@@ -371,7 +429,9 @@ def measure(binary, model, tokens, ctxs, env_extra, label, verbose):
     if verbose:
         print(f"    {label}: " + "  ".join(f"ctx{c}={sweep[str(c)]['decode_tps']:.2f}" for c in ctxs)
               + f"   ({secs:.0f}s)", flush=True)
-    return sweep, require_hook_engaged(out, env_extra, label), out
+    stats = require_hook_engaged(out, env_extra, label)
+    require_registered_families(stats, env_extra, label)
+    return sweep, stats, out
 
 
 # Below this share of the tokens a concurrency arm was asked for, the run did not measure the
@@ -434,6 +494,7 @@ def measure_concurrent(binary, model, concurrency, prompt_len, max_new, long_pre
     tps = float(m.group(1))
     require_requests_completed(out, concurrency, max_new, label)
     stats = require_hook_engaged(out, env_extra, label)
+    require_registered_families(stats, env_extra, label)
     packing = require_packed_path(stats, concurrency, label)
     if verbose:
         pk = f"  packed={packing['packed_share'] * 100:.0f}% rows={packing['max_rows_seen']}" if packing else ""

@@ -132,6 +132,22 @@ struct Counters {
     std::uint64_t traces_written = 0;
 };
 
+// What the graph in force is actually MADE OF, by role, and it is telemetry rather than a
+// diagnostic. The second proof track -- does coordinating two tensor families beat the better
+// of two independent policies -- is unmeasurable while the adapter registers only one of them,
+// and through 0.2.0 it registered only one of them. "Has not been measured" and "cannot be
+// measured" look identical from outside a run unless the run says which tensors it knew about.
+//
+// Bytes are per token as the graph sees them: the live span of each registered tensor, summed.
+struct RegistrySummary {
+    std::uint64_t recurrent_tensors = 0;
+    std::uint64_t recurrent_bytes = 0;
+    std::uint64_t kv_tensors = 0;
+    std::uint64_t kv_bytes = 0;
+    std::uint64_t weight_tensors = 0;
+    std::uint64_t weight_bytes = 0;
+};
+
 // One engine instance. Not synchronised: the adapter holds exactly one, for one model on one
 // stream, and refuses a second model rather than interleaving two layer walks through it.
 class Engine {
@@ -187,6 +203,7 @@ public:
     std::size_t declines_size() const noexcept { return kDeclineReasons; }
     int recurrent_layers() const noexcept { return recurrent_layers_; }
     int kv_layers() const noexcept { return kv_layers_; }
+    const RegistrySummary& registry() const noexcept { return registry_; }
     std::size_t committed_bytes() const noexcept { return committed_bytes_; }
     std::size_t predicted_saved_bytes() const noexcept { return predicted_saved_; }
     std::size_t step_traffic_bytes() const noexcept { return step_traffic_; }
@@ -246,6 +263,7 @@ private:
     std::uint64_t declines_[kDeclineReasons] = {};
     int recurrent_layers_ = 0;
     int kv_layers_ = 0;
+    RegistrySummary registry_{};
     std::size_t committed_bytes_ = 0;
     std::size_t predicted_saved_ = 0;
     std::size_t step_traffic_ = 0;

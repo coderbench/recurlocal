@@ -76,6 +76,7 @@
        "CRASH",
        "SLO_FAIL",
        "UNBATCHED",
+       "UNMEASURABLE",
        "NULL_POLICY",
        "UNHOOKED",
        "CORRECTNESS_FAIL",
