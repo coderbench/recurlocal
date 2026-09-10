@@ -288,10 +288,18 @@ The runtime's own `kernels/include/sparkinfer/kernels/deterministic.h` claims 36
 fix is narrower and worth reporting upstream: with every split switch pinned, the prefill seed
 token becomes stable — five single-token replays of a 256-token prompt returned `25001` five
 times where the unpinned run returned `8894, 8894, 25001, 25001, 8894`. A 64-token generation
-from the same prompt still forks in every replay. **The residual nondeterminism is in the
-per-token decode loop**, which `deterministic_mode()` does not reach: its only decode call
-site (`qwen35.cpp:880`) recomputes a logprob normaliser on the host after the argmax has
-already been taken.
+from the same prompt still forks in every replay.
+
+**What that does and does not establish.** It establishes that the residual source survives
+every switch the runtime exposes, and that it is not the two `atomicAdd` sites
+`deterministic.h` names. It does **not** establish that the source is in decode. A ULP
+difference in prefill that leaves the seed argmax unchanged while perturbing the Gated-DeltaNet
+recurrent state or the bf16 KV writes produces exactly this observation — a stable first token
+and a forked continuation — and nothing measured here separates that from a decode-side
+source. Distinguishing them needs a logits or state dump, which `qwen3_gguf_generate` does not
+emit. What can be said is that `deterministic_mode()` has no reach into the per-token path at
+all: its only decode call site (`qwen35.cpp:880`) recomputes a logprob normaliser on the host
+after the argmax has already been taken.
 
 **The dense control is not clean either, and this repository said it was.** "On the dense
 checkpoint the same binary is bit-identical" is true at the gate's 64 tokens and false past

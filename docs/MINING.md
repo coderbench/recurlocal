@@ -210,9 +210,10 @@ already known. Reordered by what is still genuinely open:
    including `SPARKINFER_PREFILL_BATCHED=0`, which replaces the batched prefill the runtime's
    own header blames, and a pin of every split-K, PDL and n-splits switch at once — and none is
    reproducible. What the pinned set *does* fix is the prefill seed token; a 64-token
-   generation still forks in every replay, so the residual nondeterminism is in the per-token
-   decode loop, which `deterministic_mode()` never reaches. The full survey is in the
-   changelog.
+   generation still forks in every replay. That does not locate the residual source in decode
+   — a ULP difference in prefill that leaves the seed argmax alone while perturbing the
+   recurrent state produces the same observation — and separating the two needs a logits dump
+   the tools do not emit. The full survey is in the changelog.
 
    Do not spend a week looking for a checkpoint. The surface is unscorable on this runtime and
    this device, and weighted the persist family reaches 1.94% here against a 2.0% floor — so
