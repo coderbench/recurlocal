@@ -292,6 +292,38 @@ a perfect replacement policy assumed, misses the significance floor by six hundr
 point. No policy closes that: the numerator is the device's 60 MiB and the denominator is what
 the workload moves.
 
+### The one thing that disqualifies this result: the gate cannot run here
+
+The exact-locality track requires bit-identical model output (overview sections 15 and 35), and
+on this checkpoint **that cannot be established** — not because the policy changes anything, but
+because the runtime does not agree with itself. Two **unhooked** control runs of the same binary
+on the same prompt diverge at token 2:
+
+```
+control A: 13 271 760 1879 369 264 1103 314 4947 ...
+control B: 13 271 760 2614 369 264 1103 314  279 ...
+```
+
+The runtime documents the mechanism itself: a few ULP of difference in the prefill feed
+*discrete* top-k expert routing, so over 40 layers one flips an expert and moves the argmax.
+`SPARKINFER_DETERMINISTIC=1` does not cover this checkpoint's Q4_K expert path — two controls
+still diverge with it set.
+
+**RecurLocal is not the cause, and that is checkable.** On the dense Qwen3.8-27B, the same
+binary and the same policy at the same settings give control, control and candidate as
+bit-identical over every token compared.
+
+So the MoE numbers above are sound *as throughput* — three interleaved pairs, tight floors,
+monotonic axes — and the result is **not scorable** under the project's own rules. `decide.py`
+refuses it, which is correct. What was *not* correct was the first attempt's reason: it said the
+candidate had changed model output. It had not, and the harness could not tell the difference.
+`real_eval.py` now replays the control against itself before the candidate is compared to
+anything, records `runtime_reproducible`, and reports **inconclusive** rather than accusing a
+submission of a defect that belongs to the runtime.
+
+A scorable MoE result needs a reproducible checkpoint. That is now the first blocker on this
+model, ahead of any policy question.
+
 ### And a 5.4× cliff in the runtime, found on the way
 
 Concurrency on this checkpoint could not be measured at first: above 8 rows the runtime stops
