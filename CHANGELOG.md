@@ -170,6 +170,33 @@ installed no policy, **by name** — correctly, because a policy whose response 
 to do nothing *is* `baseline`. So its value on that arm is `baseline` by construction, and the
 guard's refusal is the observation that it declined.
 
+**The marginal value of set-aside at concurrency, on one dial, for the first time.** Every
+prior comparison at concurrency moved TWO dials at once (`budget_fraction` 0.75 → 1.00 *and*
+`hit_ratio` 0.70 → 1.00), so no marginal value could be extracted from it. `--axis
+budget-fraction --concurrency 4`, four sequences, three interleaved pairs:
+
+The **magnitude does not resolve**. One of the three control runs came in 14% slow (467.8 tok/s
+against 546.3 and 544.0, with inter-token latency 4.54 ms against 3.89 — slower per token, not
+fewer tokens, so a different failure from the OOM above), which puts the arm's own noise floor
+at **14.4%** and swallows an axis spread of 1.18%. `real_sweep.py` refuses to name a winner,
+correctly.
+
+**The ordering does resolve, and it is the one the design predicts.** Within each pair the four
+candidates share a control, so their ordering is a clean comparison even when the magnitude is
+not:
+
+| pair | 0.25 | 0.50 | 0.75 | 1.00 | worst |
+|--:|--:|--:|--:|--:|---|
+| 1 | 1.16588 | **1.16674** | 1.16460 | 1.15733 | **1.00** |
+| 2 | **0.99634** | 0.99231 | 0.99249 | 0.98957 | **1.00** |
+| 3 | 0.99412 | **1.00533** | 0.99540 | 0.99357 | **1.00** |
+
+**The largest set-aside is last in all three pairs.** If a MiB of set-aside cost nothing at
+concurrency, one specific value landing last three times running is a 1-in-64 coincidence.
+That is a sign test, not a magnitude, and it is the appropriate strength of claim for this
+arm — but it is the first direct evidence that the *cost* side of the trade is real, as
+opposed to being inferred from two configurations that differed on two dials.
+
 **One implementation fact that decides how much of this is even reachable.** A persisting
 window is an address range and this library places ONE per layer, over one sequence's slice —
 at concurrency the runtime hands over a device array of per-row pointers for the pre-touch and

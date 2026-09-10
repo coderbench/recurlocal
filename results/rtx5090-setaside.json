@@ -403,5 +403,77 @@
       "resolved": false,
       "best": null
     }
+  },
+  "marginal_value_at_concurrency": {
+    "what_it_settles": "The marginal value of a MiB of set-aside at concurrency, on ONE dial. Every prior comparison at concurrency moved two at once (budget_fraction 0.75->1.00 AND hit_ratio 0.70->1.00), so no marginal value could be extracted from it.",
+    "magnitude": "DOES NOT RESOLVE. One of three control runs came in 14% slow (467.8 tok/s against 546.3 and 544.0, inter-token latency 4.54 ms against 3.89 -- slower per token, not fewer tokens, so distinct from the device-OOM failure), putting the arm's own noise floor at 14.4% against an axis spread of 1.18%. real_sweep.py names no winner, correctly.",
+    "ordering": "DOES resolve, and matches the design's prediction. Within a pair the four candidates share a control, so their ordering is a clean comparison. budget_fraction 1.00 is LAST in all three pairs. If a MiB of set-aside cost nothing at concurrency that is a 1-in-64 coincidence. A sign test, not a magnitude -- and the first direct evidence that the cost side of the trade is real.",
+    "run": {
+      "axis": "budget-fraction",
+      "variable": "RECURLOCAL_BUDGET_FRACTION",
+      "workload": "concurrency 4 (aggregate)",
+      "concurrency": 4,
+      "context": 128,
+      "tokens": 128,
+      "repeats": 3,
+      "warmup_runs_discarded": 1,
+      "fixed": {
+        "RECURLOCAL": "persist",
+        "RECURLOCAL_WINDOW_ATTACH": "capture_node",
+        "RECURLOCAL_HOT_SET_MODEL": "token_footprint",
+        "SPARKINFER_PACKED_MAX_ROWS": "8",
+        "RECURLOCAL_STATS": "1"
+      },
+      "control_tps": [
+        467.8,
+        546.3,
+        544.0
+      ],
+      "control_noise_floor_pct": 14.43014705882352,
+      "values": {
+        "0.25": {
+          "paired_ratios": [
+            1.165882855921334,
+            0.996339007871133,
+            0.9941176470588234
+          ],
+          "gain_pct": -0.36609921288669467,
+          "spread_pct": 17.239635054490073
+        },
+        "0.50": {
+          "paired_ratios": [
+            1.1667379221889695,
+            0.9923119165293796,
+            1.0053308823529412
+          ],
+          "gain_pct": 0.5330882352941213,
+          "spread_pct": 17.350109175135664
+        },
+        "0.75": {
+          "paired_ratios": [
+            1.16460025651988,
+            0.992494966135823,
+            0.9954044117647058
+          ],
+          "gain_pct": -0.4595588235294157,
+          "spread_pct": 17.2899866978628
+        },
+        "1.00": {
+          "paired_ratios": [
+            1.1573321932449765,
+            0.9895661724327294,
+            0.9935661764705882
+          ],
+          "gain_pct": -0.6433823529411797,
+          "spread_pct": 16.88523872744911
+        }
+      },
+      "spread_across_axis_pct": 1.176470588235301,
+      "control_noise_floor_estimable": true,
+      "quantisation_floor_pct": 0.0009191176470588236,
+      "effective_floor_pct": 14.43014705882352,
+      "resolved": false,
+      "best": null
+    }
   }
 }
