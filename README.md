@@ -77,6 +77,7 @@ asserting it.
 | the adapter drives Registry -> Graph -> Planner -> Executor | with the 0.1 controller kept as `TENSORTRANSIT_ENGINE=v0`, so the migration is an A/B in one binary. Token-exact, 96 windows on captured graph nodes, 0 capture invalidations, gains overlapping inside their own noise floors |
 | KV is registered | `recurrent_tensors: 48, kv_tensors: 16` on a live run. The second proof track could not be measured before — not "had not been" |
 | a cost model that can express coordination | fitted to the hardware arms in `results/`; superlinear in residency, so concentrating beats spreading and the admission axis measures something |
+| the second proof track, at model level | the global arm beats the best independent arm on all three golden traces, where under the linear model it provably could not — and `--stream-relief 0` makes the advantage disappear, which names the mechanism and would falsify it |
 | Frontier Gain and its ledger | continuous `dF`, frozen generations, paired bootstrap, protected-workload guard, append-only receipts |
 | a trusted, keyless, ephemeral GPU runner | plus the anti-gaming overlay, both proven by CI rather than described |
 | plan replay, a gated overhead budget, live trace recording | the offline loop closes; the 0.5%-of-token budget is asserted on the real 64-layer shape |

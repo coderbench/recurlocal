@@ -75,10 +75,24 @@ therefore unreachable in the only regime that matters.
 
 ## v0.4 — Recurrent + KV QoS, measured
 
-Run the five arms on hardware and settle whether the global planner beats the independent
-policies on a real workload. **The prerequisite is closed:** the adapter registers KV as of
-0.2.1, so the arms are `TENSORTRANSIT_PRESET=<arm>` on the real model through the measured
-path. What is left is device time and the answer.
+**Half done, and the half that is done changed the question.**
+
+At MODEL level the second proof track now has an answer: under the residency cost model the
+global arm beats the best independent arm on all three golden traces (+0.177%, +0.155%,
++0.129% against +0.102%), where under the linear model it provably could not. The mechanism is
+isolable to one dial: set `--stream-relief 0` and the advantage disappears everywhere. So the
+whole of the coordination advantage, on these traces, is the `Stream` action — which the linear
+model priced at zero and which was unreachable under a captured decode graph until 0.2.1.
+`results/rtx5090-second-proof-track-model.json`.
+
+That is a prediction, not a measurement, and it names the experiment that settles it:
+**measure `stream_relief`**. The prerequisites are closed — the adapter registers KV, the arms
+are `TENSORTRANSIT_PRESET=<arm>` on the real model through the measured path, and a `Stream`
+window now reaches a captured graph node. What is left is device time.
+
+**Known before starting:** on the pinned dense model this contest is for less than a point of
+throughput. What is not known is what any of it does to a p99 tail, which is the frontier's
+other objective.
 
 **Known before starting:** on the pinned dense model this contest is for less than a point.
 The interesting regime is a model whose decode step moves under **6.42 GB**, which is what
