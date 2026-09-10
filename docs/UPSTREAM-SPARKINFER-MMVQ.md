@@ -16,7 +16,7 @@ No patch and no instrumentation needed — the runtime prints its own cause on s
 
 ```bash
 MODEL=/root/models/qwen36-moe/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
-BIN=.../build/runtime/qwen3_gguf_cb_bench
+BIN=$SPARKINFER/build/runtime/qwen3_gguf_cb_bench    # built from 5347b27, unmodified
 
 # argv: <model> <concurrency> <prompt_len> <max_new> <long_prefill>
 
@@ -339,6 +339,11 @@ A cheap hardening that would have made this a one-line diagnosis: give `launch_s
 
 - Was the `M > 8` bound on `launch_mmvq_q4k_rows` chosen for the speculative-verify block width (DSpark `block_size` 7 plus one, per the `kVerifyMaxRows` comment at `qwen35_prefill.cpp:84`), and simply not revisited when continuous-batch decode began reusing the same forward at up to 32 rows?
 - Is there a reason `proj()`'s mmvq branch has no per-row fallback where its FP8 and NVFP4 neighbours do?
+- If a wider instantiation does land, would you want it behind a runtime switch rather than
+  compiled in? This file already does exactly that one screen away — `SPARKINFER_Q4K_OROWS`
+  (`gemv.cu:3906-3917`) pins weight-rows-per-CTA "for an A/B out of one binary" — and the same
+  treatment for the row width would let the chunking loop and a wide kernel be compared on one
+  build, which is how the numbers in this report were obtained in the first place.
 - Has a 16- or 32-row `si_mmvq_q4k_rows_exact_kernel` instantiation ever been benchmarked? The NVFP4 note at `:3429-3435` measured one for a kernel with very different register scaling; this one's only `R`-scaled state is `tmp[OROWS][MMAX]`, and 6 → 8 rows costs 6 registers with no spill.
 
 ---
