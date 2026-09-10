@@ -55,7 +55,9 @@ int usage(const char* program) {
         "  --reservation-cost F          what the set-aside costs the traffic it displaces\n"
         "  --stream-relief F             share of a Stream hint's bytes that stop interfering\n"
         "  --window-preference P         densest | widest | narrowest | soonest_reuse\n"
-        "  --max-windows-per-kernel N    0 = unbounded; 1 is what the hardware delivers\n"
+        "  --max-windows-per-kernel N    default 1, which is what a kernel node carries and\n"
+        "                                what the adapter sets; 0 = unbounded, which is what\n"
+        "                                this tool used to assume and the hardware does not\n"
         "  --role-floor-share F          role_floor only: share reserved per role\n"
         "  --max-reuse-budgets F         decline reuse further than F budgets away\n"
         "  --requests N                  active requests to plan for\n"
@@ -81,6 +83,19 @@ bool parse_options(int argc, char** argv, int start, Options* out) {
         RoleMask::of(TensorRole::RecurrentState, TensorRole::KVCache);
     out->config.stream_roles = RoleMask::of(TensorRole::ModelWeight, TensorRole::ExpertWeight);
     out->config.prefetch_roles = RoleMask::of(TensorRole::RecurrentState);
+    // ONE window per kernel, which is what the SparkInfer adapter sets and what a kernel node
+    // actually carries. The library's own default is 0 (unbounded) and stays that way -- a
+    // library should not assume a device -- but this tool exists to tell a contributor what
+    // their plan will do ON HARDWARE, and until 0.2.1 it answered a different question.
+    //
+    // It is not a cosmetic difference. On the recorded 64-kernel graph the `global` arm's
+    // predicted gain goes from +0.161% unbounded to +0.006% capped, because its two mechanisms
+    // -- persist the state, tell the weight stream to get out of the way -- compete for the one
+    // access-policy window each kernel node has. Unbounded, `global` beats the best independent
+    // arm on all five golden traces. Capped, it loses on both traces recorded from the runtime
+    // and wins only on the hand-written ones, which model 176 kernels where the runtime has 64.
+    // Pass `--max-windows-per-kernel 0` to see what an unconstrained planner would do.
+    out->config.max_windows_per_kernel = 1;
 
     for (int i = start; i < argc; ++i) {
         const char* arg = argv[i];

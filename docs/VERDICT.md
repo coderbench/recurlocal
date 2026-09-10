@@ -228,12 +228,34 @@ where under the linear model it provably could not — and setting `--stream-rel
 advantage disappear on every one, which identifies the mechanism as the `Stream` action
 (`results/rtx5090-second-proof-track-model.json`).
 
-**It also holds on geometry nobody wrote by hand.** `tests/golden/trace_live_c1.json` is
-recorded from the live adapter — the runtime's real KV slice sizes, its real layer count, the
-measured step traffic — and gives the same three-way answer: linear −0.022 points behind the
-best independent arm, residency **+0.054 ahead**, residency with `--stream-relief 0` −0.008
-behind again. The synthetic fixtures model 176 kernels against the runtime's 64 and a KV block
-1.5x too large; the conclusion does not depend on either.
+**And it does not survive the constraint the hardware imposes.** This is the strongest thing the
+recorded traces have said, and it retracts an earlier version of this section.
+
+A kernel node carries **one** access-policy window. The SparkInfer adapter sets
+`max_windows_per_kernel = 1` and every measurement in `results/` was taken under it; the CLI
+defaulted to 0 until 0.2.1, so every figure above answers a question the measured path does not
+ask. The global arm's two mechanisms — persist the state, tell the weight stream to get out of
+the way — compete for that one window.
+
+| trace | unbounded | capped at 1 | |
+|---|--:|--:|---|
+| `trace_recurrent` | +0.075 | **+0.075** | hand-written, 176 kernels |
+| `trace_recurrent_kv` | +0.053 | **+0.053** | hand-written |
+| `trace_concurrency` | +0.027 | **+0.027** | hand-written |
+| `trace_live_c1` | +0.054 | **−0.007** | **recorded**, 64 kernels |
+| `trace_live_c16` | +0.061 | **−0.034** | **recorded** |
+
+(global minus the best independent arm, in points of predicted throughput)
+
+Capped, the global arm's gain on the recorded 16-sequence graph falls from +0.161% to +0.006%
+and `naive_both` wins that trace outright. **The second proof track's positive result is an
+artifact of the fixtures**: they model 176 kernels where the runtime has 64, so there is room
+for a persist and a stream on different kernels, and on the real graph every kernel is
+contested. `tests/test_golden.cpp` pins all ten comparisons, and `tensortransit compare` now
+defaults to the cap so the planning tool and the measured path ask the same question.
+
+This is what item 12 of the brief predicted — "a trace recorded from the real runtime would
+sharpen every comparison" — arriving as a retraction rather than a confirmation.
 
 **That was not tested by the measurement above.** `stream_applied` and `stream_deferred` are
 zero on every measured arm, because the adapter registers a `ModelWeight` tensor only when the

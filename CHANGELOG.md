@@ -177,6 +177,35 @@ role-floor arbitration alone, and measures the same as it within noise.
 [`docs/VERDICT.md`](docs/VERDICT.md) puts all of it together and answers the question a
 maintainer has to answer before handing this to contributors.
 
+### Found — the coordination result does not survive the hardware's one window per kernel
+
+A kernel node carries **one** access-policy window. The SparkInfer adapter sets
+`max_windows_per_kernel = 1` and every measurement in `results/` was taken under it. `tensortransit
+compare` and `plan` defaulted to **0**, so the tool a contributor plans with answered a question
+the measured path does not ask — the same class of defect as the 0.2.0 blocker, one level up.
+
+The default is now 1, and it inverts the second proof track on exactly the traces that were
+recorded rather than written (global minus the best independent arm, points of predicted
+throughput):
+
+| trace | unbounded | capped at 1 | |
+|---|--:|--:|---|
+| `trace_recurrent` | +0.075 | +0.075 | hand-written, 176 kernels |
+| `trace_recurrent_kv` | +0.053 | +0.053 | hand-written |
+| `trace_concurrency` | +0.027 | +0.027 | hand-written |
+| `trace_live_c1` | +0.054 | **−0.007** | **recorded**, 64 kernels |
+| `trace_live_c16` | +0.061 | **−0.034** | **recorded** |
+
+The global arm's gain on the recorded 16-sequence graph falls from +0.161% to +0.006%, and
+`naive_both` wins that trace outright. Its two mechanisms — persist the state, tell the weight
+stream to get out of the way — compete for the one window each kernel has, and on a 64-kernel
+graph every kernel is contested. The hand-written fixtures model 176 kernels and therefore leave
+room for both.
+
+`tests/test_golden.cpp` pins all ten comparisons. The library's own default stays 0, because a
+library should not assume a device; it is the *tool* that exists to say what a plan will do on
+hardware.
+
 ### Found — the planning path is blind to concurrency, and that reconciles the model with the measurement
 
 Recording a trace at sixteen sequences, which took two fixes to get right, produced the thing

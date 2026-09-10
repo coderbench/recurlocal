@@ -8,7 +8,7 @@
   "linear_control": "tensortransit compare tests/golden/<trace>.json --cost-model linear --json",
   "mechanism_control": "tensortransit compare tests/golden/<trace>.json --stream-relief 0 --json"
  },
- "reading": "Under `linear` the global arm cannot beat the best single-role arm -- that is the negative result 0.2.0 published, preserved here as the control. Under `residency` it does. Under `residency` with stream_relief 0 the advantage disappears again, which identifies the mechanism as the Stream action rather than as a number that came out higher. Two tests assert exactly this, and a third asserts the other half: on a workload whose weight traffic IS holdable no Stream action is emitted, and the global arm's advantage there is role_floor arbitration instead. As of the addition of `trace_live_c1`, all three of those hold on geometry RECORDED from the runtime rather than written by hand: linear \u22120.022 behind the best independent arm, residency +0.054 ahead, residency with stream_relief 0 \u22120.008 behind again. The synthetic traces model 176 kernels and a KV block 1.5x too large; this one does not, and the answer does not change.",
+ "reading": "Under `linear` the global arm cannot beat the best single-role arm -- that is the negative result 0.2.0 published, preserved here as the control. Under `residency` it does. Under `residency` with stream_relief 0 the advantage disappears again, which identifies the mechanism as the Stream action rather than as a number that came out higher. Two tests assert exactly this, and a third asserts the other half: on a workload whose weight traffic IS holdable no Stream action is emitted, and the global arm's advantage there is role_floor arbitration instead. As of the addition of `trace_live_c1`, all three of those hold on geometry RECORDED from the runtime rather than written by hand: linear \u22120.022 behind the best independent arm, residency +0.054 ahead, residency with stream_relief 0 \u22120.008 behind again. The synthetic traces model 176 kernels and a KV block 1.5x too large; this one does not, and the answer does not change.\n\nRETRACTED IN PART, and the retraction is the finding. All of the above is computed with `max_windows_per_kernel = 0`. A kernel node carries ONE access-policy window, the adapter sets 1, and the global arm's two mechanisms -- persist the state, tell the weight stream to get out of the way -- compete for it. Under the cap the global arm's predicted gain on the recorded 16-sequence graph falls from +0.161% to +0.006%, and it no longer beats the best independent arm on EITHER trace recorded from the runtime. It still wins on all three hand-written traces, which model 176 kernels where the runtime has 64 and therefore leave room for a persist and a stream on different kernels.\n\nSo the second proof track's positive result is an artifact of the fixtures. On geometry recorded from the runtime, under the constraint the hardware imposes, coordination does not beat the best independent arm -- `naive_both` wins trace_live_c16 outright. tests/test_golden.cpp pins all ten of those comparisons, and `tensortransit compare` now defaults to the cap so the tool answers the question the measured path asks.",
  "traces": {
   "trace_recurrent": {
    "linear": {
@@ -620,5 +620,75 @@
  "naive_both_degenerates_at_concurrency": {
   "finding": "The straw man does not do badly at concurrency; it does nothing.",
   "detail": "`naive_both` is Proportional admission over both tensor classes -- 'what you get by turning two independent policies on at once' -- and Proportional answers a budget shortfall by shaving the requested hit ratio for every candidate alike. At four concurrent requests the concurrency trace offers 512 candidates against a 47 MB budget, so every shaved ratio falls under `min_hit_ratio` (0.05) and all 512 are declined: an EMPTY plan, 0 actions, indistinguishable on the device from the hook with no policy. On the recorded batch-1 trace the same preset emits 256 actions, so this is a property of concurrency and not of the preset.\n\nTwo consequences. First, the specification's straw man cannot demonstrate what it is for at the concurrencies the frontier actually scores -- it is supposed to show that unarbitrated persistence HURTS, and instead it abstains. Second, `eval/real_eval.py` refused it as a NULL CANDIDATE, which would have taken the other four arms of the five-arm run down with it; the guard now tells a planner that declined every candidate for a stated reason apart from a window that was computed and handed back to a runtime that never attached it."
+ },
+ "under_the_hardware_window_cap": {
+  "what_this_is": "The same comparison with `max_windows_per_kernel = 1` -- one access-policy window per kernel node, which is what the hardware carries and what the SparkInfer adapter sets. Every measurement in results/ was taken under it. The CLI defaulted to 0 until 0.2.1, so every figure elsewhere in this file answers a question the measured path does not ask.",
+  "traces": {
+   "trace_recurrent": {
+    "gains_pct": {
+     "baseline": 0,
+     "global": 0.177,
+     "kv_only": 0,
+     "naive_both": 0.022,
+     "recurrent_only": 0.102
+    },
+    "best_independent_pct": 0.102,
+    "global_minus_best_pct": 0.075,
+    "global_wins": true,
+    "recorded": false
+   },
+   "trace_recurrent_kv": {
+    "gains_pct": {
+     "baseline": 0,
+     "global": 0.155,
+     "kv_only": 0.048,
+     "naive_both": 0.005,
+     "recurrent_only": 0.102
+    },
+    "best_independent_pct": 0.102,
+    "global_minus_best_pct": 0.053,
+    "global_wins": true,
+    "recorded": false
+   },
+   "trace_concurrency": {
+    "gains_pct": {
+     "baseline": 0,
+     "global": 0.129,
+     "kv_only": 0.048,
+     "naive_both": 0,
+     "recurrent_only": 0.102
+    },
+    "best_independent_pct": 0.102,
+    "global_minus_best_pct": 0.027,
+    "global_wins": true,
+    "recorded": false
+   },
+   "trace_live_c1": {
+    "gains_pct": {
+     "baseline": 0,
+     "global": 0.013,
+     "kv_only": 0.02,
+     "naive_both": 0.006,
+     "recurrent_only": 0.006
+    },
+    "best_independent_pct": 0.02,
+    "global_minus_best_pct": -0.007,
+    "global_wins": false,
+    "recorded": true
+   },
+   "trace_live_c16": {
+    "gains_pct": {
+     "baseline": 0,
+     "global": 0.006,
+     "kv_only": 0.001,
+     "naive_both": 0.04,
+     "recurrent_only": 0.005
+    },
+    "best_independent_pct": 0.04,
+    "global_minus_best_pct": -0.034,
+    "global_wins": false,
+    "recorded": true
+   }
+  }
  }
 }

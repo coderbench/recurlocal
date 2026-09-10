@@ -185,6 +185,63 @@ static void test_the_second_proof_track_holds_on_the_recorded_trace(const Device
     CHECK(without_relief <= best);
 }
 
+// The coordination result, asked under the constraint the hardware actually imposes.
+//
+// A kernel node carries ONE access-policy window. The SparkInfer adapter sets
+// `max_windows_per_kernel = 1` and every measurement in results/ was taken under it; the CLI
+// defaulted to 0 until 0.2.1 and therefore answered a different question from the one a
+// contributor was asking.
+//
+// It inverts the answer, and only on the traces that were RECORDED. Unbounded, the global arm
+// beats the best independent arm on all five golden traces. Capped, it wins on the three
+// hand-written ones -- which model 176 kernels where the runtime has 64, so there is room for a
+// persist and a stream on different kernels -- and LOSES on both traces recorded from the
+// runtime, where every kernel is contested. `naive_both` wins `trace_live_c16` outright.
+//
+// Pinned here because it is the strongest thing the recorded traces have said and because a
+// change to the cap, to the presets or to the stream rule would move it silently.
+static void test_the_hardware_window_cap_inverts_the_coordination_result(
+        const DeviceProfile& device) {
+    struct Expectation { const char* trace; bool global_wins_capped; };
+    static constexpr Expectation kCases[] = {
+        {"trace_recurrent.json", true},        // hand-written, 176 kernels
+        {"trace_recurrent_kv.json", true},     // hand-written
+        {"trace_concurrency.json", true},      // hand-written
+        {"trace_live_c1.json", false},         // RECORDED, 64 kernels
+        {"trace_live_c16.json", false},        // RECORDED
+    };
+    for (const Expectation& expected : kCases) {
+        Loaded loaded = load(expected.trace);
+        if (!loaded.ok) { ++g_failures; continue; }
+        RuntimeState state{};
+        state.active_requests = loaded.meta.active_requests;
+        parse_runtime_phase(loaded.meta.phase.c_str(), &state.phase);
+        PlanInput input{&loaded.graph, &loaded.registry, device, state};
+
+        const auto gain = [&](PolicyPreset preset, int cap) {
+            TransitPlannerConfig cfg = base();
+            cfg.stream_roles = RoleMask::of(TensorRole::ModelWeight, TensorRole::ExpertWeight);
+            cfg.max_windows_per_kernel = cap;
+            const TransitPlannerConfig config = preset_config(preset, cfg);
+            return make_planner(preset_planner(preset), config)->build_plan(input)
+                       .cost().predicted_throughput_ratio() - 1.0;
+        };
+        const auto best_independent = [&](int cap) {
+            return std::max(std::max(gain(PolicyPreset::RecurrentOnly, cap),
+                                     gain(PolicyPreset::KVOnly, cap)),
+                            gain(PolicyPreset::NaiveBothPersistent, cap));
+        };
+        // Unbounded: the global arm wins everywhere. That is the 0.2.1 result as published.
+        CHECK(gain(PolicyPreset::Global, 0) > best_independent(0));
+        // One window per kernel: it wins only where the trace was written rather than recorded.
+        const bool capped_win = gain(PolicyPreset::Global, 1) > best_independent(1);
+        CHECK(capped_win == expected.global_wins_capped);
+        if (capped_win != expected.global_wins_capped)
+            std::printf("     %s: capped global %s the best independent arm\n", expected.trace,
+                        capped_win ? "beat" : "did not beat");
+    }
+}
+
 static std::size_t persist_count(const TransitPlan& plan) {
     std::size_t n = 0;
     for (const TransitAction& action : plan.actions())
@@ -251,6 +308,7 @@ int main(int argc, char** argv) {
     test_the_linear_control_still_reproduces_the_published_sweep(device, &g_failures);
     test_survival_is_density_at_the_fitted_beta_and_nothing_above_it(device);
     test_the_second_proof_track_holds_on_the_recorded_trace(device);
+    test_the_hardware_window_cap_inverts_the_coordination_result(device);
 
     for (const char* trace_name : traces) {
         Loaded loaded = load(trace_name);
