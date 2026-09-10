@@ -8,6 +8,20 @@ deliberately change one, and say which in the commit message.
 Geometry comes from adapters/sparkinfer/pin.json where it is real (the recurrent state
 shape of Qwen3.8-27B is measured, not invented). Everything else is labelled synthetic in
 the trace's own notes field.
+
+`trace_live_c1.json` is NOT written by this script and running it will not regenerate that
+file. It was RECORDED from the live SparkInfer adapter with TENSORTRANSIT_TRACE_OUT, so it
+carries the runtime's real KV slice sizes (4210688 bytes per attention layer, against the
+12582912 this script invents), its real layer count (64 kernels, against 176), and the
+measured step traffic. To re-record it, run the cb bench with:
+
+    TENSORTRANSIT=persist TENSORTRANSIT_WINDOW_ATTACH=capture_node \
+    TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN=18500000000 \
+    TENSORTRANSIT_TRACE_OUT=trace.json TENSORTRANSIT_TRACE_MODEL=Qwen3.8-27B \
+    TENSORTRANSIT_TRACE_RUNTIME_COMMIT=<pin.json commit> \
+    qwen3_gguf_cb_bench <model> 1 128 64 4096
+
+and keep the notes field, which says which parts are measured.
 """
 import json
 import os

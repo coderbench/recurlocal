@@ -533,6 +533,21 @@ It resolved each edge's endpoints by scanning every use, for every edge, for eve
 and `build()` called it once per kernel. `build()` now accumulates the whole live-set curve in
 O(edges) and the query is a binary search into it.
 
+### Added — a golden trace RECORDED from the runtime, beside the ones written by hand
+
+`tests/golden/trace_live_c1.json` is the live SparkInfer adapter's own graph: the runtime's real
+KV slice sizes (4,210,688 bytes per attention layer, against the 12,582,912 the hand-written
+fixture invents), its real layer count (64 kernels against 176), and the measured step traffic.
+The three synthetic traces stay, and keeping both is the point — a digest that moves on the
+recorded trace and not on the synthetic ones is a fact about the deployment rather than about
+the planner.
+
+It also settled what item 3 was for. The first recording came back with **zero KV tensors**,
+because the runtime declares its pools after it opens the token and the trace was written once
+after the first compile. The second came back with `active_requests: 1` on a c=16 run, because
+the trace kept the LAST rebuild and a concurrency run rebuilds as requests drain. Both are
+fixed; the file now carries 96 recurrent, 32 KV and 64 weight tensors from a real batch-1 step.
+
 ### Added — live trace recording
 
 `TENSORTRANSIT_TRACE_OUT` writes the recorded Transit Graph once, after the first compile. The
