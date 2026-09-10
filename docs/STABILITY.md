@@ -124,7 +124,7 @@ What each does:
 
 | Change | Source compatibility | ABI |
 |---|---|---|
-| Append a field at the end | Kept. Existing designated/aggregate initialisation still compiles; the new field takes its NSDMI default. | **Broken.** `sizeof` grows. A pre-built consumer passing the old struct by value under-supplies the new one. Caught by the `static_assert` on `sizeof` in the header. |
+| Append a field at the end | Kept. Existing designated/aggregate initialisation still compiles; the new field takes its NSDMI default. | **Broken.** `sizeof` usually grows, and a pre-built consumer passing the old struct by value under-supplies the new one. Usually caught by the `static_assert` on `sizeof`; see the tail-padding hole below, which it does not catch. |
 | Insert a field between members | Kept. | **Broken, silently, in the worst way.** Every following field's offset moves. If the field lands in interior padding, `sizeof` does not even change. |
 | Reorder, retype, or rename a field | **Broken.** | **Broken.** |
 | Change a field's *default* | Kept, ABI kept — but it changes the measured behaviour of every caller that did not set it explicitly. Treat it as a behaviour change and record it in the changelog with the measurement that motivated it. |
@@ -135,6 +135,19 @@ offset, and an old caller's value-initialised `PlannerConfig{}` (padding zeroed)
 the new library enumerator 0 of an axis it has never heard of — a wrong measurement with no
 symptom. **This is why the rule is "append after the last member" rather than "keep `sizeof`
 stable", and why `planner.h` asserts an `offsetof` table and not only sizes.**
+
+**The one case the asserts do not catch, stated rather than papered over: tail padding.**
+`StateSegment` ends with a four-byte `StateKind` at offset 32 and has `sizeof` 40 — four bytes
+of tail padding. Appending a four-byte enum to it leaves `sizeof` at **40** and moves no
+existing offset, so the size assert passes, the `offsetof` table passes, and a pre-built
+consumer's value-initialised `StateSegment{}` hands the new library enumerator 0 of an axis it
+has never heard of. Verified: `struct` with the extra member measures 40, identical.
+`PlannerConfig` and `LayerPlan` fall into the same trap on every *second* four-byte append.
+
+There is no portable compile-time member count, so no assert closes this. The rule for that
+case is enforced by review: **an append that does not change `sizeof` still requires a minor
+version bump and a changelog entry**, and a reviewer who sees a new field and an unchanged
+assert should treat that as the hazard rather than as a convenience.
 
 Current LP64 sizes, asserted in the headers:
 
@@ -302,7 +315,7 @@ Every claim above maps to a check, so this file cannot quietly become false:
 | Claim | Enforced by |
 |---|---|
 | Enum underlying type is `int`, `sizeof` 4 | `: int` written on every declaration in `planner.h` |
-| Public struct sizes | `static_assert` in the headers (LP64-guarded), so a consumer's own build checks too |
+| Public struct sizes | `static_assert` in the headers (LP64-guarded), so a consumer's own build checks too — **except an append absorbed by tail padding**, section 4 |
 | Public struct field offsets | `offsetof` asserts in `planner.h`, LP64-guarded |
 | Enumerator ↔ string round-trip | round-trip tests in `tests/test_planner.cpp` |
 | A new enumerator without a string | `-Wall` `-Wswitch` on RecurLocal's own `to_string` |

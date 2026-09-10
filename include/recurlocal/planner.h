@@ -432,6 +432,13 @@ WindowAttach parse_window_attach(const char* text);
 // inserted into one of PlannerConfig's padding holes at offset 4, 52 or 92 changes no size at
 // all, so the offset checks are not redundant with the size ones.
 //
+// These do NOT catch every layout change, and the gap is worth knowing: a four-byte field
+// appended into a struct's TAIL padding changes no size and moves no offset. StateSegment
+// ends with a four-byte StateKind at offset 32 and has sizeof 40 - appending another
+// four-byte enum leaves it at 40 and both checks below pass. There is no portable
+// compile-time member count, so that case is enforced by review; docs/STABILITY.md section 4
+// says so rather than leaving a reader to assume the build has it covered.
+//
 // Guarded on LP64 because the numbers are LP64 numbers. An exotic target should not get a hard
 // error for being exotic; it gets no check, and docs/STABILITY.md says so.
 #if defined(__LP64__) || defined(_WIN64)
