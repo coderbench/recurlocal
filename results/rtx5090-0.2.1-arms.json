@@ -1,0 +1,658 @@
+{
+ "schema_version": 1,
+ "what_this_is": "The five specification arms and the admission axis, MEASURED on the real model through the measured path -- which is possible for the first time in 0.2.1, because until now the adapter drove the 0.1 controller directly and neither a planner nor an admission rule reached the number. One binary, one model load, paired interleaved repeats, token-exact on every configuration, on the three TTF-1 cells whose control spread resolves. Throughput AND p99 inter-token latency, because the frontier scores both and nothing in this repository had ever measured the second.",
+ "provenance": {
+  "baseline_commit": "c0725d904b280c2f3c295de03fb2ec6abd0fc5f8",
+  "candidate_commit": "c0725d904b280c2f3c295de03fb2ec6abd0fc5f8",
+  "cells_requested": [
+   "ctx128-c1",
+   "ctx128-c4",
+   "ctx128-c16"
+  ],
+  "correctness": {
+   "control_replays": 3,
+   "correctness": "PASS",
+   "method": "greedy replay, token-exact",
+   "runtime_reproducible": true,
+   "tokens_compared": 64
+  },
+  "environment_fingerprint": null,
+  "evaluator_commit": null,
+  "hardware": {
+   "count": 1,
+   "gpu": "RTX 5090"
+  },
+  "long_prefill": 4096,
+  "max_new": 64,
+  "model": {
+   "digest": null,
+   "name": "Qwen3.8-27B"
+  },
+  "repeats": 3,
+  "runtime": {
+   "commit": "5347b27cbc43af7281d2ac7b30f41d610514d8f3",
+   "name": "SparkInfer"
+  }
+ },
+ "cells": {
+  "ctx128-c1": {
+   "control_goodput_tps": 69.4,
+   "control_p99_itl_ms": 16.141,
+   "control_goodput_spread_pct": 0.14409221902018518,
+   "control_p99_spread_pct": 2.1683910538380613,
+   "repeats": 3,
+   "arms": {
+    "density": {
+     "throughput_gain_pct": -0.4322766570605374,
+     "throughput_noise_floor_pct": 0.4341534008683028,
+     "throughput_resolved": false,
+     "p99_headroom_gain_pct": -1.0820115578507261,
+     "p99_noise_floor_pct": 2.1683910538380613,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9956709956709957,
+      0.9985590778097981,
+      0.9956772334293946
+     ],
+     "paired_p99_ratios": [
+      0.9862519858242698,
+      0.9891798844214927,
+      1.0125646711012566
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "global": {
+     "throughput_gain_pct": -0.4322766570605374,
+     "throughput_noise_floor_pct": 0.28943560057887535,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -1.5540871267743617,
+     "p99_noise_floor_pct": 2.1683910538380613,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9956709956709957,
+      0.9971181556195965,
+      0.9956772334293946
+     ],
+     "paired_p99_ratios": [
+      0.9842073170731707,
+      0.9844591287322564,
+      1.0120036934441368
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "proportional": {
+     "throughput_gain_pct": -0.28860028860029363,
+     "throughput_noise_floor_pct": 0.14471780028944795,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -0.5728717506468084,
+     "p99_noise_floor_pct": 2.1683910538380613,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9971139971139971,
+      0.9971181556195965,
+      0.9956772334293946
+     ],
+     "paired_p99_ratios": [
+      0.9942712824935319,
+      0.9850618342108486,
+      1.0014009867819942
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "quota": {
+     "throughput_gain_pct": -0.2881844380403509,
+     "throughput_noise_floor_pct": 0.14450867052024352,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -0.5805515239477477,
+     "p99_noise_floor_pct": 2.1683910538380613,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9971139971139971,
+      0.9971181556195965,
+      0.9971181556195965
+     ],
+     "paired_p99_ratios": [
+      0.9954363243909959,
+      0.9865718315040775,
+      0.9941944847605225
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "recurrent_v0": {
+     "throughput_gain_pct": -0.2881844380403509,
+     "throughput_noise_floor_pct": 0.5780346820809331,
+     "throughput_resolved": false,
+     "p99_headroom_gain_pct": -0.34066274388355744,
+     "p99_noise_floor_pct": 2.1683910538380613,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9956709956709957,
+      1.0,
+      0.9971181556195965
+     ],
+     "paired_p99_ratios": [
+      0.9821113477334955,
+      0.9965933725611644,
+      1.001035133654022
+     ],
+     "statuses": [
+      "OK"
+     ]
+    }
+   }
+  },
+  "ctx128-c16": {
+   "control_goodput_tps": 564.9,
+   "control_p99_itl_ms": 44.041,
+   "control_goodput_spread_pct": 0.28323597096831704,
+   "control_p99_spread_pct": 3.705637928294085,
+   "repeats": 3,
+   "arms": {
+    "density": {
+     "throughput_gain_pct": 0.3894494600814369,
+     "throughput_noise_floor_pct": 0.28323597096831704,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": 1.384083044982698,
+     "p99_noise_floor_pct": 3.705637928294085,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      1.003005657708628,
+      1.0046099290780142,
+      1.0038944946008144
+     ],
+     "paired_p99_ratios": [
+      1.013840830449827,
+      1.0335585687723914,
+      1.0124600565530242
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "global": {
+     "throughput_gain_pct": 0.3717472118959231,
+     "throughput_noise_floor_pct": 0.28323597096831704,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": 1.3981173864894725,
+     "p99_noise_floor_pct": 3.705637928294085,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      1.000884016973126,
+      1.0039007092198582,
+      1.0037174721189592
+     ],
+     "paired_p99_ratios": [
+      1.0139811738648947,
+      1.0445962049683748,
+      0.9895075042688953
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "proportional": {
+     "throughput_gain_pct": 0.14161798548417703,
+     "throughput_noise_floor_pct": 0.28323597096831704,
+     "throughput_resolved": false,
+     "p99_headroom_gain_pct": 0.445130013221684,
+     "p99_noise_floor_pct": 4.107830551989734,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9985855728429984,
+      1.003368794326241,
+      1.0014161798548418
+     ],
+     "paired_p99_ratios": [
+      1.0097877033360905,
+      1.0044513001322168,
+      0.9747465804966579
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "quota": {
+     "throughput_gain_pct": 0.08865248226950229,
+     "throughput_noise_floor_pct": 0.3185276942134055,
+     "throughput_resolved": false,
+     "p99_headroom_gain_pct": -2.135429423946189,
+     "p99_noise_floor_pct": 3.705637928294085,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      1.0012376237623761,
+      1.000886524822695,
+      1.0003540449637105
+     ],
+     "paired_p99_ratios": [
+      0.9786457057605381,
+      1.0082282680822827,
+      0.9678277112405229
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "recurrent_v0": {
+     "throughput_gain_pct": 0.07092198581559739,
+     "throughput_noise_floor_pct": 0.5315379163713678,
+     "throughput_resolved": false,
+     "p99_headroom_gain_pct": 2.2806609262276067,
+     "p99_noise_floor_pct": 8.818972980361787,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      1.000884016973126,
+      1.000709219858156,
+      0.9968135953266065
+     ],
+     "paired_p99_ratios": [
+      1.022806609262276,
+      1.038456281040689,
+      0.9402233086398667
+     ],
+     "statuses": [
+      "OK"
+     ]
+    }
+   }
+  },
+  "ctx128-c4": {
+   "control_goodput_tps": 221.3,
+   "control_p99_itl_ms": 37.746,
+   "control_goodput_spread_pct": 0.27112516945322834,
+   "control_p99_spread_pct": 0.5033645949239594,
+   "repeats": 3,
+   "arms": {
+    "density": {
+     "throughput_gain_pct": -0.5415162454873612,
+     "throughput_noise_floor_pct": 0.4990925589836764,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -0.3563791874554467,
+     "p99_noise_floor_pct": 0.5033645949239594,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9941176470588234,
+      0.9977406235878897,
+      0.9945848375451264
+     ],
+     "paired_p99_ratios": [
+      1.000026376872758,
+      0.9964362081254455,
+      0.9928934277366882
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "global": {
+     "throughput_gain_pct": -0.451875282422054,
+     "throughput_noise_floor_pct": 0.27112516945322834,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -0.4168425495989947,
+     "p99_noise_floor_pct": 0.7147925262134351,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9959276018099548,
+      0.9954812471757795,
+      0.9945848375451264
+     ],
+     "paired_p99_ratios": [
+      0.9963209208209602,
+      0.99583157450401,
+      0.9881339061190276
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "proportional": {
+     "throughput_gain_pct": -0.36150022593764986,
+     "throughput_noise_floor_pct": 0.27112516945322834,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -0.9479046318664142,
+     "p99_noise_floor_pct": 0.5033645949239594,
+     "p99_resolved": true,
+     "paired_throughput_ratios": [
+      0.9986425339366515,
+      0.9963849977406235,
+      0.9954873646209387
+     ],
+     "paired_p99_ratios": [
+      0.9966352093793539,
+      0.9890213546443077,
+      0.9905209536813359
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "quota": {
+     "throughput_gain_pct": -0.3167420814479627,
+     "throughput_noise_floor_pct": 0.27112516945322834,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -0.4512587744761709,
+     "p99_noise_floor_pct": 0.5033645949239594,
+     "p99_resolved": false,
+     "paired_throughput_ratios": [
+      0.9968325791855204,
+      0.9972887483054675,
+      0.9954873646209387
+     ],
+     "paired_p99_ratios": [
+      0.9996045138156507,
+      0.9914112363091956,
+      0.9954874122552383
+     ],
+     "statuses": [
+      "OK"
+     ]
+    },
+    "recurrent_v0": {
+     "throughput_gain_pct": -0.2711251694532457,
+     "throughput_noise_floor_pct": 0.27112516945322834,
+     "throughput_resolved": true,
+     "p99_headroom_gain_pct": -0.7420076305749368,
+     "p99_noise_floor_pct": 0.7051703723194334,
+     "p99_resolved": true,
+     "paired_throughput_ratios": [
+      0.9986425339366515,
+      0.9972887483054675,
+      0.9950361010830325
+     ],
+     "paired_p99_ratios": [
+      1.0008183306055647,
+      0.9894102228047184,
+      0.9925799236942506
+     ],
+     "statuses": [
+      "OK"
+     ]
+    }
+   }
+  }
+ },
+ "how_to_reproduce": {
+  "command": "tools/tt-frontier run --generation TTF-1 --model $MODEL --cb-binary $W/qwen3_gguf_cb_bench --generate $W/qwen3_gguf_generate --cells ctx128-c1,ctx128-c4,ctx128-c16 --repeats 3 --main-config 'control=' --candidate-config 'recurrent_v0=TENSORTRANSIT=persist,TENSORTRANSIT_WINDOW_ATTACH=capture_node' --candidate-config 'quota=...,TENSORTRANSIT_PLANNER=budgeted,TENSORTRANSIT_ADMISSION=quota' --candidate-config 'proportional=...,TENSORTRANSIT_ADMISSION=proportional' --candidate-config 'density=...,TENSORTRANSIT_ADMISSION=density' --candidate-config 'global=...,TENSORTRANSIT_PRESET=global'",
+  "note": "Every arm is the SAME binary with a different environment. The control's environment is scrubbed of both the TENSORTRANSIT_ and RECURLOCAL_ prefixes, so an operator with one exported cannot compare the candidate against itself."
+ },
+ "frontier_scoring": {
+  "what_this_is": "Each arm scored by tools/tt-frontier against TTF-1 over the three cells that were run. A PARTIAL matrix -- TTF-1 declares ten cells and this ran three -- so every receipt says PARTIAL on its face and none of them is a full-coverage contribution. The point of scoring them anyway is that this is exactly what a submission would get.",
+  "arms": {
+   "recurrent_v0": {
+    "frontier_gain_pct": -0.4293827783363513,
+    "verified_gain_pct": 0.0,
+    "ci_99": [
+     -1.4985239850135779,
+     0.31586852250002906
+    ],
+    "status": "INCONCLUSIVE",
+    "paired_repeats": 3,
+    "coverage": {
+     "improved_cells": 1,
+     "missing_cells": [
+      "ctx128-c32",
+      "ctx16384-c1",
+      "ctx16384-c4",
+      "ctx4096-c1",
+      "ctx4096-c16",
+      "ctx4096-c32",
+      "ctx4096-c4"
+     ],
+     "neutral_cells": 0,
+     "partial": true,
+     "regressed_cells": 2,
+     "scored_cells": 3,
+     "total_cells": 10
+    },
+    "content_digest": "sha256:c03e23d901c68541f019e10f0ce5fce0bf93614f4bc5ead2921c780a940cca9a"
+   },
+   "quota": {
+    "frontier_gain_pct": -0.6419819071309174,
+    "verified_gain_pct": 0.0,
+    "ci_99": [
+     -0.9429297312737672,
+     -0.39012255993853273
+    ],
+    "status": "NO_FRONTIER_GAIN",
+    "paired_repeats": 3,
+    "coverage": {
+     "improved_cells": 0,
+     "missing_cells": [
+      "ctx128-c32",
+      "ctx16384-c1",
+      "ctx16384-c4",
+      "ctx4096-c1",
+      "ctx4096-c16",
+      "ctx4096-c32",
+      "ctx4096-c4"
+     ],
+     "neutral_cells": 0,
+     "partial": true,
+     "regressed_cells": 3,
+     "scored_cells": 3,
+     "total_cells": 10
+    },
+    "content_digest": "sha256:4e00b9dcb6ea25f0f308216ebf9188259cfcba5be9ada23865d5fd6867bd36b7"
+   },
+   "proportional": {
+    "frontier_gain_pct": -0.4845482264665968,
+    "verified_gain_pct": 0.0,
+    "ci_99": [
+     -0.7987405275786452,
+     -0.18699711194885005
+    ],
+    "status": "NO_FRONTIER_GAIN",
+    "paired_repeats": 3,
+    "coverage": {
+     "improved_cells": 0,
+     "missing_cells": [
+      "ctx128-c32",
+      "ctx16384-c1",
+      "ctx16384-c4",
+      "ctx4096-c1",
+      "ctx4096-c16",
+      "ctx4096-c32",
+      "ctx4096-c4"
+     ],
+     "neutral_cells": 0,
+     "partial": true,
+     "regressed_cells": 3,
+     "scored_cells": 3,
+     "total_cells": 10
+    },
+    "content_digest": "sha256:f30c53361000151440c35c0e97f6e8c50405df4f3dd934b782983eb2fe7479a7"
+   },
+   "density": {
+    "frontier_gain_pct": 0.05585390389195588,
+    "verified_gain_pct": 0.0,
+    "ci_99": [
+     -0.2555085361229392,
+     0.332044322007774
+    ],
+    "status": "INCONCLUSIVE",
+    "paired_repeats": 3,
+    "coverage": {
+     "improved_cells": 1,
+     "missing_cells": [
+      "ctx128-c32",
+      "ctx16384-c1",
+      "ctx16384-c4",
+      "ctx4096-c1",
+      "ctx4096-c16",
+      "ctx4096-c32",
+      "ctx4096-c4"
+     ],
+     "neutral_cells": 0,
+     "partial": true,
+     "regressed_cells": 2,
+     "scored_cells": 3,
+     "total_cells": 10
+    },
+    "content_digest": "sha256:bb7f2bf063c10cc6c1e3ea0f07449744dea8f820e2221f42824c77b1067f2e02"
+   },
+   "global": {
+    "frontier_gain_pct": -0.1567396835385204,
+    "verified_gain_pct": 0.0,
+    "ci_99": [
+     -0.37080894959377053,
+     0.2628321994824212
+    ],
+    "status": "INCONCLUSIVE",
+    "paired_repeats": 3,
+    "coverage": {
+     "improved_cells": 1,
+     "missing_cells": [
+      "ctx128-c32",
+      "ctx16384-c1",
+      "ctx16384-c4",
+      "ctx4096-c1",
+      "ctx4096-c16",
+      "ctx4096-c32",
+      "ctx4096-c4"
+     ],
+     "neutral_cells": 0,
+     "partial": true,
+     "regressed_cells": 2,
+     "scored_cells": 3,
+     "total_cells": 10
+    },
+    "content_digest": "sha256:0cd8d6a44e02467d18060480918d41218ce8b4ab42bee387090ca5de69b2b513"
+   }
+  }
+ },
+ "findings": [
+  {
+   "finding": "The admission axis moves the measured number, for the first time.",
+   "detail": "At ctx128-c16, `budgeted/density` measures +0.389% against a 0.283% noise floor -- RESOLVED -- while the shipped `recurrent_v0` policy measures +0.071% and does not resolve. That is a 0.32-point spread between two admission rules on one cell. Before 0.2.1 this could not have happened: the adapter drove the 0.1 controller directly, so no admission rule was in the measured path at all. Aggregated, `quota` (-0.64%, 99% CI -0.94..-0.39) and `density` (+0.06%, CI -0.26..+0.33) have NON-OVERLAPPING intervals: quota is confidently worse."
+  },
+  {
+   "finding": "The cost model's ORDERING over admission rules is contradicted.",
+   "detail": "The residency model predicts quota ~ density, both far ahead of proportional, because saving goes as resident^(1+beta) and quota keeps tensors whole. Measured, the order is density > proportional > quota, and quota is the WORST of the three. So the model is better than the linear one at the magnitude of the persist family -- that is what eval/cost_model_fit.py establishes -- and its ranking of admission rules is NOT validated. A contributor tuning against the model's ranking would be tuning against something this measurement says is wrong. This is the highest-value open problem the release leaves."
+  },
+  {
+   "finding": "Through the continuous-batching path the persist family is negative below 16 sequences.",
+   "detail": "Every arm is negative at ctx128-c1 (-0.29% to -0.43%) and at ctx128-c4 (-0.27% to -0.54%), most of them resolved. This is NOT in tension with the +0.145% the migration check measured at batch 1: that is the single-sequence bench, and these cells run the continuous-batching engine with the generation's long-prefill injection alongside. Two different serving mixes, two different answers, and the frontier scores the second because it is the one that looks like serving."
+  },
+  {
+   "finding": "The p99 latency objective does not resolve at three repeats.",
+   "detail": "Control p99 spreads are 2.2% at c1, 0.5% at c4 and 3.7% at c16, against arm effects of 0.3% to 2.3%. Only two of fifteen arm/cell latency figures clear their own floor. So the tail-latency dimension -- which the frontier scores and which nothing here had measured -- is not merely unexplored, it is BELOW THE RESOLUTION of this instrument at three repeats. That is a fact about the harness, not about the policy, and it bounds what a two-objective frontier can currently see. Raising it needs more repeats, not a better policy."
+  },
+  {
+   "finding": "The global arm's distinguishing action was NOT exercised, so its model-level advantage was not tested.",
+   "detail": "`stream_applied` and `stream_deferred` are 0 on every arm. The `global` preset's stream scope is ModelWeight and ExpertWeight, and the adapter registers a ModelWeight tensor only when the operator declares TENSORTRANSIT_STREAMED_BYTES_PER_TOKEN -- which this run did not. So the measured `global` differs from `density` by role_floor arbitration alone, and the model's prediction that the Stream action is where coordination pays (results/rtx5090-second-proof-track-model.json) was not put to the test here. Measuring it needs the step traffic declared and the weight stream registered; that is the next experiment, and it is one command away."
+  },
+  {
+   "finding": "The measured ordering of admission rules is not explained by concentration alone.",
+   "detail": "`density` declines 65 candidates for budget and measures best; `proportional` declines none for budget -- it shaves everybody -- and measures middling; `quota` declines 33 and measures worst. Both `density` and `quota` concentrate, so 'concentrating beats spreading' does not order them, and no mechanism here explains why they differ by 0.3 points at c16. Stated as an open question rather than fitted after the fact."
+  }
+ ],
+ "adapter_telemetry": {
+  "what_this_is": "What each arm's plan actually did on the device, from the adapter's own stats line. Recorded because the numbers above are only interpretable next to it.",
+  "arms": {
+   "recurrent_v0": {
+    "planner": "recurrent_v0",
+    "admission": "density",
+    "recurrent_tensors": 48,
+    "kv_tensors": 16,
+    "stream_applied": 0,
+    "stream_deferred": 0,
+    "windows_attached_to_node": 144,
+    "capture_invalidations": 0,
+    "declines": {
+     "not_supported": 48,
+     "role_excluded": 32
+    },
+    "plan_digest": "7bf63a861e698003",
+    "planner_ns": 656729,
+    "executor_ns": 46771,
+    "compiles": 8,
+    "geometry_rebuilds": 8
+   },
+   "quota": {
+    "planner": "budgeted",
+    "admission": "quota",
+    "recurrent_tensors": 48,
+    "kv_tensors": 16,
+    "stream_applied": 0,
+    "stream_deferred": 0,
+    "windows_attached_to_node": 144,
+    "capture_invalidations": 0,
+    "declines": {
+     "budget_exhausted": 33,
+     "not_supported": 15,
+     "role_excluded": 32
+    },
+    "plan_digest": "ee60122aef55c78b",
+    "planner_ns": 560056,
+    "executor_ns": 45001,
+    "compiles": 8,
+    "geometry_rebuilds": 8
+   },
+   "proportional": {
+    "planner": "budgeted",
+    "admission": "proportional",
+    "recurrent_tensors": 48,
+    "kv_tensors": 16,
+    "stream_applied": 0,
+    "stream_deferred": 0,
+    "windows_attached_to_node": 144,
+    "capture_invalidations": 0,
+    "declines": {
+     "not_supported": 48,
+     "role_excluded": 32
+    },
+    "plan_digest": "27a97eed1ba02ee3",
+    "planner_ns": 622622,
+    "executor_ns": 44901,
+    "compiles": 8,
+    "geometry_rebuilds": 8
+   },
+   "density": {
+    "planner": "budgeted",
+    "admission": "density",
+    "recurrent_tensors": 48,
+    "kv_tensors": 16,
+    "stream_applied": 0,
+    "stream_deferred": 0,
+    "windows_attached_to_node": 48,
+    "capture_invalidations": 0,
+    "declines": {
+     "budget_exhausted": 65,
+     "not_supported": 15,
+     "role_excluded": 32
+    },
+    "plan_digest": "1b9125f436783c9a",
+    "planner_ns": 444445,
+    "executor_ns": 17648,
+    "compiles": 8,
+    "geometry_rebuilds": 8
+   },
+   "global": {
+    "planner": "budgeted",
+    "admission": "role_floor",
+    "recurrent_tensors": 48,
+    "kv_tensors": 16,
+    "stream_applied": 0,
+    "stream_deferred": 0,
+    "windows_attached_to_node": 77,
+    "capture_invalidations": 0,
+    "declines": {
+     "budget_exhausted": 99,
+     "not_supported": 14
+    },
+    "plan_digest": "6d418dfd6f17ed21",
+    "planner_ns": 596625,
+    "executor_ns": 26542,
+    "compiles": 8,
+    "geometry_rebuilds": 8
+   }
+  }
+ }
+}
