@@ -38,13 +38,16 @@ def receipt_box(receipt: dict) -> str:
     if coverage.get("partial"):
         rows.insert(3, ("Coverage", f"PARTIAL -- {len(coverage['missing_cells'])} cell(s) "
                                     f"not run"))
+    # Widest "key + value" pair, plus the two spaces beside them and a little air.
     width = max(len(f"{k}{v}") for k, v in rows) + 6
     width = max(width, 38)
     out = ["+" + "-" * width + "+",
            "|" + "TENSORTRANSIT FRONTIER".center(width) + "|",
            "+" + "-" * width + "+"]
     for key, value in rows:
-        pad = width - len(key) - len(str(value)) - 4
+        # The rendered line is "| " + key + pad + value + " |", which is len(key)+pad+len(value)+4
+        # characters. The border is width+2, so pad = width - len(key) - len(value) - 2.
+        pad = width - len(key) - len(str(value)) - 2
         out.append(f"| {key}{' ' * max(pad, 1)}{value} |")
     out.append("+" + "-" * width + "+")
     return "\n".join(out)

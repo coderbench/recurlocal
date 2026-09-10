@@ -599,6 +599,9 @@ def test_reports_render():
           "and says where its numbers came from")
     box = report_mod.receipt_box(receipt)
     check(box.count("\n") >= 8 and "TENSORTRANSIT FRONTIER" in box, "the terminal box renders")
+    check(len({len(line) for line in box.split("\n")}) == 1,
+          "and every line of it is the same width -- a box whose border does not line up is a "
+          "report somebody will retype rather than paste")
     grid = report_mod.contribution_map(receipt)
     check("c1" in grid and "c4" in grid, "the contribution map lays cells out by regime")
 
