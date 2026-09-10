@@ -735,8 +735,10 @@ that the set-aside costs its neighbours nothing, and neither is quite true.
 floor, measured at the default `budget_fraction`. Both dials are monotonic to their maximum and
 neither has an interior optimum, which is what a footprint that nearly fits predicts: there is
 no point on this model at which asking for less persistence is better than asking for more.
-That is the opposite of the dense model, where the same axes span 0.02% because no fraction of a
-2.4x-oversubscribed footprint can be held.
+That is expected to be the opposite of the dense model, where no fraction of a
+2.4x-oversubscribed footprint can be held — but **that is a prediction, not a measurement, and
+this entry originally stated it as one.** Neither dial has been swept on the dense checkpoint.
+The 0.02% figure belongs to `window-target`, a different axis, which is formally open there.
 
 **`cliff` cannot be measured on this model, and the guard is right about that.** Sweeping the
 hot-set-policy axis aborted on it: at batch 1 the footprint is oversubscribed, so `cliff`
