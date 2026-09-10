@@ -86,9 +86,14 @@ Four things follow, and only the first is good news.
 
 Aggregated over c1, c4 and c16, `density` (+0.056%, 99% CI −0.26…+0.33) and `quota` (−0.642%,
 CI −0.94…−0.39) have **non-overlapping** intervals. One admission rule is confidently worse
-than another, on a real model, end to end. That is the first measured evidence in this
-repository that the competition surface is a surface, and it could not have been produced
-before 0.2.1.
+than another, on a real model, end to end. That is the first time a change a contributor can
+make has been measured to move anything at all, and it could not have been produced before
+0.2.1 — the adapter drove the 0.1 controller, so no admission rule was in the measured path.
+
+It is also the *ceiling* on what that axis can be worth. Section 7 shows the arithmetic: on
+seven of ten cells the whole persist family is bounded below the floor, so no admission rule can
+be measured to win them. Rearranging a budget worth less than the noise is a real difference
+between two policies and not a route to a Frontier Gain.
 
 **The per-cell headline does not survive the generation's own calibration, and this corrects an
 earlier version of this document.** The table above reports `density` at +0.389% at ctx128-c16

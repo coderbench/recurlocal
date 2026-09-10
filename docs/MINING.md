@@ -635,7 +635,7 @@ comparison against `density` is not a comparison against a moving target. (Under
 the fitted beta it reduces to `density` too — see the bullet above; that is a fact about the
 fitted parameters rather than about the linear model.)
 
-### 2. A new admission rule — MEASURED, and this is the surface
+### 2. A new admission rule — MEASURED, and bounded below the floor on seven of ten cells
 
 One enumerator plus an implementation in `planners/budgeted/`. Comparable against every other
 rule on the same trace with no hardware, and — as of 0.2.1 — on the real model too, because
