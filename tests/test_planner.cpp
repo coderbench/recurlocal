@@ -1128,20 +1128,189 @@ static void test_a_device_that_allows_no_window_at_all_installs_none() {
     CHECK(plan.hot_set_bytes > 0);
 }
 
-static void test_quota_without_a_layer_index_admits_everything() {
-    // Quota decides from the layer ordinal. A caller that supplies none gets layer 0's
-    // answer for every layer, which is Fixed by another name. Pinned so that the degradation
-    // is a documented property rather than a surprise in someone's telemetry.
+static void test_quota_without_an_ordinal_says_it_fell_back_to_fixed() {
+    // Quota rations by layer ordinal. A caller who supplies none cannot be rationed - and
+    // used to get a full-hit-ratio window on every layer with hit_ratio_reduced=false, i.e.
+    // HotSetPolicy::Fixed exactly, while the telemetry reported the policy it was asked for
+    // and denied that anything had backed off. Selecting an enumerator has to either do
+    // something or say that it did not.
     PlannerConfig cfg = base_config();
     cfg.mode = LocalityMode::Persist;
     cfg.hot_set_model = HotSetModel::TokenFootprint;
     cfg.hot_set_policy = HotSetPolicy::Quota;
     LocalityPlanner p(rtx5090(), cfg);
     const auto plan = p.plan_for_layer(2 * MiB, true, moe_geometry(32), -1);
+    CHECK(plan.hot_set_policy == HotSetPolicy::Fixed);       // what it DID
     CHECK(plan.use_persisting_window);
-    CHECK(!plan.hit_ratio_reduced);
     CHECK_NEAR(plan.hit_ratio, cfg.hit_ratio);
+
+    // With an ordinal it rations, and says so.
+    const auto rationed = p.plan_for_layer(2 * MiB, true, moe_geometry(32), 1);
+    CHECK(rationed.hot_set_policy == HotSetPolicy::Quota);
+
+    // Every other policy is ordinal-independent, so none of them ever degrades.
+    for (auto pol : {HotSetPolicy::Proportional, HotSetPolicy::Fixed, HotSetPolicy::Sqrt,
+                     HotSetPolicy::Cliff}) {
+        PlannerConfig c = cfg;
+        c.hot_set_policy = pol;
+        CHECK(LocalityPlanner(rtx5090(), c)
+                  .plan_for_layer(2 * MiB, true, moe_geometry(32), -1).hot_set_policy == pol);
+    }
 }
+
+static void test_quota_admits_the_budget_once_not_once_per_period() {
+    // The spread pattern selects `admitted` of `period` ordinals. Deriving the period from a
+    // BYTE count instead of a layer count made it smaller than the number of ordinals the
+    // runtime walks whenever the window spanned more than one layer's slice - which
+    // WindowScope::Ahead produces today - and the pattern then repeated, admitting a multiple
+    // of the budget. The regression is silent: every window still looks individually correct.
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+    cfg.hot_set_policy = HotSetPolicy::Quota;
+    LocalityPlanner p(rtx5090(), cfg);
+
+    // A window eight layers wide against a 30-layer model: 8 byte-units, 30 ordinals.
+    const std::size_t wide = 16 * MiB;
+    std::size_t admitted_bytes = 0;
+    for (int layer = 0; layer < 30; ++layer) {
+        const auto plan = p.plan_for_layer(wide, true, moe_geometry(4), layer);
+        if (plan.use_persisting_window) admitted_bytes += plan.hot_window_bytes;
+    }
+    CHECK(admitted_bytes <= p.effective_l2_budget());
+}
+
+static void test_quota_still_admits_when_the_hot_set_has_saturated() {
+    // `hot` saturates to SIZE_MAX by design - "a wrong answer here must never be a small
+    // one". The old unit count then computed `hot + window - 1`, which wrapped, making the
+    // period zero and Quota decline every layer: the largest representable hot set producing
+    // the smallest possible admission, the exact inversion the saturating arithmetic exists
+    // to prevent, and Quota silently becoming Cliff.
+    RecurrentGeometry huge;
+    huge.recurrent_layers = 48;
+    huge.bytes_per_layer = static_cast<std::size_t>(-1) / 8;
+    huge.sequences = 64;
+    CHECK(LocalityPlanner::token_footprint_bytes(huge) == static_cast<std::size_t>(-1));
+
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+    cfg.hot_set_policy = HotSetPolicy::Quota;
+    LocalityPlanner p(rtx5090(), cfg);
+    // Nothing can be held, so declining everything is the RIGHT answer here - but it must be
+    // reached by the arithmetic rather than by an overflow, so the same geometry one order of
+    // magnitude smaller must also decline, and a budget that holds whole layers must admit.
+    int admitted = 0;
+    for (int layer = 0; layer < 48; ++layer)
+        if (p.plan_for_layer(3 * MiB, true, huge, layer).use_persisting_window) ++admitted;
+    // The invariant the overflow broke: if the budget holds whole windows, admit that many.
+    // 30 MiB of set-aside holds ten 3 MiB windows, and a hot set of SIZE_MAX does not change
+    // how many the device can keep -- it changes how little of the workload they cover.
+    CHECK(admitted == static_cast<int>(p.effective_l2_budget() / (3 * MiB)));
+    CHECK(admitted > 0);
+
+    // The published figure, reproduced: 60 MiB of set-aside over a 61.41 MiB footprint admits
+    // 29 of 30 layers whole and declines one.
+    PlannerConfig full = cfg;
+    full.persisting_budget_fraction = 1.0;
+    LocalityPlanner q(rtx5090(), full);
+    int ok = 0;
+    const std::size_t layer_state = moe_geometry(1).bytes_per_layer;   // 2.047 MiB, not 2 MiB
+    for (int layer = 0; layer < 30; ++layer)
+        if (q.plan_for_layer(layer_state, true, moe_geometry(1), layer).use_persisting_window) ++ok;
+    CHECK(ok == 29);
+    CHECK(60 * MiB / layer_state == 29);   // the arithmetic the figure comes from
+}
+
+static void test_a_backoff_never_asks_for_more_residency_than_the_set_aside_holds() {
+    // hitRatio x num_bytes is what the driver is told to keep resident. Proportional's
+    // un-floored arithmetic satisfies that <= budget by construction; the min_hit_ratio clamp
+    // is the only thing that can break it, and on a device whose persisting L2 is smaller
+    // than one layer's state it asked for 77x the reservation.
+    const DeviceCaps tiny{6 * MiB, 512 * 1024, 128 * MiB};
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+    cfg.persisting_budget_fraction = 0.5;            // 256 KiB of budget
+    cfg.min_hit_ratio = 0.25;
+    cfg.hot_set_policy = HotSetPolicy::Proportional;
+    LocalityPlanner p(tiny, cfg);
+    const auto plan = p.plan_for_layer(3 * MiB, true, moe_geometry(1), 0);
+    CHECK(plan.use_persisting_window);
+    CHECK(plan.hit_ratio * static_cast<double>(plan.hot_window_bytes)
+          <= static_cast<double>(p.effective_l2_budget()) + 1.0);
+    // On a device where the budget comfortably exceeds one window the floor is untouched, so
+    // no number this repository has published moves.
+    LocalityPlanner big(rtx5090(), cfg);
+    const auto unchanged = big.plan_for_layer(2 * MiB, true, moe_geometry(32), 0);
+    CHECK_NEAR(unchanged.hit_ratio, cfg.min_hit_ratio);
+}
+
+static void test_the_oversubscription_flag_describes_the_workload_not_the_device() {
+    // Same 61.4 MiB footprint, three devices and configs that all end with no window. The
+    // flag used to read FALSE on the device with no persisting L2 at all - the maximally
+    // oversubscribed case - and TRUE on one that merely refused the access-policy window.
+    PlannerConfig cfg = base_config();
+    cfg.mode = LocalityMode::Persist;
+    cfg.hot_set_model = HotSetModel::TokenFootprint;
+
+    const auto no_persist = LocalityPlanner(DeviceCaps{96 * MiB, 0, 128 * MiB}, cfg)
+                                .plan_for_layer(2 * MiB, true, moe_geometry(1), 0);
+    const auto no_window = LocalityPlanner(DeviceCaps{96 * MiB, 60 * MiB, 0}, cfg)
+                               .plan_for_layer(2 * MiB, true, moe_geometry(1), 0);
+    PlannerConfig declined = cfg;
+    declined.persisting_budget_fraction = 0.0;
+    const auto caller_declined = LocalityPlanner(rtx5090(), declined)
+                                     .plan_for_layer(2 * MiB, true, moe_geometry(1), 0);
+
+    for (const auto* plan : {&no_persist, &no_window, &caller_declined}) {
+        CHECK(!plan->use_persisting_window);
+        CHECK(plan->hot_set_bytes > 60 * MiB);
+        CHECK(plan->hot_set_oversubscribed);
+    }
+}
+
+static void test_a_set_aside_request_is_one_the_driver_could_grant() {
+    // A set-aside is carved OUT of L2, so it cannot exceed L2 - and `l2_bytes` was queried,
+    // printed, and read by no policy at all, so a device whose two numbers disagree got a
+    // request for a set-aside larger than its entire cache with nothing to say so.
+    const struct { const char* name; DeviceCaps caps; } matrix[] = {
+        {"rtx5090",      rtx5090()},
+        {"a100",         DeviceCaps{40 * MiB, 30 * MiB, 128 * MiB}},
+        {"h100",         DeviceCaps{50 * MiB, 40 * MiB, 128 * MiB}},
+        {"tiny_persist", DeviceCaps{6 * MiB, 512 * 1024, 128 * MiB}},
+        {"huge_persist", DeviceCaps{512 * MiB, 512 * MiB, 128 * MiB}},
+        {"reports_zero", DeviceCaps{0, 0, 0}},
+        // An emulator, a MIG slice or a stubbed query: more persisting L2 than L2.
+        {"incoherent",   DeviceCaps{16 * MiB, 64 * MiB, 128 * MiB}},
+    };
+    for (const auto& d : matrix) {
+        for (double f : {0.0, 0.05, 0.5, 0.75, 1.0}) {
+            PlannerConfig cfg = base_config();
+            cfg.persisting_budget_fraction = f;
+            LocalityPlanner p(d.caps, cfg);
+            const auto want = p.recommended_l2_set_aside();
+            CHECK(want <= d.caps.persisting_l2_max_bytes);
+            if (d.caps.l2_bytes) CHECK(want <= d.caps.l2_bytes);
+            CHECK(p.effective_l2_budget() == want);
+        }
+    }
+}
+
+static void test_the_most_capable_device_representable_still_persists() {
+    // static_cast<std::size_t> of a double that rounds to 2^64 is undefined, and the observed
+    // answer was 0 - persist silently OFF on a device with the largest capacity the type can
+    // express. Real hardware cannot reach it; a device-capability test can, and a policy that
+    // is undefined on an input a test can construct is a policy nobody can check.
+    constexpr auto kMax = static_cast<std::size_t>(-1);
+    PlannerConfig cfg = base_config();
+    cfg.persisting_budget_fraction = 1.0;
+    LocalityPlanner p(DeviceCaps{kMax, kMax, 128 * MiB}, cfg);
+    CHECK(p.recommended_l2_set_aside() == kMax);
+    cfg.persisting_budget_fraction = 0.5;
+    CHECK(LocalityPlanner(DeviceCaps{kMax, kMax, 128 * MiB}, cfg).recommended_l2_set_aside() > 0);
+}
+
 
 static void test_a_backoff_that_changed_nothing_is_not_reported_as_a_reduction() {
     // `hit_ratio_reduced` means "the requested hit ratio was cut". Where min_hit_ratio sits
@@ -1219,7 +1388,13 @@ int main() {
     test_fabricated_datacentre_devices_behave_as_their_arithmetic_says();
     test_a_window_cap_smaller_than_the_state_still_clamps();
     test_a_device_that_allows_no_window_at_all_installs_none();
-    test_quota_without_a_layer_index_admits_everything();
+    test_quota_without_an_ordinal_says_it_fell_back_to_fixed();
+    test_quota_admits_the_budget_once_not_once_per_period();
+    test_quota_still_admits_when_the_hot_set_has_saturated();
+    test_a_backoff_never_asks_for_more_residency_than_the_set_aside_holds();
+    test_the_oversubscription_flag_describes_the_workload_not_the_device();
+    test_a_set_aside_request_is_one_the_driver_could_grant();
+    test_the_most_capable_device_representable_still_persists();
     test_a_backoff_that_changed_nothing_is_not_reported_as_a_reduction();
 
     if (g_failures) { std::cout << g_failures << " planner check(s) failed\n"; return 1; }

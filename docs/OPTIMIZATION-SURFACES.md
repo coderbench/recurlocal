@@ -99,12 +99,34 @@ way. There are exactly two, and this axis separates them:
 window is never delivered and `persist` measures nothing, because there is nothing to measure:
 the policy does not exist in the replayed graph.
 
-And `capture_node` is not documented as safe: setting an attribute on a node of a graph that
-is still being captured is not an operation CUDA sanctions. On SparkInfer's batch-1 decode
-capture it works — 48 of 48 nodes, no failure in any run taken — and the 12-run probe below
-found no failure at 32 sequences either. The risk is a documentation gap, not an observed
-defect, which is why `Stream` is the default and `CaptureNode` is opt-in, counted
-(`stats().capture_invalidations`) and self-disabling after a first detected invalidation.
+**`capture_node` IS documented as safe, and this document asserted the opposite.** CUDA's
+header for `cudaStreamGetCaptureInfo` — the call the mechanism is built out of — says "All
+operations other than destroy and node removal are permitted on the graph while the capture
+sequence is in progress" (`cuda_runtime_api.h:2743`, CUDA 13.3, unchanged since 11.3), and the
+same paragraph blesses passing the driver-owned dependency array straight to APIs that operate
+on the graph. Setting a kernel-node attribute is neither a destroy nor a node removal.
+
+Two further corrections belong here, because both were readings of a counter rather than of a
+result:
+
+- "48 of 48 nodes" was read off `windows_attached_to_node`, which counts attach CALLS that hit
+  at least one node, not nodes. The counters are now separate (`window_nodes_attached`).
+- Nothing had ever read an attribute back. `tools/capture_attr_probe.cu` does: it captures N
+  kernels, sets the window mid-capture exactly as the controller does, ends the capture, and
+  reads it back off the finished graph and off a clone. Present and byte-correct on every
+  kernel node at 1, 4, 8, 16, 32, 48, 64 and 128 nodes; zero capture invalidations;
+  `compute-sanitizer --tool memcheck` clean. The instantiated graph cannot be inspected —
+  CUDA 13.3 has no `cudaGraphExecGetNodes` and no exec-level attribute getter — so that half
+  is behavioural: the same capture attached with a persisting window and with a streaming
+  window over the same buffer replays **3.2% apart** at 48 nodes.
+
+What survives is a precision defect rather than a legality one. `capture_node` marks EVERY
+kernel node in the capture's pending dependency set, and on the non-fused convolution branch
+the preceding launch is `l2_norm_qk_kernel`, which reads no convolution state — it inherits a
+persisting window over memory it never touches. `capture_node_strict` marks only when exactly
+one kernel node is pending, and counts the declines in `window_attach_ambiguous`. All three
+modes stay opt-in and counted (`stats().capture_invalidations`), and node attachment
+self-disables after a first detected invalidation.
 
 The 32-sequence collapse is real, is a runtime fallback, and its cause is UNKNOWN.
 
@@ -131,8 +153,11 @@ per-row path at 32 sequences, and this project has not identified it. It is an o
 not a settled attribution.
 
 **The part that *is* settled is about the boundary, not the policy.** A locality library can
-compute a persisting window; under graph decode it cannot deliver one without the runtime
-attaching it at its own launch site, and the one shortcut that avoids that is undocumented.
+compute a persisting window; under graph decode it cannot deliver one without touching the
+graph, because a stream attribute is host-side state a capture never records. The shortcut
+that avoids changing every launch site turns out to be sanctioned after all (above); what it
+costs is precision about WHICH node gets marked, not legality. Handing the window back is the
+alternative, and in this integration it is a fiction: the adapter drops it.
 Pre-touch has no such problem — kernels and events are recorded into the graph like any other
 work — so two mechanisms that look symmetrical in the API have very different integration
 costs.

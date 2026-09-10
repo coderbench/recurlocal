@@ -37,11 +37,49 @@ as a graph node and reports the nodes just appended as the current capture depen
 the attribute can be set on the node the runtime has already launched, with the hook site
 staying one line after the kernel.
 
-**It is not documented as safe.** Setting an attribute on a node of a graph that is still
-being captured is not an operation CUDA sanctions. That is a documentation gap rather than an
-observed defect: on SparkInfer's batch-1 decode capture it works, 48 nodes out of 48, and a
-dedicated 12-run probe at 32 concurrent sequences recorded zero capture failures across four
-unhooked, four `Stream` and four `CaptureNode` runs.
+**It IS documented as safe, and this document said the opposite for three releases.** CUDA's
+own header, on the very call the mechanism is built out of, says so:
+
+```
+ * \param graph_out - Optional location to return the graph being captured into. All
+ *           operations other than destroy and node removal are permitted on the graph
+ *           while the capture sequence is in progress.
+                    -- /usr/local/cuda/include/cuda_runtime_api.h:2743-2744 (CUDA 13.3),
+                       cudaStreamGetCaptureInfo; identically cuda.h:16885 and unchanged
+                       since CUDA 11.3
+```
+
+Setting a kernel-node attribute is neither destroying the graph nor removing a node. The same
+paragraph goes further and blesses the exact pointer this code passes:
+
+```
+ *           The node handles may be copied out and are valid until they or the graph is
+ *           destroyed. The driver-owned array may also be passed directly to APIs that
+ *           operate on the graph (not the stream) without copying.
+                    -- cuda_runtime_api.h:2755-2757
+```
+
+`cudaGraphKernelNodeSetAttribute` is an API that operates on the graph, and
+`cudaLaunchAttributeAccessPolicyWindow` is declared "Valid for streams, graph nodes, launches"
+(`driver_types.h:4017`). Neither setter documents a capture-related caveat or error code.
+
+**And the attribute demonstrably survives.** Nothing in this repository had ever read one back;
+`windows_attached_to_node` was a counter of attach CALLS being quoted as a count of nodes.
+A standalone probe (`tools/capture_attr_probe.cu`) now closes it: it captures N kernels, sets
+the window mid-capture exactly as the controller does, ends the capture, and reads the
+attribute back off the finished graph and off a clone. At 1, 4, 8, 16, 32, 48, 64 and 128
+nodes it finds the window present and byte-for-byte correct on every kernel node, with zero
+capture invalidations, and `compute-sanitizer --tool memcheck` reports zero errors.
+
+The exec graph cannot be inspected — CUDA 13.3 has no `cudaGraphExecGetNodes` and no
+exec-level attribute getter — so that half is behavioural: the same capture attached with a
+*persisting* window and with a *streaming* window over the same buffer replays 3.2% apart at
+48 nodes. A policy that never reached the replay could not do that.
+
+What remains is a real but much narrower risk, and it is about precision rather than legality:
+`CaptureNode` marks **every** kernel node in the capture's current dependency set, and that set
+is not always one node. `WindowAttach::CaptureNodeStrict` marks only when exactly one kernel
+node is pending and counts the rest in `stats().window_attach_ambiguous`.
 
 An earlier version of this document attributed a 32-sequence throughput collapse to this
 mutation. **That attribution was wrong and the code refutes it**: the arms that collapsed were
@@ -49,9 +87,19 @@ mutation. **That attribution was wrong and the code refutes it**: the arms that 
 attach — is only ever true for `Persist`/`Combined`. The mechanism is inert in the arms that
 failed. The collapse is a runtime fallback whose cause this project has not identified.
 
-That is enough to decide the default and not enough to condemn the mechanism. `WindowAttach`
-is an enumerator, `Stream` is the default because a locality library should not mutate its
-host's graph behind its back, and `CaptureNode` stays available and instrumented. The
+`Stream` remains the default, but for a different and smaller reason than the one this
+document used to give: not that node attachment is illegitimate, but that it is a device the
+host has not asked for. `WindowAttach` is an enumerator, and `CaptureNode` and
+`CaptureNodeStrict` stay available and instrumented.
+
+One correction the other way, because it cuts against the library: **under `Stream` this
+integration delivers nothing.** The controller hands the window back in `LayerActions`, and
+the SparkInfer adapter keeps only the boolean and drops `actions.window` on the floor. There
+is no accessor that returns it. So `Stream`'s measured -0.019% is the hook's overhead and not
+a policy at all — which is exactly what `eval/real_eval.py`'s null-candidate guard exists to
+catch, and it did not, because the guard reads counters and `Stream` increments
+`windows_deferred_to_caller` honestly. A runtime that wanted the sanctioned launch-site path
+would need that accessor first. The
 controller checks `cudaStreamIsCapturing` for `Invalidated` after every attach, counts it in
 `stats().capture_invalidations`, and latches itself off after the first — best-effort, since
 an invalidation that only surfaces at the runtime's own `cudaStreamEndCapture` will not be

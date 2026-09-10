@@ -80,12 +80,18 @@ enum class PreTouchCoverage { Matrix, Conv, Both };
 //               back. Costs an integration change at every recurrent kernel launch site.
 //
 //   CaptureNode Set the attribute on the kernel node the capture just recorded, found via
-//               cudaStreamGetCaptureInfo. One line at the hook site and no launch changes -
-//               but it modifies a graph that is still being captured, which CUDA does not
-//               document as supported. Measured: works on SparkInfer's batch-1 decode
-//               capture, and INVALIDATES its capture at 32 concurrent sequences, after
-//               which the runtime falls back to per-row decode and loses 28% of aggregate
-//               throughput for reasons that have nothing to do with cache policy.
+//               cudaStreamGetCaptureInfo. One line at the hook site and no launch changes.
+//               This header used to call that undocumented; it is not. CUDA's own
+//               cudaStreamGetCaptureInfo documentation says "All operations other than
+//               destroy and node removal are permitted on the graph while the capture
+//               sequence is in progress" and blesses passing the driver-owned dependency
+//               array straight to APIs that operate on the graph (cuda_runtime_api.h:2743
+//               and :2755, unchanged since CUDA 11.3). tools/capture_attr_probe.cu reads the
+//               window back off the finished graph at 1 to 128 nodes and finds it present
+//               and correct every time.
+//
+//               Its real cost is precision: it marks EVERY kernel node the capture has
+//               pending, which is not always the one the hook fired for.
 //
 //   CaptureNodeStrict
 //               CaptureNode, except that it attaches only when the capture has recorded
@@ -313,6 +319,12 @@ struct LayerPlan {
     std::size_t hot_set_bytes = 0;
     std::size_t hot_set_budget_bytes = 0;
     HotSetModel hot_set_model = HotSetModel::CurrentLayer;
+    // The policy that was actually APPLIED, which is not always the one configured.
+    // HotSetPolicy::Quota rations by layer ordinal over a known number of recurrent layers;
+    // a caller who supplies neither gets Fixed, and used to get it silently - selecting the
+    // rationing policy had no effect and the telemetry said nothing had backed off. Same
+    // idiom as `hot_set_model`: the plan reports what it did, not what it was asked for.
+    HotSetPolicy hot_set_policy = HotSetPolicy::Proportional;
     // Resolved by the planner, applied by the controller, which owns the pointers.
     WindowScope window_scope = WindowScope::Layer;
     WindowTarget window_target = WindowTarget::Matrix;
@@ -371,9 +383,12 @@ public:
 private:
     // `additive` distinguishes "bytes competing with this layer's window" (the v0.1
     // caller-declared quantity) from "the whole live set, this layer's window included".
+    // `ordinal_period` is how many recurrent layers the caller will walk, or 0 for unknown.
+    // HotSetPolicy::Quota needs it: it spreads the admitted layers evenly over that many
+    // ordinals, and computing the spread from a byte count instead let the pattern repeat.
     LayerPlan plan_for_layer_impl(std::size_t current_state_bytes, bool has_next_recurrent_layer,
                                   std::size_t hot_bytes, bool additive,
-                                  int layer_index) const noexcept;
+                                  int layer_index, std::size_t ordinal_period = 0) const noexcept;
 
     DeviceCaps caps_{};
     PlannerConfig config_{};

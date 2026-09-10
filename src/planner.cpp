@@ -30,9 +30,24 @@ LocalityPlanner::LocalityPlanner(DeviceCaps caps, PlannerConfig config)
 
 std::size_t LocalityPlanner::recommended_l2_set_aside() const noexcept {
     if (!caps_.persisting_l2_max_bytes || config_.persisting_budget_fraction <= 0.0) return 0;
-    const auto requested = static_cast<std::size_t>(
-        static_cast<double>(caps_.persisting_l2_max_bytes) * config_.persisting_budget_fraction);
-    return std::min(requested, caps_.persisting_l2_max_bytes);
+    // The whole capacity, without going through a double. static_cast<std::size_t> of a
+    // double that rounds to 2^64 is undefined, and a fabricated DeviceCaps with
+    // persisting_l2_max_bytes = SIZE_MAX reaches it: the observed answer was 0, which turns
+    // persist off on the most capable device representable. Real hardware cannot get there
+    // (cudaDeviceProp reports an int) but a device-capability test can, and a policy that is
+    // undefined on an input a test can construct is a policy nobody can check.
+    std::size_t requested = caps_.persisting_l2_max_bytes;
+    if (config_.persisting_budget_fraction < 1.0)
+        requested = static_cast<std::size_t>(
+            static_cast<double>(caps_.persisting_l2_max_bytes) * config_.persisting_budget_fraction);
+    requested = std::min(requested, caps_.persisting_l2_max_bytes);
+    // A set-aside is carved OUT of L2, so it cannot exceed L2. Until now `l2_bytes` was
+    // queried by the controller, printed by the info tool and the benchmark, and read by no
+    // policy at all - so a device whose two numbers disagree (an emulator, a MIG slice, a
+    // stubbed query, a fabricated fixture) got a request for a set-aside larger than its
+    // entire cache, with nothing to say so. Zero still means "not reported", not "no cache".
+    if (caps_.l2_bytes) requested = std::min(requested, caps_.l2_bytes);
+    return requested;
 }
 
 namespace {
@@ -222,7 +237,9 @@ LayerPlan LocalityPlanner::plan_for_layer(std::size_t current_state_bytes,
     auto p = plan_for_layer_impl(current_state_bytes, has_next_recurrent_layer,
                                  applied == HotSetModel::CurrentLayer ? 0 : declared,
                                  applied == HotSetModel::CurrentLayer,
-                                 layer_index);
+                                 layer_index,
+                                 geometry.recurrent_layers > 0
+                                     ? static_cast<std::size_t>(geometry.recurrent_layers) : 0u);
     p.hot_set_model = applied;
     return p;
 }
@@ -238,8 +255,10 @@ LayerPlan LocalityPlanner::plan_for_layer(std::size_t current_state_bytes,
 LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
                                                bool has_next_recurrent_layer,
                                                std::size_t hot_bytes, bool additive,
-                                               int layer_index) const noexcept {
+                                               int layer_index,
+                                               std::size_t ordinal_period) const noexcept {
     LayerPlan p{};
+    p.hot_set_policy = config_.hot_set_policy;
     p.window_scope = config_.window_scope;
     p.window_target = config_.window_target;
     p.pre_touch_coverage = config_.pre_touch_coverage;
@@ -257,7 +276,13 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
     p.hot_set_budget_bytes = budget;
     p.hot_set_bytes = additive ? saturating_add(hot_bytes, current_state_bytes)
                                : std::max(hot_bytes, current_state_bytes);
-    p.hot_set_oversubscribed = budget > 0 && p.hot_set_bytes > budget;
+    // Not `budget > 0 &&`. A device with no persisting L2, or a caller who set the budget
+    // fraction to zero, is the MAXIMALLY oversubscribed case, and the flag read false there
+    // while reading true for the same 148 MiB workload on a device that merely refused the
+    // access-policy window - opposite answers for identical outcomes. The comment above says
+    // these numbers describe the workload; now they do. (Telemetry contract change: a
+    // zero-budget arm that used to emit hot_set_oversubscribed=0 now emits the truth.)
+    p.hot_set_oversubscribed = p.hot_set_bytes > budget;
 
     if (use_persist && current_state_bytes && caps_.access_policy_max_window_bytes && budget) {
         std::size_t window = std::min(current_state_bytes, caps_.access_policy_max_window_bytes);
@@ -271,9 +296,17 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
         const std::size_t hot = additive ? saturating_add(hot_bytes, window)
                                          : std::max(hot_bytes, window);
         p.hot_set_bytes = hot;               // refine: the window is what we actually ask for
-        p.hot_set_oversubscribed = hot > budget;
+        p.hot_set_oversubscribed = hot > budget;   // budget is non-zero inside this branch
         if (hot > budget) {
             const double share = static_cast<double>(budget) / static_cast<double>(hot);
+            // What the driver is told to keep resident is hitRatio x num_bytes. Proportional's
+            // un-floored arithmetic satisfies that <= budget by construction; the min_hit_ratio
+            // clamp is the only thing that can break it, and on a device whose persisting L2 is
+            // smaller than one layer's state it broke it by 77x - asking 157 KiB resident
+            // against a 2 KiB set-aside. The floor may not raise a request above what the
+            // reservation can physically hold.
+            const double budget_ratio = window ? static_cast<double>(budget) / static_cast<double>(window)
+                                               : 0.0;
             const double floor_ratio = std::min(config_.min_hit_ratio, config_.hit_ratio);
             switch (config_.hot_set_policy) {
                 case HotSetPolicy::Fixed:
@@ -286,6 +319,7 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
                 // occurred. It now reports the outcome rather than the branch.
                 case HotSetPolicy::Proportional:
                     p.hit_ratio = std::clamp(config_.hit_ratio * share, floor_ratio, config_.hit_ratio);
+                    if (budget_ratio < p.hit_ratio) p.hit_ratio = budget_ratio;
                     p.hit_ratio_reduced = p.hit_ratio < config_.hit_ratio;
                     break;
                 case HotSetPolicy::Sqrt:
@@ -299,22 +333,57 @@ LayerPlan LocalityPlanner::plan_for_layer_impl(std::size_t current_state_bytes,
                     p.hit_ratio_reduced = true;
                     break;
                 case HotSetPolicy::Quota: {
-                    // How many window-sized units the set-aside holds, against how many the
-                    // declared hot set contains. Both are in bytes, so this needs no layer
-                    // count and no sequence count from the caller: at concurrency the hot set
-                    // already counts every sequence, which is exactly why the admitted
-                    // fraction has to shrink with it.
-                    const std::size_t admissible = window ? budget / window : 0;
-                    const std::size_t units = window ? (hot + window - 1) / window : 0;
-                    // Spread the admitted layers evenly rather than taking a prefix, so no
-                    // contiguous run of the model is left entirely uncovered, and decide from
-                    // the layer ordinal alone so every token makes the identical choice - a
-                    // window that moved between tokens would evict the state it just kept.
-                    // (i * admissible) % units < admissible selects exactly `admissible` of
-                    // `units` indices, evenly spaced, starting at the first.
-                    const std::size_t i = layer_index < 0 ? 0u : static_cast<std::size_t>(layer_index);
-                    const bool admit = admissible > 0 && units > 0 &&
-                                       (i * admissible) % units < admissible;
+                    // Ration whole layers over the ordinals the caller will actually walk.
+                    //
+                    // This used to count window-sized UNITS of the hot set and spread the
+                    // admitted ones over that many indices - `(i * admissible) % units`. The
+                    // pattern is right for one period of `units` ordinals and wrong past it:
+                    // where the hot set holds fewer units than the model has recurrent layers
+                    // (any window wider than one layer's slice, which WindowScope::Ahead
+                    // produces today) the period repeats and admits several times the budget.
+                    // And `hot + window - 1` wrapped whenever `hot` had saturated, making
+                    // `units` zero and Quota decline everything - the largest representable
+                    // hot set producing the smallest possible admission, the exact inversion
+                    // the saturating arithmetic exists to prevent.
+                    //
+                    // The period is the number of recurrent layers, which only the
+                    // geometry-aware caller knows. Without it Quota cannot ration at all, and
+                    // says so through `p.hot_set_policy` rather than silently behaving as
+                    // Fixed while reporting that nothing backed off.
+                    std::size_t period = ordinal_period;
+                    if (!period && window) {
+                        // No declared layer count: fall back to counting window-sized units of
+                        // the hot set, which is what this policy always did. That is exactly
+                        // right while the window is one layer's slice - the unit count IS the
+                        // layer count - and it is the reason the fallback is kept rather than
+                        // replaced. Written as a division plus a remainder rather than the
+                        // old `(hot + window - 1) / window`, whose addition wrapped whenever
+                        // `hot` had saturated.
+                        period = hot / window + ((hot % window) ? 1u : 0u);
+                    }
+                    if (!period || layer_index < 0) {
+                        // Quota rations by ordinal. A caller who supplies none cannot be
+                        // rationed, and used to get a full-hit-ratio window on every layer
+                        // while the telemetry reported no back-off - selecting the policy had
+                        // no effect and nothing said so.
+                        p.hot_set_policy = HotSetPolicy::Fixed;
+                        break;
+                    }
+                    // How many WHOLE windows the set-aside holds. Counted in windows and not
+                    // in ordinal shares of the hot set: an ordinal's share is hot/period,
+                    // which is the same thing only while the window is one layer's slice. Where
+                    // it is wider, admitting a share-derived count spends `admitted x window`
+                    // bytes against a budget sized for `admitted x hot/period`, and
+                    // over-subscribes by their ratio.
+                    const std::size_t admitted = std::min(period, budget / window);
+                    // Spread them evenly rather than taking a prefix, so no contiguous run of
+                    // the model is left uncovered, and decide from the ordinal alone so every
+                    // token makes the identical choice - a window that moved between tokens
+                    // would evict exactly the state it kept. Reducing the ordinal modulo the
+                    // period is what stops the pattern repeating past one period and admitting
+                    // several times the budget.
+                    const auto i = static_cast<std::size_t>(layer_index) % period;
+                    const bool admit = admitted > 0 && (i * admitted) % period < admitted;
                     if (!admit) {
                         p.use_persisting_window = false;
                         p.hot_window_bytes = 0;

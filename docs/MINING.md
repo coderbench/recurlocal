@@ -297,11 +297,20 @@ already known. Reordered by what is still genuinely open:
    `real_eval.py` refuses a concurrency arm whose telemetry shows the packed path was not
    used, and names the counters.
 
-4. **Delivering a persisting window under graph decode.** A locality library cannot attach one
-   without the runtime's cooperation; the shortcut that avoids that (`capture_node`) is
-   undocumented in CUDA. Worth solving for correctness — every persist measurement here depends
-   on it — but note it no longer "unlocks the `persist` family". The residency bound above says
-   the family tops out at 0.52% weighted even with perfect delivery.
+4. ~~**Delivering a persisting window under graph decode.**~~ **CLOSED, and the premise was
+   wrong.** This repository said `capture_node` was undocumented in CUDA. It is not:
+   `cudaStreamGetCaptureInfo`'s own header says "All operations other than destroy and node
+   removal are permitted on the graph while the capture sequence is in progress"
+   (`cuda_runtime_api.h:2743`, unchanged since CUDA 11.3), and the same paragraph blesses
+   passing the driver-owned node array straight to graph APIs. A standalone probe confirms the
+   window is present and correct on the finished graph at every node count from 1 to 128,
+   memcheck-clean, and a persisting-versus-streaming A/B over the same buffer separates by
+   3.2% on replay. See `docs/DESIGN.md`.
+
+   What is left is narrower: `capture_node` marks every kernel node the capture has pending,
+   which is not always the one the hook fired for. `capture_node_strict` marks only when there
+   is exactly one and counts the rest. Neither changes the arithmetic — the persist family
+   still tops out at 0.52% weighted on the dense model with perfect delivery.
 
 **Closed, and stated here so nobody re-opens it:** "the current policies capture none of the
 concurrency room and nobody has explained why." They cannot. The reuse distance is a full model

@@ -85,11 +85,25 @@ state a graph never records:
 | `stream` (default; hand the window back for the runtime to attach) | **-0.019%** |
 | `capture_node` (set the attribute on the node the capture just recorded) | **+0.129%** |
 
-Under the safe path the policy never reaches the replayed graph, so there is nothing to
-measure. `capture_node` reaches it by mutating a graph mid-capture, which CUDA does not
-document as supported — a documentation gap rather than an observed defect: it has not failed
-in any run taken, including twelve isolated runs at 32 sequences. It is opt-in, counted, and
-self-disabling after a first detected invalidation.
+Under `stream` the policy never reaches the replayed graph, so there is nothing to measure —
+and in this integration it never could: the adapter keeps the boolean and drops the window the
+controller hands back, so that -0.019% is the hook's overhead, not a policy.
+
+`capture_node` reaches the graph by setting the attribute on the node the capture just
+recorded. **An earlier version of this README called that undocumented. It is not.** CUDA's
+own header for `cudaStreamGetCaptureInfo` says "All operations other than destroy and node
+removal are permitted on the graph while the capture sequence is in progress"
+(`cuda_runtime_api.h:2743`, unchanged since CUDA 11.3), and blesses passing the driver-owned
+node array directly to graph APIs. `tools/capture_attr_probe.cu` reads the window back off the
+finished graph at 1 to 128 nodes — present and byte-correct every time, memcheck-clean — and a
+persisting-versus-streaming A/B over the same buffer separates by 3.2% on replay, which a
+policy absent from the replay could not do.
+
+The residual risk is precision, not legality: `capture_node` marks every kernel node the
+capture has pending, and on the non-fused convolution branch that includes a kernel which
+reads no recurrent state. `capture_node_strict` marks only when exactly one kernel node is
+pending and counts the rest in `window_attach_ambiguous`. All three stay opt-in and counted,
+and node attachment self-disables after a first detected invalidation.
 
 (An earlier version of this README blamed a 32-sequence throughput collapse on that mutation.
 **That was wrong**: the arms that collapsed were `baseline` and `prefetch`, which never arm the
