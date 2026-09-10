@@ -29,10 +29,12 @@ YES  a future-use graph
 >
 > The short version, and it is two halves: **the recurrent traffic at concurrency is 5.2% of a
 > decode step at sixteen sequences and 8.6% at thirty-two, against control spreads of 0.42% and
-> 1.74% — the room is real and it is ten times the noise. A persisting-L2 policy cannot reach
-> it**, and on five of the ten scored cells it provably cannot be measured trying: its ceiling
-> there is `2 x 60 MiB / step traffic`, which is smaller than the control's own run-to-run
-> spread. One command prints the whole table:
+> 1.74% — the traffic is real and it is five to twelve times the noise. A persisting-L2 policy
+> cannot reach it**, and on five of the ten scored cells it provably cannot be measured trying:
+> its ceiling there is `2 x 60 MiB / step traffic`, which is smaller than the control's own
+> run-to-run spread. Section 7 of the verdict lists the four things that *could* address that
+> traffic; two are hardware or workload, one fails the exactness gate, and the fourth is a
+> kernel change in SparkInfer. None is a better admission rule. One command prints the table:
 >
 > ```bash
 > tools/tt-frontier generation show TTF-1 --reachable

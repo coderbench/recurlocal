@@ -200,11 +200,17 @@ rule, window shape or hot-set heuristic can be measured to win them — includin
 the cell the table further down this page quotes from. Two more cells cannot be batched by the
 pinned runtime at all, and two objectives have control spreads above 40%.
 
-Then read the `any mech.` column, because it is the more useful one: removing *all* recurrent
-traffic is worth 5.2% at sixteen sequences and 8.6% at thirty-two. The traffic is there and it
-is ten to twelve times the noise. What cannot reach it is a 60 MiB carve-out — the per-token
-recurrent footprint at sixteen sequences is 2.46 GB. **If you are looking for the largest
-untouched thing in this repository, that gap is it.**
+Then read the `any mech.` column: removing *all* recurrent traffic is worth 5.2% at sixteen
+sequences and 8.6% at thirty-two, five to twelve times the noise. What cannot reach it is a 60
+MiB carve-out — the per-token recurrent footprint at sixteen sequences is 2.46 GB.
+
+**Do not read that as an opening without reading what closes it.** docs/VERDICT.md section 7
+lists the four levers on that traffic: more persisting cache (hardware), fewer live sequences
+(the workload), a smaller state representation (fails the exactness gate; the runtime already
+takes the free half of it with bf16 on the packed path), and recomputing state instead of
+reading it (exact, untouched, and a kernel change in SparkInfer rather than a planner here).
+Two are not software, one is not exact, and the fourth is somebody else's codebase. If you came
+here to write an admission rule, the honest answer is that none of them is one.
 
 Your configuration reaches the measured path through the adapter's environment:
 

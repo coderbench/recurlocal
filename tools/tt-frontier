@@ -224,7 +224,7 @@ def cmd_generation(args):
                 if spread >= ceiling["persist_pct"]:
                     unwinnable.append(cell)
                     verdict = ("PERSIST FAMILY UNWINNABLE"
-                               + ("; another mechanism has room"
+                               + ("; the traffic is there, the cache is not"
                                   if spread < ceiling["traffic_pct"] else "; and so is any"))
                 util = ceiling.get("utilisation")
                 bw = "?" if util is None else f"{util * 100:.0f}%"
@@ -251,7 +251,9 @@ def cmd_generation(args):
                 print("  PERFECT policy could reach, so no admission rule, window shape or hot-set")
                 print("  heuristic can produce a measurable result in them. The `any mech.` column")
                 print("  is what removing ALL recurrent traffic would be worth, and where it is")
-                print("  far above the spread the room is real -- it is just not this family's.")
+                print("  far above the spread the traffic is real -- what is missing is somewhere")
+                print("  to put it. docs/VERDICT.md section 7 lists what could address it and")
+                print("  what each option costs; none of them is a better admission rule.")
 
         note = (generation.raw.get("_reference") or {}).get("unmeasurable_cells") or {}
         if note:

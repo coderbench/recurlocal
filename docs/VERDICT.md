@@ -259,12 +259,26 @@ says the same thing twice.
 
 **And the opposite half of the finding matters more.** At sixteen sequences 5.2% of the step is
 recurrent traffic and at thirty-two it is 8.6%, against spreads of 0.42% and 1.74%. That room
-is twelve to five times the noise, it is exactly where a serving frontier is scored, and it is
+is five to twelve times the noise and it is exactly where a serving frontier is scored. It is
 unreachable by a 60 MiB carve-out for a reason that has nothing to do with policy quality: the
 per-token recurrent footprint at sixteen sequences is 2.46 GB and the device's persisting
-partition is 0.06 GB. A mechanism whose ceiling is not `2 x 60 MiB / step` — recomputation,
-compaction, a different residency substrate, or moving the reuse rather than holding it — has
-one to two orders of magnitude more to play for.
+partition is 0.06 GB.
+
+**What could address it, and what each costs.** This list is short on purpose — a vague "another
+mechanism has room" would be a phantom, and the point of this document is not to manufacture
+one:
+
+| lever | what it changes | why it is not in this repository |
+|---|---|---|
+| more persisting cache | the numerator of `2 x L2 / step` | hardware. 60 MiB is what the device reports and no software raises it. |
+| fewer live sequences | the footprint, linearly | that is the workload, not the policy, and the frontier scores the workload as given. |
+| a smaller state representation | the footprint, by the compression ratio | **changes model output**, so it fails the exact-locality gate. The runtime already does the free half of it — bf16 on the packed path, which is why the concurrency footprint is 2.46 GB and not 4.9 GB. Going further is a tradeoff track and has to be argued for as one. |
+| recomputing state instead of reading it | trades bandwidth for arithmetic | plausible, exact, and untouched here. It needs a kernel, not a planner, and it is a change to SparkInfer rather than to TensorTransit. |
+
+Two of those four are not software, one is not exact, and the fourth is somebody else's
+codebase. **That is the honest shape of the opportunity**, and it is why this document's answer
+is "no" for the mechanism this project ships rather than "not yet". A contributor who wants the
+5–9% should know before starting that no admission rule reaches it.
 
 One caveat, in the tool's own words: the `bw` column is how much of peak bandwidth each step
 actually used, and **every TTF-1 cell is below the 80% at which a traffic ceiling is tight**. So
