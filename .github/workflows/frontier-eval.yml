@@ -25,9 +25,13 @@ on:
         required: false
         default: ""
       repeats:
-        description: "paired repeats (the generation's minimum is 3)"
+        description: "paired repeats. 3 is the generation's minimum and it is a floor, not a
+          recommendation: on the reference box the same arm measured +0.07% and -0.39% at
+          ctx128-c16 in two sessions two hours apart, against a published control spread of
+          0.42% for that cell. Spend more of the nine the generation allows if the effect you
+          are claiming is small."
         required: false
-        default: "3"
+        default: "5"
       pr:
         description: "PR number, for the receipt and the ledger id"
         required: false

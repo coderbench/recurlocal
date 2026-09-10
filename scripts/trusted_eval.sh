@@ -30,7 +30,11 @@ BASELINE="main"
 CANDIDATE=""
 GENERATION="TTF-1"
 MODEL="${TT_MODEL:-}"
-REPEATS=3
+# Five, not the generation's minimum of three. Three is a floor and it is not a recommendation:
+# on the reference box the same arm measured +0.07% and -0.39% at ctx128-c16 in two sessions two
+# hours apart, against a control spread that generation published as 0.42% for that cell. The
+# generation allows nine; --repeats is how you spend them.
+REPEATS=5
 CELLS=""
 CLEAN=0
 STAGE_ONLY=0

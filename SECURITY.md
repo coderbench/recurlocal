@@ -46,7 +46,10 @@ None of it is code, and none of it is optional:
   runs. Read-only model artifacts.
 - The model path as a repository variable `TT_MODEL_PATH`, pointing at a **read-only** copy.
 - Enough repeats that the noise floor is real. `frontier/TTF-1/reference.json` publishes the
-  measured per-cell control spread; two repeats cannot estimate one at all.
+  measured per-cell control spread; two repeats cannot estimate one at all, and three is a floor
+  rather than a recommendation — the same arm measured +0.07% and −0.39% at `ctx128-c16` in two
+  sessions two hours apart on the reference box, against a published spread of 0.42% for that
+  cell. The authoritative runner defaults to five and the generation allows nine.
 - **Clock discipline.** Graphics clocks could not be pinned on the reference box, so only
   paired same-box deltas are trustworthy. The harness is built around that; do not compare
   across boxes or across days.
