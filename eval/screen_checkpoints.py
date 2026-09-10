@@ -126,6 +126,21 @@ def ceiling_for(footprint_bytes: int, step_traffic_bytes: int,
     }
 
 
+def implied_rate(step_traffic_bytes: int, bandwidth_gbs: float) -> float:
+    """Tokens per second if the step were purely bandwidth-bound. The reality check.
+
+    The ceiling above assumes freeing a fraction of the traffic shortens the step by that
+    fraction, which is only true of a step that is actually moving bytes. Measure the candidate
+    and compare: a rate close to this means the assumption holds and the ceiling is tight; a
+    rate far below it means the step is latency and occupancy, and the ceiling is a loose upper
+    bound. The one sparse checkpoint this project measured came in at 503 tok/s against an
+    implied 503 -- saturated, which is why its measured gain tracked its ceiling. Every cell of
+    the pinned dense model sits below 71% of implied.
+    """
+    seconds = step_traffic_bytes / (bandwidth_gbs * 1e9)
+    return 1.0 / seconds if seconds else float("inf")
+
+
 def screen(name: str, config: dict, weight_bytes: int, quant: str,
            persisting_l2_bytes: int = PERSISTING_L2_BYTES) -> dict:
     geometry = recurrent_geometry(config)
@@ -137,6 +152,7 @@ def screen(name: str, config: dict, weight_bytes: int, quant: str,
            "active_weight_bytes_per_token": active, "active_weight_basis": how,
            "step_traffic_bytes": step, **geometry,
            **ceiling_for(geometry["footprint_bytes_per_token"], step, persisting_l2_bytes)}
+    out["implied_tok_s_if_bandwidth_bound"] = round(implied_rate(step, 1792.0), 1)
     reasons = []
     if quant.upper() not in {q.upper() for q in SUPPORTED_QUANTS}:
         reasons.append(f"{quant} is not one of the quantisations the runtime dequantises "
@@ -161,56 +177,66 @@ def screen(name: str, config: dict, weight_bytes: int, quant: str,
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", type=argparse.FileType(), action="append", default=[],
-                    metavar="CONFIG_JSON",
-                    help="a local Qwen3.5-family config.json; repeatable")
-    ap.add_argument("--weight-bytes", type=int, action="append", default=[],
-                    help="weight bytes for the matching --config, in order")
-    ap.add_argument("--quant", action="append", default=[],
-                    help="quantisation label for the matching --config, in order")
-    ap.add_argument("--name", action="append", default=[], help="label, in order")
-    ap.add_argument("--active-weight-bytes", type=int, action="append", default=[],
-                    help="measured bytes of weights a decode step reads, overriding the "
-                         "estimate; in order with --config. Use it for a sparse checkpoint "
-                         "that clears the gate narrowly.")
+    # ONE option carrying every field of a candidate, rather than parallel --config/--weight/
+    # --quant lists paired by position. The parallel form was written first and was wrong within
+    # the hour: `--active-weight-bytes` is only meaningful for a sparse checkpoint, so it was
+    # given once while `--config` was given five times, and the single value landed on the FIRST
+    # candidate. The 2B's ceiling came out 1.098% instead of 3.053% and nothing in the output
+    # said so. A screen that can silently describe a different model is worse than no screen.
+    ap.add_argument("--candidate", action="append", default=[], metavar="SPEC",
+                    help="name=config.json:file_bytes:quant[:active_weight_bytes]  -- repeatable. "
+                         "`active_weight_bytes` overrides the sparse-MoE estimate with a "
+                         "measurement and is omitted for a dense model.")
     ap.add_argument("--persisting-l2-bytes", type=int, default=PERSISTING_L2_BYTES)
+    ap.add_argument("--bandwidth-gbs", type=float, default=1792.0)
     ap.add_argument("--json", action="store_true", help="machine-readable on stdout")
     args = ap.parse_args()
 
-    if not args.config:
-        ap.error("give at least one --config")
+    if not args.candidate:
+        ap.error("give at least one --candidate name=config.json:bytes:quant")
     rows = []
-    for i, handle in enumerate(args.config):
-        config = json.load(handle)
-        weight = args.weight_bytes[i] if i < len(args.weight_bytes) else 0
-        quant = args.quant[i] if i < len(args.quant) else "?"
-        name = args.name[i] if i < len(args.name) else handle.name
-        if not weight:
-            ap.error(f"--weight-bytes is required for {name}")
-        row = screen(name, config, weight, quant, args.persisting_l2_bytes)
-        if i < len(args.active_weight_bytes) and args.active_weight_bytes[i]:
-            measured = args.active_weight_bytes[i]
+    for spec in args.candidate:
+        name, _, rest = spec.partition("=")
+        parts = rest.split(":")
+        if not name or len(parts) < 3:
+            ap.error(f"--candidate {spec!r} is not name=config.json:file_bytes:quant[:active]")
+        path, file_bytes, quant = parts[0], parts[1], parts[2]
+        active = parts[3] if len(parts) > 3 and parts[3] else None
+        try:
+            config = json.loads(open(path).read())
+        except OSError as exc:
+            ap.error(f"{name}: {exc}")
+        row = screen(name, config, int(file_bytes), quant, args.persisting_l2_bytes)
+        if active:
+            measured = int(active)
             row["active_weight_bytes_per_token"] = measured
-            row["active_weight_basis"] = "measured, supplied by --active-weight-bytes"
+            row["active_weight_basis"] = "measured, supplied on the --candidate spec"
             row["step_traffic_bytes"] = measured + 2 * row["footprint_bytes_per_token"]
             row.update(ceiling_for(row["footprint_bytes_per_token"],
                                    row["step_traffic_bytes"], args.persisting_l2_bytes))
+        row["implied_tok_s_if_bandwidth_bound"] = round(
+            implied_rate(row["step_traffic_bytes"], args.bandwidth_gbs), 1)
         rows.append(row)
 
     if args.json:
-        print(json.dumps({"basis": "model", "candidates": rows}, indent=1))
+        print(json.dumps({"basis": "model", "bandwidth_gbs": args.bandwidth_gbs,
+                          "persisting_l2_bytes": args.persisting_l2_bytes,
+                          "candidates": rows}, indent=1))
         return 0
-    print(f"{'model':28s} {'quant':8s} {'step':>8s} {'footprint':>10s} {'fits':>5s} "
-          f"{'ceiling':>8s}  loadable / reproducibility")
+    print(f"{'model':24s} {'quant':7s} {'step':>7s} {'foot':>7s} {'fits':>5s} "
+          f"{'ceiling':>8s} {'tok/s@BW':>9s}  loadable / reproducibility")
     for r in sorted(rows, key=lambda r: -r["ceiling_pct"]):
-        print(f"{r['model'][:28]:28s} {r['quantisation']:8s} "
-              f"{r['step_traffic_bytes'] / 1e9:7.2f}G {r['footprint_bytes_per_token'] / 1e6:9.1f}M "
+        print(f"{r['model'][:24]:24s} {r['quantisation']:7s} "
+              f"{r['step_traffic_bytes'] / 1e9:6.2f}G {r['footprint_bytes_per_token'] / 1e6:6.1f}M "
               f"{'yes' if r['footprint_fits_in_partition'] else 'no':>5s} "
-              f"{r['ceiling_pct']:7.3f}%  "
+              f"{r['ceiling_pct']:7.3f}% {r['implied_tok_s_if_bandwidth_bound']:9.0f}  "
               f"{'yes' if r['loadable'] else 'NO: ' + r['refused_because'][0][:40]} / "
               f"{r['reproducibility_risk'].split(' -- ')[0]}")
     print()
     print("  ceiling = 2 x min(persisting-L2, footprint) / step traffic, in throughput terms.")
+    print("  `tok/s@BW` is what the step would run at if it were purely bandwidth-bound.")
+    print("  Measure the candidate: a rate near it means the ceiling is tight, a rate far below")
+    print("  means the step is latency and the ceiling is a loose upper bound.")
     print("  It is a MODEL output. The other gate -- two unhooked greedy replays agreeing --")
     print("  needs the runtime and one model load, and is what ruled out every sparse-MoE")
     print("  checkpoint this project has screened.")

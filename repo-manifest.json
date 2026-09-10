@@ -63,6 +63,7 @@
     "eval/result_schema.json",
     "eval/run_eval.py",
     "eval/run_from_base.sh",
+    "eval/screen_checkpoints.py",
     "eval/sweep.py",
     "eval/test_cli_pipeline.py",
     "eval/test_decide.py",
