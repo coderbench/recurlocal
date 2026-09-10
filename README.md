@@ -284,8 +284,11 @@ Span 0.85% against a 0.10% noise floor. `--axis hit-ratio` says the same from th
 +0.76% / +1.13% / +1.41% / **+1.50%** over 0.25 → 1.00, span 0.74% against a 0.063% floor. Both
 dials are monotonic to their maximum with no interior optimum, which is what a footprint that
 nearly fits predicts: nowhere on this model is asking for less persistence better than asking
-for more. On the dense model the same axes span 0.02%, because no fraction of a 2.4×
-oversubscribed footprint can be held.
+for more. On the dense model neither dial has been swept —
+the axis that *was* swept there, `window-target`, spans 0.02% and is formally open, and the
+arithmetic says the persistence dials should behave the same way because no fraction of a 2.4×
+oversubscribed footprint can be held. That is a prediction, not a measurement, and this
+document previously stated it as one.
 
 The two dials compound: together they give **+1.63%**, the best measured configuration on either
 model. The shipped defaults (0.75, 0.70) were leaving a third of a point on the floor, and even

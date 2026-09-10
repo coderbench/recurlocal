@@ -77,9 +77,13 @@ of a sweep is measurably slow, because control runs first and that slowness land
 pair 1 — on one arm it turned a fraction-of-a-percent question into an 8.3% noise floor.
 
 Two axes only resolve where the recurrent footprint is close to the persisting cache:
-`budget-fraction` and `hit-ratio`. On a model whose footprint is several times the cache they
-span 0.02%; where it is 1.02x they span 0.85% and 0.74% and both are monotonic to their
-maximum. `hot-set-policy` cannot be swept whole wherever the footprint is oversubscribed —
+`budget-fraction` and `hit-ratio`. Where the footprint is 1.02x the cache they span 0.85% and
+0.74% and both are monotonic to their maximum. Where it is several times the cache they are
+expected to be flat, and that is an expectation rather than a measurement: **neither dial has
+been swept on the dense model.** The 0.02% figure that used to appear here belongs to
+`window-target`, which is a different axis. `--axis set-aside-policy` is the one to reach for
+now — it sizes the reservation from the declared geometry instead of from a constant, and it
+resolves at batch 1 on the model where these two do. `hot-set-policy` cannot be swept whole wherever the footprint is oversubscribed —
 `cliff` declines every window, applies no policy, and is refused as a null candidate, which
 aborts the axis. Use `--values proportional,fixed,sqrt,quota`.
 
