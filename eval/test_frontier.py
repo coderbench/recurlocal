@@ -413,6 +413,55 @@ def test_attribution_of_a_serving_loss():
         check("credits" in str(exc), "a PARTIAL receipt that credits a gain does not verify")
 
 
+def test_a_floor_decision_inside_the_published_noise_is_named():
+    """The first full TTF-1 receipt read -99.5%, and one cell decided it.
+
+    `ctx128-c32` produced a p99 change of 183% against a control spread the generation had
+    published, at calibration, as **481%** -- so nothing about that cell was measurable, and a
+    cell at the floor carries the whole matrix through the geometric mean. The score is not
+    changed by this (a generation is frozen and its cells are its cells); what changes is that
+    the receipt cannot report such a number without saying what it rests on.
+    """
+    section("a floor decision inside the published noise")
+    generation = make_generation()
+    check(generation.published_spread("ctx128-c1", "goodput_tps") is not None
+          or generation.published_spread("ctx128-c1", "goodput_tps") is None,
+          "published_spread returns a number or None, never raises")
+
+    flat = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+            "ctx128-c4": {"base": (500.0, 50.0, "OK")}}
+    # The candidate's p99 in ctx128-c4 blows past the generation's SLO limit, so the cell
+    # scores at the floor.
+    blown = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+             "ctx128-c4": {"base": (500.0, 1e9, "OK")}}
+    result = compute_frontier(generation, matrix(flat, blown))
+    check("ctx128-c4" in result.cells_at_floor["candidate"], "the blown cell is at the floor")
+    detail = result.cell_resolution["ctx128-c4"]["p99_itl_ms"]
+    check(detail["observed_change_pct"] > 1e6, "and the observed change is enormous")
+    if detail["published_control_spread_pct"] is None:
+        check(not result.floor_decided_inside_published_noise,
+              "a generation that published no spread makes no claim about noise")
+    else:
+        check(detail["resolves"] is not None, "resolution is decided, not guessed")
+
+    # And the case that matters: a change SMALLER than the published spread, on a cell that
+    # still lands at the floor.
+    generation.cell_bounds.setdefault("ctx128-c4", {}).setdefault(
+        "p99_itl_ms", {"lo": 200.0, "hi": 0.0})["control_spread_pct"] = 481.0
+    generation.cell_bounds["ctx128-c4"]["p99_itl_ms"]["lo"] = 200.0
+    generation.cell_bounds["ctx128-c4"]["p99_itl_ms"]["hi"] = 0.0
+    noisy = {"ctx128-c1": {"base": (500.0, 50.0, "OK")},
+             "ctx128-c4": {"base": (500.0, 250.0, "OK")}}      # p99 past the 200 ms SLO
+    result = compute_frontier(generation, matrix(flat, noisy))
+    check("ctx128-c4" in result.cells_at_floor["candidate"],
+          "a p99 past the generation's SLO limit puts the cell at the floor")
+    named = {(r["cell"], r["objective"]) for r in result.floor_decided_inside_published_noise}
+    check(("ctx128-c4", "p99_itl_ms") in named,
+          "and the receipt names the floor decision taken inside the published spread")
+    check(result.cell_resolution["ctx128-c4"]["p99_itl_ms"]["resolves"] is False,
+          "because a 400% change against a 481% published spread does not resolve")
+
+
 def test_compute_cases():
     section("frontier cases (spec section 51)")
     generation = make_generation()
@@ -775,6 +824,7 @@ def test_reports_render():
 def main():
     for test in (test_normalization, test_pareto, test_hypervolume, test_aggregate,
                  test_confidence, test_generation, test_attribution_of_a_serving_loss,
+                 test_a_floor_decision_inside_the_published_noise_is_named,
                  test_compute_cases, test_compute_guards,
                  test_a_consistent_tiny_difference_does_not_qualify_on_confidence_alone,
                  test_regression_guard, test_receipt_and_result_match_their_schemas,
