@@ -33,7 +33,10 @@ that it holds wherever the script runs — not only inside a CI YAML:
   deliberately. Automatic execution of a stranger's CUDA on a GPU host is the thing this
   document exists to prevent.
 - **The GitHub job requests `contents: read` and nothing else.** No packages, no deployments,
-  no OIDC identity token.
+  no OIDC identity token. Posting the receipt to the PR needs `pull-requests: write`, so it is
+  a **separate job on a hosted runner** that downloads the artifact and reads a Markdown file.
+  The two never share a runner: a token in the evaluation job's environment would be a token
+  the submission has.
 
 ## What an operator must still provide
 

@@ -121,3 +121,42 @@ jobs:
         # Ephemeral in practice and not only in the label: nothing a candidate wrote survives
         # into the next evaluation.
         run: rm -rf "${{ runner.temp }}/tt-eval"
+
+  post:
+    # The PR comment, posted from a SEPARATE job on a hosted runner.
+    #
+    # This is the whole reason it is a second job. The evaluation job has `contents: read` and
+    # nothing else, because it executes a stranger's CUDA and a token in that job's environment
+    # is a token the submission has. Posting needs `pull-requests: write`. So the two never
+    # share a runner: this job downloads the artifact the GPU job produced, reads a Markdown
+    # file, and posts it. No candidate code runs here.
+    needs: evaluate
+    if: always() && inputs.pr != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontier-receipt
+          path: receipt
+      - name: post the receipt
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'receipt/comment.md';
+            if (!fs.existsSync(path)) {
+              core.setFailed('no comment.md in the artifact: the evaluation did not produce a receipt');
+              return;
+            }
+            const body = fs.readFileSync(path, 'utf8');
+            // Every figure in it was computed from the raw results by `tt-frontier report`.
+            // Nothing here formats a number, and nothing here decides a verdict.
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number('${{ inputs.pr }}'),
+              body,
+            });
