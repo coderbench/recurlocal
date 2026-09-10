@@ -5,18 +5,23 @@ to contribute.
 
 A performance PR should include the exact baseline commit, GPU/CUDA versions, benchmark command, raw result, real-runtime result when relevant, correctness evidence, and why the change should generalize. State them in the PR description.
 
-Before opening a PR:
+Before opening a PR, one command:
 
 ```bash
-cmake -S . -B build -DTENSORTRANSIT_BUILD_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=120
-cmake --build build -j
-ctest --test-dir build --output-on-failure   # planners, golden plans, schemas, compat shim
-python3 eval/run_eval.py --binary ./build/tensortransit_bench --repeats 5
+scripts/check.sh                    # CPU: planners, graph, plan schema, compat shim, scorer, CLI
+scripts/check.sh --cuda             # + the device tests
+scripts/check.sh --cuda --sanitize  # + compute-sanitizer over both engines
 ```
 
-Your kernels must be sanitizer-clean: `scripts/sanitize.sh build` runs memcheck, initcheck,
-synccheck and racecheck. It is not optional decoration — memcheck found a real defect (a
-controller destroyed mid-capture issuing 14 illegal CUDA calls) the first time it was run.
+It builds, runs `ctest`, re-fits the cost model against the measurements in `results/`, loads
+every frozen generation, and audits every ledger. Four commands in three documents is a list
+people run three quarters of; this is the whole list.
+
+Your kernels must be sanitizer-clean — that is what `--sanitize` is for. `scripts/sanitize.sh`
+runs memcheck, initcheck, synccheck and racecheck, and it is not optional decoration: memcheck
+found a real defect (a controller destroyed mid-capture issuing 14 illegal CUDA calls) the
+first time it was run, and initcheck found 924 uninitialized device reads in a test fixture
+that had been passing for two releases.
 
 Do not change model math in the exact-locality track.
 
