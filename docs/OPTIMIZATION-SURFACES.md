@@ -2,6 +2,18 @@
 
 Where the work is, what isolates it, and what is already known.
 
+> **Scope.** This file maps the surfaces of the RECURRENT-STATE policy family — the axes on
+> `PlannerConfig`, the modes, the pre-touch strategies, the hot-set models. All of it still
+> applies and all of the measurements below still stand.
+>
+> The 0.2 core added a second layer of surfaces above it — planners, admission rules, reuse
+> metrics, cost models, window bindings and preferences — and 0.2.1 put them in the measured
+> path. Those are mapped in [`MINING.md`](MINING.md), and the ones worth taking first are the
+> ones that need no GPU. Two axes below moved as a result and are marked where they appear:
+> the **hot-set policy** axis is now also reachable as `TENSORTRANSIT_ADMISSION`, and the
+> **QoS/streaming** axis is now reachable at all under a captured decode graph, which it was
+> not before.
+
 Every surface is a named value on one enumeration, selected at run time and reported in the
 benchmark's JSON. Two people can work on different mechanisms without conflicting, and any
 two can be A/B'd in one process against identical state. A change that replaces a file
