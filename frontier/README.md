@@ -39,6 +39,39 @@ instrument that tells every contributor the wrong thing about where the room is.
 in raw units, with the measured run-to-run spread beside it — so a contributor can see the
 size of the prize, and the noise they have to beat, before spending a week.
 
+## A cell that could not be served
+
+A cell where the candidate produced no operating point is scored at the generation's `cell_floor`
+for that arm — the "new capability" case the regime most wants to reward, run in reverse. It is
+also the single most powerful move on the score: one floor-decided cell shifts dF through the
+geometric mean by more than any policy in this repository ever has, and a reproduction of the
+exact shape puts it at **−99.8%** against a **0%** truth.
+
+So a serving loss is a question before it is a verdict. `eval/real_eval.py` detects a collapse
+off the runtime's batched decode path by reading the *adapter's* packing counters — and the
+control arm is unhooked by construction, emits no counters, and therefore **cannot be seen to
+collapse the same way**. A cell that both arms lose looks exactly like a cell the candidate
+lost.
+
+`tt-frontier run` (and `tt-frontier probe`, for a matrix measured earlier) re-runs each such
+cell once on the **baseline** binary with the hook installed and no window — the same telemetry,
+no policy:
+
+| probe | attribution | what the receipt does |
+|---|---|---|
+| failure reproduced with no policy running | `runtime` | the cell is not scored; `coverage.unservable_cells` names it with the probe's evidence; PARTIAL |
+| the probe served the cell | `candidate` | the loss stays with the candidate, at the cell floor |
+| no probe was run | `unresolved` | the loss stays with the candidate — the default |
+
+The probe runs the *baseline* build deliberately. A candidate that could make its own probe fail
+would get a cell it lost dropped rather than scored, which is strictly to its advantage.
+
+**And a PARTIAL receipt credits nothing.** Whatever it measured is reported, and its status
+still says what its statistics say, but `verified_gain_percent` is 0 and `credit_withheld` names
+the cells responsible. Omitting the arm with the most room is otherwise the cheapest way to
+raise a score, and an attributed serving loss leaves the matrix by the same door; a rule that
+stops a drop from *paying* removes the incentive rather than policing it.
+
 ## Integrity, and the one thing that is deliberately not done
 
 Every receipt carries a `content_digest` — SHA-256 over each of its scored fields — and a
