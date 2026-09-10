@@ -1,16 +1,16 @@
 #pragma once
-#include <cstddef>
+#include <cstddef>   // std::size_t, offsetof
 #include "recurlocal/version.h"
 
 namespace recurlocal {
 
-enum class LocalityMode { Baseline, Persist, Prefetch, Combined };
+enum class LocalityMode : int { Baseline, Persist, Prefetch, Combined };
 
 // How the next layer's state is touched. Each strategy must be read-only and produce the
 // same (ignored) result; they differ only in how the bytes are moved, which is the point.
 // Adding one is the narrowest useful contribution to this project: a new kernel, a new
 // enumerator, and it is measurable on its own against every other strategy.
-enum class PreTouchStrategy {
+enum class PreTouchStrategy : int {
     Scalar,     // one float per thread; the v0.1 reference
     Vec4,       // 128-bit loads, a quarter of the memory instructions
     Vec4Ldcg,   // 128-bit loads cached at L2, bypassing L1
@@ -22,7 +22,7 @@ enum class PreTouchStrategy {
 // How the prefetch distance varies with depth. A single global constant assumes every
 // recurrent layer has the same amount of compute ahead of it to hide the walk behind,
 // which is false in a hybrid model where attention layers sit between them.
-enum class PrefetchSchedule {
+enum class PrefetchSchedule : int {
     Uniform,      // the same distance everywhere; the v0.1 assumption
     Ramp,         // reach further as depth grows and more work is queued ahead
     Alternating,  // prefetch every other layer, halving pre-touch traffic
@@ -38,7 +38,7 @@ enum class PrefetchSchedule {
 // oversubscription at all (docs/OPTIMIZATION-SURFACES.md). The reuse distance for a
 // recurrent state is one whole token: layer 0's state is next read after every other layer
 // has run. Anything that does not survive that interval was never resident.
-enum class HotSetModel {
+enum class HotSetModel : int {
     CurrentLayer,    // this layer's window plus caller-declared bytes; the v0.1 control
     TokenFootprint,  // every recurrent layer's state, every sequence: what a token revisits
     ReuseWindow      // TokenFootprint plus the non-recurrent bytes streamed between two
@@ -48,7 +48,7 @@ enum class HotSetModel {
 // Which region a persisting window covers. A window over the slice of the layer about to
 // run only helps if that slice is re-read before the window moves on, and under
 // TokenFootprint accounting it is not: it is re-read a whole token later.
-enum class WindowScope {
+enum class WindowScope : int {
     Layer,       // the slice this layer will touch; the v0.1 assumption
     Allocation,  // the whole recurrent-state allocation the slice lives in
     Ahead        // this slice plus the next prefetch_distance slices
@@ -58,7 +58,7 @@ enum class WindowScope {
 // one: Qwen3.8-27B holds a 3 MiB fp32 matrix state and a 60 KiB bf16 convolution window per
 // layer. Only one access-policy window can be bound at a time, so this is a choice, and the
 // small state is the one whose whole allocation can actually fit in a set-aside.
-enum class WindowTarget {
+enum class WindowTarget : int {
     Matrix,     // the large recurrent matrix state
     Conv,       // the small convolution window state
     Widest,     // whichever segment has the most bytes
@@ -66,7 +66,7 @@ enum class WindowTarget {
 };
 
 // Which recurrent states are pre-touched. v0.1 walked one buffer because it modelled one.
-enum class PreTouchCoverage { Matrix, Conv, Both };
+enum class PreTouchCoverage : int { Matrix, Conv, Both };
 
 // How a persisting window reaches the kernel under CUDA Graph capture.
 //
@@ -108,7 +108,7 @@ enum class PreTouchCoverage { Matrix, Conv, Both };
 // Default is Stream. A convenience that can cost a quarter of a runtime's throughput is not
 // a default; the controller counts invalidations and latches node attachment off after the
 // first one. New enumerators are appended, never inserted: see docs/STABILITY.md.
-enum class WindowAttach { Stream, CaptureNode, CaptureNodeStrict };
+enum class WindowAttach : int { Stream, CaptureNode, CaptureNodeStrict };
 
 // When the pre-touch stream is rejoined to the compute stream.
 //
@@ -117,7 +117,7 @@ enum class WindowAttach { Stream, CaptureNode, CaptureNodeStrict };
 // layer to pre-touch for nearly every layer it runs. SparkInfer measured its own single
 // fork/join pair at ~0.89% of a decode step, so paying for one per recurrent layer is a
 // cost the prefetch has to earn back before it wins anything.
-enum class PrefetchJoin {
+enum class PrefetchJoin : int {
     PerLayer,  // join before the next layer runs; the v0.1 shape, and the safe one
     TokenEnd   // fork per layer, join once after the whole layer walk - half the nodes,
                // at the cost of no ordering between a pre-touch and the layer it warms
@@ -135,7 +135,7 @@ enum class PrefetchJoin {
 //
 // The planner already computes that footprint for the hot-set models, and the runtime already
 // declares the sequence count, so the input exists; only the policy was missing.
-enum class SetAsidePolicy {
+enum class SetAsidePolicy : int {
     // `persisting_budget_fraction` of capacity, whatever the workload. THE CONTROL: this is
     // what every number in this repository was measured under, and it stays the default.
     Fixed,
@@ -159,7 +159,7 @@ enum class SetAsidePolicy {
 // What to do when the recurrent state that wants to be resident exceeds the L2 set-aside.
 // This is the policy the overview calls the major v0.1 frontier: the shipped heuristic is
 // one line, and nothing has ever measured it against an alternative.
-enum class HotSetPolicy {
+enum class HotSetPolicy : int {
     Proportional,  // scale the requested hit ratio by the budget share (the v0.1 heuristic)
     Fixed,         // ask for the full hit ratio regardless; the naive control
     Sqrt,          // back off by sqrt(share) - gentler than proportional
@@ -183,7 +183,7 @@ enum class HotSetPolicy {
 // allocations with separate strides. Describing them as segments is what lets the planner
 // account for all of them and the controller pre-touch all of them, instead of modelling
 // the largest and silently ignoring the rest.
-enum class StateKind { Matrix, Conv, Other };
+enum class StateKind : int { Matrix, Conv, Other };
 
 struct StateSegment {
     // The slice this layer reads and writes.
@@ -417,5 +417,30 @@ const char* to_string(PrefetchJoin join) noexcept;
 PrefetchJoin parse_prefetch_join(const char* text);
 const char* to_string(WindowAttach attach) noexcept;
 WindowAttach parse_window_attach(const char* text);
+
+// The structs above cross the boundary by value, so their layout IS the ABI. docs/STABILITY.md
+// declares it unstable between minor versions and append-only within one; these turn that rule
+// into something the build can fail on rather than something a reviewer has to notice. A field
+// inserted into one of PlannerConfig's padding holes at offset 4, 52 or 92 changes no size at
+// all, so the offset checks are not redundant with the size ones.
+//
+// Guarded on LP64 because the numbers are LP64 numbers. An exotic target should not get a hard
+// error for being exotic; it gets no check, and docs/STABILITY.md says so.
+#if defined(__LP64__) || defined(_WIN64)
+static_assert(sizeof(PlannerConfig) == 104,
+              "PlannerConfig layout changed - append at the end, and see docs/STABILITY.md");
+static_assert(sizeof(LayerPlan) == 72,
+              "LayerPlan layout changed - append at the end, and see docs/STABILITY.md");
+static_assert(sizeof(DeviceCaps) == 24, "DeviceCaps layout changed - see docs/STABILITY.md");
+static_assert(sizeof(RecurrentGeometry) == 32,
+              "RecurrentGeometry layout changed - see docs/STABILITY.md");
+static_assert(sizeof(StateSegment) == 40, "StateSegment layout changed - see docs/STABILITY.md");
+static_assert(sizeof(WindowRegion) == 16, "WindowRegion layout changed - see docs/STABILITY.md");
+static_assert(offsetof(DeviceCaps, access_policy_max_window_bytes) == 16,
+              "DeviceCaps fields moved - see docs/STABILITY.md");
+static_assert(offsetof(RecurrentGeometry, streamed_bytes_per_token) == 24,
+              "RecurrentGeometry fields moved - see docs/STABILITY.md");
+static_assert(offsetof(StateSegment, kind) == 32, "StateSegment fields moved - see docs/STABILITY.md");
+#endif
 
 } // namespace recurlocal

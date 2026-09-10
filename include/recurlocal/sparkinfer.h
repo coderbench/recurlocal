@@ -84,7 +84,7 @@ void before_layer(int layer) noexcept;
 // to the node this launch recorded, so it has to be the launch that reads the state the
 // window was aimed at - the convolution kernel for the conv state, the recurrence for the
 // matrix state. Calling both is correct and costs one capture query.
-enum class StateKernel { Conv, Gdn };
+enum class StateKernel : int { Conv, Gdn };
 void after_launch(StateKernel which) noexcept;
 
 void after_layer() noexcept;
@@ -105,20 +105,27 @@ void shutdown() noexcept;
 
 #else   // no CUDA: the hook compiles away entirely
 
+// cudaStream_t is `struct CUstream_st*`. Declaring `compute` as void* here instead gave the
+// two branches of this header two DIFFERENT types with the same name, so a CUDA-built and a
+// non-CUDA-built translation unit linked into one binary were an ODR violation that nothing
+// would diagnose. Forward-declaring the tag makes both branches declare the identical type
+// without this branch including a CUDA header.
+struct CUstream_st;
+
 namespace recurlocal { namespace sparkinfer {
 struct GdnStateLayout { void* lin_state; std::size_t lin_state_stride;
                         void* lin_conv_state; std::size_t lin_conv_stride;
-                        int n_layers; int full_attn_interval; void* compute; };
+                        int n_layers; int full_attn_interval; ::CUstream_st* compute; };
 inline bool enabled() noexcept { return false; }
 inline const char* mode_name() noexcept { return "off"; }
 struct GdnPackedLayout { const void* const* device_lin_state; const void* const* device_lin_conv;
                          void* host_lin_state_row0; void* host_lin_conv_row0; int rows;
                          std::size_t lin_state_stride; std::size_t lin_conv_stride;
-                         int n_layers; int full_attn_interval; void* compute; };
+                         int n_layers; int full_attn_interval; ::CUstream_st* compute; };
 inline bool begin_token(const GdnStateLayout&) noexcept { return false; }
 inline bool begin_token_packed(const GdnPackedLayout&) noexcept { return false; }
 inline void before_layer(int) noexcept {}
-enum class StateKernel { Conv, Gdn };
+enum class StateKernel : int { Conv, Gdn };
 inline void after_launch(StateKernel) noexcept {}
 inline void after_layer() noexcept {}
 inline void end_token() noexcept {}

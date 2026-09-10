@@ -112,6 +112,7 @@ static float time_replay(cudaGraphExec_t exec, cudaStream_t s, int reps) {
 int main(int argc, char** argv) {
     const int NODES = (argc > 1) ? atoi(argv[1]) : 48;   // SparkInfer's batch-1 decode capture
     const int ITERS = (argc > 2) ? atoi(argv[2]) : 8;
+    const int COLD_MIB = (argc > 3) ? atoi(argv[3]) : 512;   // per kernel; must exceed L2
     int dev = 0; CK(cudaSetDevice(dev));
     cudaDeviceProp prop{}; CK(cudaGetDeviceProperties(&prop, dev));
     std::printf("device: %s  sm_%d%d  L2 %zu MiB  persistingL2max %zu MiB  maxWindow %zu MiB\n",
@@ -126,12 +127,13 @@ int main(int argc, char** argv) {
 
     // Hot region sized to sit inside the set-aside; cold region large enough to evict it.
     size_t hotN  = (granted ? granted : (32u << 20)) / sizeof(float) / 2;
-    // Per-NODE cold bytes, so the whole GRAPH streams a constant ~512 MiB whatever the node
-    // count. Sizing it per node instead made the cold stream 48x larger at 48 nodes than at 1,
-    // which buried the hot region's re-read under traffic that has nothing to do with the
-    // policy -- the probe then reported no difference and it was the benchmark, not CUDA.
-    size_t coldN = ((512u << 20) / (unsigned)NODES) / sizeof(float);
-    if (coldN < (1u << 20) / sizeof(float)) coldN = (1u << 20) / sizeof(float);
+    // Cold bytes PER KERNEL, and deliberately several times L2. The point of this region is
+    // to create enough pressure that the hot region is evicted between one kernel's re-reads
+    // and the next; sizing it so the whole GRAPH streams a constant amount instead leaves
+    // hot+cold inside L2 at high node counts, and then a persisting window and a streaming
+    // one are indistinguishable because nothing was going to be evicted either way. That is
+    // the benchmark reporting on itself, not on CUDA.
+    size_t coldN = (size_t)COLD_MIB * (1u << 20) / sizeof(float);
     float *hot = nullptr, *cold = nullptr, *out = nullptr;
     CK(cudaMalloc(&hot, hotN * sizeof(float)));
     CK(cudaMalloc(&cold, coldN * sizeof(float)));

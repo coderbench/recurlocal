@@ -446,7 +446,10 @@ const char* to_string(SetAsidePolicy policy) noexcept {
         case SetAsidePolicy::FitFootprint: return "fit_footprint";
         case SetAsidePolicy::Residency: return "residency";
     }
-    return "fixed";
+    // Not "fixed". Every other to_string here returns "unknown" for a value outside the
+    // enumeration, and returning the CONTROL arm's own name would put a sweep's control
+    // label on a candidate nobody can identify.
+    return "unknown";
 }
 
 SetAsidePolicy parse_set_aside_policy(const char* text) {

@@ -1000,6 +1000,41 @@ static void test_set_aside_policy_values_are_appended_not_inserted() {
     CHECK(PlannerConfig{}.set_aside_policy == SetAsidePolicy::Fixed);
 }
 
+static void test_the_stability_contract_holds_where_the_code_can_check_it() {
+    // docs/STABILITY.md is a promise about symbols other people switch on. These are the
+    // parts of it a test can hold to: every enumerator's numeric value is pinned by being
+    // appended and never inserted, every one round-trips through its string, and no
+    // to_string returns a real enumerator's name for a value outside its enumeration.
+    CHECK(static_cast<int>(LocalityMode::Baseline) == 0);
+    CHECK(static_cast<int>(HotSetPolicy::Proportional) == 0);
+    CHECK(static_cast<int>(HotSetPolicy::Quota) == 4);         // appended, not inserted
+    CHECK(static_cast<int>(HotSetModel::CurrentLayer) == 0);
+    CHECK(static_cast<int>(PreTouchStrategy::Scalar) == 0);
+    CHECK(static_cast<int>(WindowScope::Layer) == 0);
+    CHECK(static_cast<int>(WindowTarget::Matrix) == 0);
+    CHECK(static_cast<int>(PrefetchJoin::PerLayer) == 0);
+    CHECK(static_cast<int>(StateKind::Matrix) == 0);
+    // Scoped enums have a fixed underlying type, so appending can never move sizeof - which
+    // is what makes "a new mechanism is a new enumerator" cost a consumer nothing.
+    CHECK(sizeof(LocalityMode) == sizeof(int));
+    CHECK(sizeof(SetAsidePolicy) == sizeof(int));
+    CHECK(sizeof(WindowAttach) == sizeof(int));
+
+    // An out-of-range value must never be labelled as a real enumerator. to_string(SetAsidePolicy)
+    // returned "fixed" - the CONTROL arm's own name - which would put the control's label on a
+    // candidate nobody can identify.
+    CHECK(std::strcmp(to_string(static_cast<SetAsidePolicy>(99)), "unknown") == 0);
+    CHECK(std::strcmp(to_string(static_cast<WindowAttach>(99)), "unknown") == 0);
+
+    // A default-constructed config is the shipped behaviour on every axis, so a consumer that
+    // sets one field does not silently opt into four others.
+    const PlannerConfig d{};
+    CHECK(d.set_aside_policy == SetAsidePolicy::Fixed);
+    CHECK(d.hot_set_policy == HotSetPolicy::Proportional);
+    CHECK(d.window_attach == WindowAttach::Stream);
+    CHECK(d.hot_set_model == HotSetModel::CurrentLayer);
+}
+
 static void test_min_residency_is_validated() {
     PlannerConfig cfg = base_config();
     cfg.min_residency = 1.5;
@@ -1380,6 +1415,7 @@ int main() {
     test_a_negative_sequence_count_counts_as_one();
     test_set_aside_policy_names_round_trip();
     test_min_residency_is_validated();
+    test_the_stability_contract_holds_where_the_code_can_check_it();
     test_window_attach_names_round_trip_including_strict();
     test_set_aside_policy_values_are_appended_not_inserted();
     test_a_device_with_no_persisting_l2_asks_for_no_window();
